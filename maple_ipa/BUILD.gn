@@ -1,0 +1,70 @@
+#
+# Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+#
+# OpenArkCompiler is licensed under the Mulan PSL v1.
+# You can use this software according to the terms and conditions of the Mulan PSL v1.
+# You may obtain a copy of Mulan PSL v1 at:
+#
+#     http://license.coscl.org.cn/MulanPSL
+#
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
+# FIT FOR A PARTICULAR PURPOSE.
+# See the Mulan PSL v1 for more details.
+#
+
+configs = [
+        "${MAPLEALL_ROOT}:mapleallcompilecfg",
+    ]
+
+include_directories = [
+    "${MAPLEALL_ROOT}/mpl2mpl/include",
+    "${MAPLEALL_ROOT}/maple_me/include",
+    "${MAPLEALL_ROOT}/maplecomb/include",
+    "${MAPLEALL_ROOT}/maple_phase/include",
+    "${MAPLEALL_ROOT}/mempool/include",
+    "${MAPLEALL_ROOT}/maple_ir/include",
+    "${MAPLEALL_ROOT}/maple_util/include",
+    "${MAPLEALL_ROOT}/maple_ipa/include",
+    "${MAPLEALL_ROOT}/mapleradar/include",
+    "${MAPLEALL_ROOT}/maple_driver/include",
+    "${MAPLEALL_ROOT}/../third-party/md5/include",
+]
+
+static_library("libmplipa"){
+    sources = [
+        "src/callgraph.cpp",
+        "src/inline.cpp",
+        "src/greedyinline.cpp",
+        "src/module_phase_manager.cpp",
+        "src/moduleipa.cpp",
+        "src/graph.cpp",
+        "src/clone.cpp",
+        "src/retype.cpp",
+        "src/interleaved_manager.cpp"
+    ]
+
+    include_dirs = include_directories
+
+    output_dir = "${root_out_dir}/lib/${HOST_ARCH}"
+}
+
+executable("mplipa"){
+    sources = [
+        "src/ipadriver.cpp",
+    ]
+
+    include_dirs = include_directories
+
+    deps = [
+        ":libmplipa",
+        "${MAPLEALL_ROOT}/maple_me:libmplme",
+        "${MAPLEALL_ROOT}/maple_ir:libmplir",
+        "${MAPLEALL_ROOT}/mpl2mpl:libmpl2mpl",
+        "${MAPLEALL_ROOT}/maple_me:libmplmewpo",
+        "${MAPLEALL_ROOT}/maple_phase:libmplphase",
+        "${MAPLEALL_ROOT}/mempool:libmempool",
+        "${MAPLEALL_ROOT}/maple_util:libmplutil",
+        "${MAPLEALL_ROOT}/huawei_secure_c:libHWSecureC",
+    ]
+}

@@ -1,0 +1,450 @@
+#
+# Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+#
+# OpenArkCompiler is licensed under the Mulan PSL v1.
+# You can use this software according to the terms and conditions of the Mulan PSL v1.
+# You may obtain a copy of Mulan PSL v1 at:
+#
+#     http://license.coscl.org.cn/MulanPSL
+#
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
+# FIT FOR A PARTICULAR PURPOSE.
+# See the Mulan PSL v1 for more details.
+#
+
+if(TARGET == ""){
+    TARGET = "aarch64"
+}
+
+MACHINE = ""
+if(MACHINE == ""){
+    MACHINE = "cortex_a55"
+}
+cflags_cc += [
+        "-DMIR_FEATURE_FULL=1",
+    ]
+
+cflags_cc -= [
+        "-DRC_NO_MMAP",
+    ]
+
+if(USE_CLANG == 1){
+    cflags_cc -= [
+        "-DMIR_JAVA=1",
+    ]
+}
+
+if(TARGET == "aarch64"){
+    cflags_cc += [
+        "-DTARGAARCH64",
+    ]
+}
+
+if(TARGET == "ark"){
+    cflags_cc += [
+        "-DTARGARK",
+    ]
+}
+
+if(TARGET == "arm"){
+     cflags_cc += [
+        "-DTARGARM",
+    ]
+}
+
+if(TARGET == "x86"){
+    cflags_cc += [
+        "-DTARGX86",
+    ]
+}
+
+if(TARGET == "vm"){
+        cflags_cc += [
+            "-DTARGVM",
+        ]
+    }
+
+configs = [
+        "${MAPLEALL_ROOT}:mapleallcompilecfg",
+    ]
+
+include_directories = [
+    "${MAPLEALL_ROOT}/maple_be/include/cg",
+    "${MAPLEALL_ROOT}/maple_be/include/cg/aarch64",
+    "${MAPLEALL_ROOT}/maple_be/include/cg/ark",
+    "${MAPLEALL_ROOT}/maple_be/include/ad",
+    "${MAPLEALL_ROOT}/maple_be/include/ad/cortex_a55",
+    "${MAPLEALL_ROOT}/maple_be/include/be/aarch64",
+    "${MAPLEALL_ROOT}/maple_be/include/be/ark",
+    "${MAPLEALL_ROOT}/maple_be/include/be/mmpl",
+    "${MAPLEALL_ROOT}/maple_be/include/be/nonmmpl",
+    "${MAPLEALL_ROOT}/maple_be/include/be",
+    "${MAPLEALL_ROOT}/maple_util/include",
+    "${MAPLEALL_ROOT}/maple_ir/include",
+    "${MAPLEALL_ROOT}/mpl2mpl/include",
+    "${MAPLEALL_ROOT}/mempool/include",
+    "${MAPLEALL_ROOT}/maple_ipa/include",
+    "${MAPLEALL_ROOT}/maple_phase/include",
+    "${MAPLEALL_ROOT}/huawei_secure_c/include",
+    "${MAPLE_RE_ROOT}/include",
+    "${MAPLEALL_ROOT}/maple_driver/include",
+    "${MAPLEALL_ROOT}/../third-party/md5/include",
+]
+
+source_set("libmplada55"){
+    sources = [
+        "src/ad/${MACHINE}/a55mad.cpp",
+    ]
+
+    include_dirs = [
+        "${MAPLEALL_ROOT}/maple_be/include/ad/${MACHINE}",
+    ] + include_directories
+
+    if(MACHINE == "cortex_a55"){
+        cflags_cc += [
+            "-DMPLAD_CORTEX_A55",
+            "-DRC_NO_MMAP",
+        ]
+    }
+}
+
+source_set("libmplad"){
+    sources = [
+        "src/ad/mad.cpp",
+    ]
+
+    include_dirs = include_directories
+
+    deps = [
+        ":libmplada55",
+    ]
+
+    if(MACHINE == "cortex_a55"){
+        cflags_cc += [
+            "-DMPLAD_CORTEX_A55",
+            "-DRC_NO_MMAP",
+        ]
+    }
+}
+
+source_set("libmmpllowerer"){
+    sources = [
+        "src/be/mmpl/mmpl_lowerer.cpp",
+        "src/be/mmpl/mmpl_mem_layout.cpp",
+    ]
+
+    include_dirs = include_directories
+}
+
+source_set("libcglowerer"){
+    sources = [
+        "src/be/nonmmpl/cg_lowerer.cpp",
+    ]
+
+    include_dirs = include_directories
+}
+
+
+static_library("libmplbe"){
+    sources = [
+        "src/be/be_common.cpp",
+        "src/be/be_lowerer.cpp",
+        "src/be/switch_lowerer.cpp",
+    ]
+    deps = []
+
+    if(USE_CLANG == 1){
+        sources += [
+            "src/be/rt_support.cpp",
+        ]
+
+        deps += [
+            ":libcglowerer",
+        ]
+    }else{
+        deps += [
+            ":libmmpllowerer"
+        ]
+    }
+
+    include_dirs = include_directories
+
+    output_dir = "${root_out_dir}/lib/${HOST_ARCH}"
+}
+
+action("aarch64isa_headers"){
+    script = "src/cg/script/gen_mopfor_gn.py"
+    input = "src/cg/aarch64/aarch64_md.def"
+    output = "${target_out_dir}/aarch64_isa.def"
+    output1 = "${MAPLEALL_ROOT}/maple_be/include/cg/aarch64/aarch64_isa.def"
+    outputs = [
+        output,
+    ]
+
+    args = [
+        rebase_path(input, root_build_dir),
+        rebase_path(output1, root_build_dir),
+    ]
+}
+
+source_set("libcgaarch64"){
+    sources = [
+        "src/cg/aarch64/aarch64_abi.cpp",
+        "src/cg/aarch64/aarch64_cg_func.cpp",
+        "src/cg/aarch64/aarch64_immediate.cpp",
+        "src/cg/aarch64/aarch64_load_store.cpp",
+        "src/cg/aarch64/aarch64_lvar.cpp",
+        "src/cg/aarch64/aarch64_operand.cpp",
+        "src/cg/aarch64/aarch64_ra_opt.cpp",
+        "src/cg/aarch64/aarch64_color_ra.cpp",
+        "src/cg/aarch64/aarch64_reg_alloc.cpp",
+        "src/cg/aarch64/aarch64_cg.cpp",
+        "src/cg/aarch64/aarch64_emit.cpp",
+        "src/cg/aarch64/aarch64_insn.cpp",
+        "src/cg/aarch64/aarch64_insn_slct.cpp",
+        "src/cg/aarch64/aarch64_vec_insn_slct.cpp",
+        "src/cg/aarch64/aarch64_intrinsics.cpp",
+        "src/cg/aarch64/aarch64_mem_layout.cpp",
+        "src/cg/aarch64/aarch64_peep.cpp",
+        "src/cg/aarch64/aarch64_ebo.cpp",
+        "src/cg/aarch64/aarch64_reaching_definition.cpp",
+        "src/cg/aarch64/aarch64_store_load_opt.cpp",
+        "src/cg/aarch64/aarch64_global_opt.cpp",
+        "src/cg/aarch64/aarch64_optimize_common.cpp",
+        "src/cg/aarch64/aarch64_live_analysis.cpp",
+        "src/cg/aarch64/aarch64_schedule.cpp",
+        "src/cg/aarch64/aarch64_dep_analysis.cpp",
+    ]
+
+    include_dirs = include_directories
+
+    if(MACHINE == "cortex_a55"){
+        cflags_cc += [
+            "-DMPLAD_CORTEX_A55",
+        ]
+    }
+}
+
+source_set("libcgark"){
+    sources = [
+        "src/cg/ark/ark_abi.cpp",
+        "src/cg/ark/ark_cg.cpp",
+        "src/cg/ark/ark_mem_layout.cpp",
+        "src/cg/ark/ark_mir_emit.cpp",
+        "src/cg/ark/ark_emit.cpp",
+    ]
+
+    include_dirs = include_directories
+
+    if(MACHINE == "cortex_a55"){
+        cflags_cc += [
+            "-DMPLAD_CORTEX_A55",
+        ]
+    }
+}
+
+action("armisa_headers"){
+    script = "src/cg/script/gen_mopfor_gn.py"
+    input = "src/cg/arm/arm_md.def"
+    output = "${target_out_dir}/arm_isa.def"
+    output1 = "${MAPLEALL_ROOT}/maple_be/include/cg/arm/arm_isa.def"
+    outputs = [
+        output,
+    ]
+
+    args = [
+        rebase_path(input, root_build_dir),
+        rebase_path(output1, root_build_dir),
+    ]
+}
+
+if(TARGET == "arm"){
+    source_set("libcgarm"){
+        sources = [
+            "src/cg/arm/arm_abi.cpp",
+            "src/cg/arm/arm_cg.cpp",
+            "src/cg/arm/arm_cg_func.cpp",
+            "src/cg/arm/arm_emit.cpp",
+            "src/cg/arm/arm_insn_slct.cpp",
+            "src/cg/arm/arm_load_store.cpp",
+            "src/cg/arm/arm_mem_layout.cpp",
+            "src/cg/arm/arm_operand.cpp",
+            "src/cg/arm/arm_reg_alloc.cpp",
+        ]
+
+        include_dirs = [
+            "${MAPLEALL_ROOT}/maple_be/include/cg/arm"
+        ] + include_directories
+   }
+}
+
+action("x86isa_headers"){
+    script = "src/cg/script/gen_mopfor_gn.py"
+    input = "src/cg/x86/x86md.def"
+    output = "${target_out_dir}/x86_isa.def"
+    output1 = "${MAPLEALL_ROOT}/maple_be/include/cg/x86/x86_isa.def"
+    outputs = [
+        output,
+    ]
+
+    args = [
+        rebase_path(input, root_build_dir),
+        rebase_path(output1, root_build_dir),
+    ]
+}
+if(TARGET == "X86"){
+    source_set("libcgx86"){
+        sources = [
+            "src/cg/x86/x86_emit.cpp",
+            "src/cg/x86/x86_cg.cpp",
+            "src/cg/x86/x86_cg_func.cpp",
+            "src/cg/x86/x86_mem_layout.cpp",
+            "src/cg/x86/x86_insn_slct.cpp",
+            "src/cg/x86/x86_load_store.cpp",
+            "src/cg/x86/x86_operand.cpp",
+            "src/cg/x86/x86_reg_alloc.cpp",
+        ]
+    }
+
+    include_dirs = [
+            "${MAPLEALL_ROOT}/maple_be/include/cg/x86",
+        ] + include_directories
+}
+
+source_set("libcgcpu"){
+   sources = [
+       "src/cg/cfi.cpp",
+       "src/cg/super_bb.cpp",
+       "src/cg/reaching_definition.cpp",
+       "src/cg/cg_bb.cpp",
+       "src/cg/ebo.cpp",
+       "src/cg/store_load_opt.cpp",
+       "src/cg/global_opt.cpp",
+       "src/cg/live_analysis.cpp",
+       "src/cg/optimize_common.cpp",
+       "src/cg/ico.cpp",
+       "src/cg/cfg_optimizer.cpp",
+       "src/cg/cg_cfg.cpp",
+       "src/cg/loop.cpp",
+       "src/cg/lvar.cpp",
+       "src/cg/schedule.cpp",
+       "src/cg/reg_pressure.cpp"
+    ]
+
+    include_dirs = include_directories
+}
+
+static_library("libcg"){
+   sources = [
+       "src/cg/dbg.cpp",
+       "src/cg/cg.cpp",
+       "src/cg/cg_func.cpp",
+       "src/cg/eh_func.cpp",
+       "src/cg/emit.cpp",
+       "src/cg/cg_option.cpp",
+       "src/cg/cg_phase_manager.cpp",
+       "src/cg/emit_dbg.cpp",
+       "src/cg/mem_layout.cpp",
+       "src/cg/special_func.cpp",
+    ]
+
+    include_dirs = include_directories
+
+    if(TARGET == "aarch64"){
+        deps = [
+            ":libcgcpu",
+            ":libcgaarch64",
+        ]
+    }
+
+    if(TARGET == "ark"){
+        deps = [
+            ":libcgark",
+        ]
+    }
+
+    if(TARGET == "arm"){
+        deps = [
+            ":libcgcpu",
+            ":libcgarm",
+            ":armisa_headers",
+        ]
+    }
+
+    if(TARGET == "x86"){
+        deps = [
+            ":libcgcpu",
+            ":libcgx86",
+            ":x86_headers",
+        ]
+    }
+}
+
+executable("mplcg"){
+    sources = [
+       "src/cg/cg_driver.cpp",
+    ]
+
+    deps = [
+        ":libmplad",
+        ":libcg",
+        ":libmplbe",
+        "${MAPLEALL_ROOT}/maple_ir:libmplir",
+        "${MAPLEALL_ROOT}/mpl2mpl:libmpl2mpl",
+        "${MAPLEALL_ROOT}/maple_phase:libmplphase",
+        "${MAPLEALL_ROOT}/mempool:libmempool",
+        "${MAPLEALL_ROOT}/maple_util:libmplutil",
+        "${MAPLEALL_ROOT}/huawei_secure_c:libHWSecureC",
+    ]
+
+    if(MACHINE == "cortex_a55"){
+        cflags_cc += [
+            "-DMPLAD_CORTEX_A55",
+        ]
+    }
+
+    include_dirs = include_directories
+}
+
+executable("mplbe"){
+    sources = [
+        "src/be/be_driver.cpp",
+        "src/cg/cg_option.cpp",
+    ]
+
+    deps = [
+        ":libmplbe",
+        "${MAPLEALL_ROOT}/maple_ir:libmplir",
+        "${MAPLEALL_ROOT}/mpl2mpl:libmpl2mpl",
+        "${MAPLEALL_ROOT}/maple_phase:libmplphase",
+        "${MAPLEALL_ROOT}/mempool:libmempool",
+        "${MAPLEALL_ROOT}/maple_util:libmplutil",
+        "${MAPLEALL_ROOT}/huawei_secure_c:libHWSecureC",
+    ]
+
+    include_dirs = include_directories
+
+    cflags_cc += [
+        "-DOUTPUTMMPL",
+    ]
+}
+
+executable("mplbe-c"){
+    sources = [
+        "src/be/bedriver.cpp",
+        "src/cg/cgoption.cpp",
+    ]
+
+    deps = [
+        ":libmplbe",
+        "${MAPLEALL_ROOT}/maple_ir:libmplir",
+        "${MAPLEALL_ROOT}/mpl2mpl:libmpl2mpl",
+        "${MAPLEALL_ROOT}/maple_phase:libmplphase",
+        "${MAPLEALL_ROOT}/mempool:libmempool",
+        "${MAPLEALL_ROOT}/maple_util:libmplutil",
+        "${MAPLEALL_ROOT}/huawei_secure_c:libHWSecureC",
+    ]
+
+    include_dirs = include_directories
+}

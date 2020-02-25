@@ -1,0 +1,84 @@
+/*
+ * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ *
+ * OpenArkCompiler is licensed under the Mulan PSL v1.
+ * You can use this software according to the terms and conditions of the Mulan PSL v1.
+ * You may obtain a copy of Mulan PSL v1 at:
+ *
+ *     http://license.coscl.org.cn/MulanPSL
+ *
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
+ * FIT FOR A PARTICULAR PURPOSE.
+ * See the Mulan PSL v1 for more details.
+ */
+
+#ifdef MPLAD_CORTEX_A55
+// cortex_a55 function unit name:
+  case kUnitIdSlot0:
+    return "Slot0";
+  case kUnitIdSlot1:
+    return "Slot1";
+  case kUnitIdAgen:
+    return "Agen";
+  case kUnitIdHazard:
+    return "Hazard";
+  case kUnitIdCrypto:
+    return "Crypto";
+  case kUnitIdMul:
+    return "Mul";
+  case kUnitIdDiv:
+    return "Div";
+  case kUnitIdBranch:
+    return "Branch";
+  case kUnitIdStAgu:
+    return "StAgu";
+  case kUnitIdLdAgu:
+    return "LdAgu";
+  case kUnitIdFpAluLo:
+    return "FpAluLo";
+  case kUnitIdFpAluHi:
+    return "FpAluHi";
+  case kUnitIdFpMulLo:
+    return "FpMulLo";
+  case kUnitIdFpMulHi:
+    return "FpMulHi";
+  case kUnitIdFpDivLo:
+    return "FpDivLo";
+  case kUnitIdFpDivHi:
+    return "FpDivHi";
+
+  case kUnitIdSlotS:
+    return "SlotS";
+  case kUnitIdFpAluS:
+    return "AluS";
+  case kUnitIdFpMulS:
+    return "FpMulS";
+  case kUnitIdFpDivS:
+    return "FpDivS";
+
+  case kUnitIdSlotD:
+    return "SlotD";
+  case kUnitIdFpAluD:
+    return "FpAluD";
+  case kUnitIdFpMulD:
+    return "FpMulD";
+  case kUnitIdFpDivD:
+    return "FpDivD";
+
+  case kUnitIdSlotSHazard:
+    return "SlotSHazard";
+  case kUnitIdSlotSMul:
+    return "SlotSMul";
+  case kUnitIdSlotSBranch:
+    return "SlotSBranch";
+  case kUnitIdSlotSAgen:
+    return "SlotSAgen";
+  case kUnitIdSlotDAgen:
+    return "SlotDAgen";
+  case kUnitIdSlot0LdAgu:
+    return "Slot0LdAgu";
+  case kUnitIdSlot0StAgu:
+    return "Slot0StAgu";
+#endif //MPLAD_CORTEX_A55
+

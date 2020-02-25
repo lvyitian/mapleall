@@ -1,0 +1,78 @@
+/*
+ * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ *
+ * OpenArkCompiler is licensed under the Mulan PSL v1.
+ * You can use this software according to the terms and conditions of the Mulan PSL v1.
+ * You may obtain a copy of Mulan PSL v1 at:
+ *
+ *     http://license.coscl.org.cn/MulanPSL
+ *
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
+ * FIT FOR A PARTICULAR PURPOSE.
+ * See the Mulan PSL v1 for more details.
+ */
+
+X86OpndProp mopd_int8_reg_src = { Operand::Opd_Register, {kRegTyInt, MAXREGNUM}, false, 8};
+X86OpndProp mopd_int8_reg_dest = {Operand::Opd_Register, {kRegTyInt, MAXREGNUM}, true, 8};
+X86OpndProp mopd_int16_reg_src = {Operand::Opd_Register, {kRegTyInt, MAXREGNUM}, false, 16};
+X86OpndProp mopd_int16_reg_dest = {Operand::Opd_Register, {kRegTyInt, MAXREGNUM}, true, 16};
+X86OpndProp mopd_int32_reg_src = {Operand::Opd_Register, {kRegTyInt, MAXREGNUM}, false, 32};
+X86OpndProp mopd_int32_reg_dest = {Operand::Opd_Register, {kRegTyInt, MAXREGNUM}, true, 32};
+X86OpndProp mopd_int64_reg_src = {Operand::Opd_Register, {kRegTyInt, MAXREGNUM}, false, 64};
+X86OpndProp mopd_int64_reg_dest = {Operand::Opd_Register, {kRegTyInt, MAXREGNUM}, true, 64};
+X86OpndProp mopd_f32_reg_src = {Operand::Opd_Register, {kRegTyFloat, MAXREGNUM}, false, 32};
+X86OpndProp mopd_f32_reg_dest = {Operand::Opd_Register, {kRegTyFloat, MAXREGNUM}, true, 32};
+X86OpndProp mopd_f64_reg_src = {Operand::Opd_Register, {kRegTyFloat, MAXREGNUM}, false, 64};
+X86OpndProp mopd_f64_reg_dest = {Operand::Opd_Register, {kRegTyFloat, MAXREGNUM}, true, 64};
+X86OpndProp mopd_int32_imm_src = {Operand::Opd_Immediate, {kRegTyUndef, MAXREGNUM}, false, 32};
+X86OpndProp mopd_int64_imm_src = {Operand::Opd_Immediate, {kRegTyUndef, MAXREGNUM}, false, 64};
+X86OpndProp mopd_mem32_src = {Operand::Opd_Mem, {kRegTyUndef, MAXREGNUM}, false, 32};
+X86OpndProp mopd_mem64_src = {Operand::Opd_Mem, {kRegTyUndef, MAXREGNUM}, false, 64};
+X86OpndProp mopd_lbl64_src = {Operand::Opd_BbAddress, {kRegTyUndef,MAXREGNUM}, false, 64};
+X86OpndProp mopd_cc_reg_src = {Operand::Opd_Register, {kRegTyCc, MAXREGNUM}, false, 1};
+X86OpndProp mopd_cc_reg_dest = {Operand::Opd_Register, {kRegTyCc, MAXREGNUM}, true, 1};
+
+// physical register
+X86OpndProp mopd_rax32_src =  {Operand::Opd_Register, {kRegTyInt, RAX}, false, 32};
+X86OpndProp mopd_rax32_dest =  {Operand::Opd_Register, {kRegTyInt, RAX}, true, 32};
+X86OpndProp mopd_rax64_src =  {Operand::Opd_Register, {kRegTyInt, RAX}, false, 64};
+X86OpndProp mopd_rax64_dest =  {Operand::Opd_Register, {kRegTyInt, RAX}, true, 64};
+X86OpndProp mopd_rdx32_src =  {Operand::Opd_Register, {kRegTyInt, RDX}, false, 32};
+X86OpndProp mopd_rdx32_dest =  {Operand::Opd_Register, {kRegTyInt, RDX}, true, 32};
+X86OpndProp mopd_rdx64_src =  {Operand::Opd_Register, {kRegTyInt, RDX}, false, 64};
+X86OpndProp mopd_rdx64_dest =  {Operand::Opd_Register, {kRegTyInt, RDX}, true, 64};
+X86OpndProp mopd_rcx8_src =  {Operand::Opd_Register, {kRegTyInt, RCX}, false, 8};
+
+X86OpndProp *MOPD_Reg = &mopd_int32_reg_src;
+// in MOPD_Reg32IS, Reg means register, 32 means 32-bits, I means integer(F means float), S means source, D means dest
+X86OpndProp *MOPD_Reg8IS = &mopd_int8_reg_src;
+X86OpndProp *MOPD_Reg8ID = &mopd_int8_reg_dest;
+X86OpndProp *MOPD_Reg16IS = &mopd_int16_reg_src;
+X86OpndProp *MOPD_Reg16ID = &mopd_int16_reg_dest;
+X86OpndProp *MOPD_Reg32IS = &mopd_int32_reg_src;
+X86OpndProp *MOPD_Reg32ID = &mopd_int32_reg_dest;
+X86OpndProp *MOPD_Reg64IS = &mopd_int64_reg_src;
+X86OpndProp *MOPD_Reg64ID = &mopd_int64_reg_dest;
+X86OpndProp *MOPD_Reg32FS = &mopd_f32_reg_src;
+X86OpndProp *MOPD_Reg32FD = &mopd_f32_reg_dest;
+X86OpndProp *MOPD_Reg64FS = &mopd_f64_reg_src;
+X86OpndProp *MOPD_Reg64FD = &mopd_f64_reg_dest;
+X86OpndProp *MOPD_Mem = &mopd_mem32_src;
+X86OpndProp *MOPD_Mem32S = &mopd_mem32_src;
+X86OpndProp *MOPD_Mem64S = &mopd_mem64_src;
+X86OpndProp *MOPD_Imm32 = &mopd_int32_imm_src;
+X86OpndProp *MOPD_Imm64 = &mopd_int64_imm_src;
+X86OpndProp *MOPD_Label = &mopd_lbl64_src;
+X86OpndProp *MOPD_RegCCS = &mopd_cc_reg_src;
+X86OpndProp *MOPD_RegCCD = &mopd_cc_reg_dest;
+X86OpndProp *MOPD_RAX32S = &mopd_rax32_src;
+X86OpndProp *MOPD_RAX32D = &mopd_rax32_dest;
+X86OpndProp *MOPD_RAX64S = &mopd_rax64_src;
+X86OpndProp *MOPD_RAX64D = &mopd_rax64_dest;
+X86OpndProp *MOPD_RDX32S = &mopd_rdx32_src;
+X86OpndProp *MOPD_RDX32D = &mopd_rdx32_dest;
+X86OpndProp *MOPD_RDX64S = &mopd_rdx64_src;
+X86OpndProp *MOPD_RDX64D = &mopd_rdx64_dest;
+X86OpndProp *MOPD_RCX8S  = &mopd_rcx8_src;
+X86OpndProp *MOPD_Undef = nullptr;

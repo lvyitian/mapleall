@@ -1,0 +1,283 @@
+/*
+ * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ *
+ * OpenArkCompiler is licensed under the Mulan PSL v1.
+ * You can use this software according to the terms and conditions of the Mulan PSL v1.
+ * You may obtain a copy of Mulan PSL v1 at:
+ *
+ *     http://license.coscl.org.cn/MulanPSL
+ *
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
+ * FIT FOR A PARTICULAR PURPOSE.
+ * See the Mulan PSL v1 for more details.
+ */
+
+#ifdef MPLAD_CORTEX_A55
+Reservation *revInstanceUndef = new Reservation(kLtUndef, 0, 0);
+if (revInstanceUndef == nullptr) {
+  cout << "Reservation allocation for kLtUndef failed." << endl;
+}
+CG_ASSERT(revInstanceUndef, "Reservation allocation for kLtUndef failed.");
+
+Reservation *revInstanceShift = new Reservation(kLtShift, 2, 1, GetUnitByUnitId(kUnitIdSlotS));
+if (revInstanceShift == nullptr) {
+  cout << "Reservation allocation for kLtShift failed." << endl;
+}
+CG_ASSERT(revInstanceShift, "Reservation allocation for kLtShift failed.");
+
+Reservation *revInstanceShiftReg = new Reservation(kLtShiftReg, 2, 2, GetUnitByUnitId(kUnitIdSlotS),
+                                                   GetUnitByUnitId(kUnitIdHazard));
+if (revInstanceShiftReg == nullptr) {
+  cout << "Reservation allocation for kLtShiftReg failed." << endl;
+}
+CG_ASSERT(revInstanceShiftReg, "Reservation allocation for kLtShiftReg failed.");
+
+Reservation *revInstanceAlu = new Reservation(kLtAlu, 3, 1, GetUnitByUnitId(kUnitIdSlotS));
+if (revInstanceAlu == nullptr) {
+  cout << "Reservation allocation for kLtAlu failed." << endl;
+}
+CG_ASSERT(revInstanceAlu, "Reservation allocation for kLtAlu failed.");
+
+Reservation *revInstanceAluShift = new Reservation(kLtAluShift, 3, 1, GetUnitByUnitId(kUnitIdSlotS));
+if (revInstanceAluShift == nullptr) {
+  cout << "Reservation allocation for kLtAluShift failed." << endl;
+}
+CG_ASSERT(revInstanceAluShift, "Reservation allocation for kLtAluShift failed.");
+
+Reservation *revInstanceAluShiftReg = new Reservation(kLtAluShiftReg, 3, 1, GetUnitByUnitId(kUnitIdSlotS),                                                       GetUnitByUnitId(kUnitIdHazard));
+if (revInstanceAluShiftReg == nullptr) {
+  cout << "Reservation allocation for kLtAluShiftReg failed." << endl;
+}
+CG_ASSERT(revInstanceAluShiftReg, "Reservation allocation for kLtAluShiftReg failed.");
+
+Reservation *revInstanceAluExtr = new Reservation(kLtAluExtr, 3, 1, GetUnitByUnitId(kUnitIdSlot1));
+if (revInstanceAluExtr == nullptr) {
+  cout << "Reservation allocation for kLtAluExtr failed." << endl;
+}
+CG_ASSERT(revInstanceAluExtr, "Reservation allocation for kLtAluExtr failed.");
+
+Reservation *revInstanceMul = new Reservation(kLtMul, 4, 2, GetUnitByUnitId(kUnitIdSlotS), GetUnitByUnitId(kUnitIdMul));
+if (revInstanceMul == nullptr) {
+  cout << "Reservation allocation for kLtMul failed." << endl;
+}
+CG_ASSERT(revInstanceMul, "Reservation allocation for kLtMul failed.");
+
+Reservation *revInstanceDiv = new Reservation(kLtDiv, 4, 3, GetUnitByUnitId(kUnitIdSlot0), GetUnitByUnitId(kUnitIdDiv),
+                                              GetUnitByUnitId(kUnitIdDiv));
+if (revInstanceDiv == nullptr) {
+  cout << "Reservation allocation for kLtDiv failed." << endl;
+}
+CG_ASSERT(revInstanceDiv, "Reservation allocation for kLtDiv failed.");
+
+Reservation *revInstanceLoad1 = new Reservation(kLtLoad1, 4, 2, GetUnitByUnitId(kUnitIdSlotSAgen),
+                                                GetUnitByUnitId(kUnitIdLdAgu));
+if (revInstanceLoad1 == nullptr) {
+  cout << "Reservation allocation for kLtLoad1 failed." << endl;
+}
+CG_ASSERT(revInstanceLoad1, "Reservation allocation for kLtLoad1 failed.");
+
+Reservation *revInstanceStore1 = new Reservation(kLtStore1, 2, 2, GetUnitByUnitId(kUnitIdSlotSAgen),
+                                                 GetUnitByUnitId(kUnitIdStAgu));
+if (revInstanceStore1 == nullptr) {
+  cout << "Reservation allocation for kLtStore1 failed." << endl;
+}
+CG_ASSERT(revInstanceStore1, "Reservation allocation for kLtStore1 failed.");
+
+Reservation *revInstanceLoad2 = new Reservation(kLtLoad2, 4, 3, GetUnitByUnitId(kUnitIdSlotDAgen),
+                                                GetUnitByUnitId(kUnitIdSlot0LdAgu), GetUnitByUnitId(kUnitIdLdAgu));
+if (revInstanceLoad2 == nullptr) {
+  cout << "Reservation allocation for kLtLoad2 failed." << endl;
+}
+CG_ASSERT(revInstanceLoad2, "Reservation allocation for kLtLoad2 failed.");
+
+Reservation *revInstanceStore2 = new Reservation(kLtStore2, 2, 2, GetUnitByUnitId(kUnitIdSlotSAgen),
+                                                 GetUnitByUnitId(kUnitIdStAgu));
+if (revInstanceStore2 == nullptr) {
+  cout << "Reservation allocation for kLtStore2 failed." << endl;
+}
+CG_ASSERT(revInstanceStore2, "Reservation allocation for kLtStore2 failed.");
+
+Reservation *revInstanceLoad3plus = new Reservation(kLtLoad3plus, 6, 2, GetUnitByUnitId(kUnitIdSlotDAgen),
+                                                    GetUnitByUnitId(kUnitIdSlot0LdAgu), GetUnitByUnitId(kUnitIdLdAgu));
+if (revInstanceLoad3plus == nullptr) {
+  cout << "Reservation allocation for kLtLoad3plus failed." << endl;
+}
+CG_ASSERT(revInstanceLoad3plus, "Reservation allocation for kLtLoad3plus failed.");
+
+Reservation *revInstanceStore3plus = new Reservation(kLtStore3plus, 2, 2, GetUnitByUnitId(kUnitIdSlotDAgen),
+                                                     GetUnitByUnitId(kUnitIdSlot0StAgu), GetUnitByUnitId(kUnitIdStAgu));
+if (revInstanceStore3plus == nullptr) {
+  cout << "Reservation allocation for kLtStore3plus failed." << endl;
+}
+CG_ASSERT(revInstanceStore3plus, "Reservation allocation for kLtStore3plus failed.");
+
+Reservation *revInstanceBranch = new Reservation(kLtBranch, 0, 1, GetUnitByUnitId(kUnitIdSlotSBranch));
+if (revInstanceBranch == nullptr) {
+  cout << "Reservation allocation for kLtBranch failed." << endl;
+}
+CG_ASSERT(revInstanceBranch, "Reservation allocation for kLtBranch failed.");
+
+Reservation *revInstanceFpalu = new Reservation(kLtFpalu, 4, 2, GetUnitByUnitId(kUnitIdSlotS),
+                                                GetUnitByUnitId(kUnitIdFpAluS));
+if (revInstanceFpalu == nullptr) {
+  cout << "Reservation allocation for kLtFpalu failed." << endl;
+}
+CG_ASSERT(revInstanceFpalu, "Reservation allocation for kLtFpalu failed.");
+
+Reservation *revInstanceFconst = new Reservation(kLtFconst, 2, 2, GetUnitByUnitId(kUnitIdSlotS),
+                                                 GetUnitByUnitId(kUnitIdFpAluS));
+if (revInstanceFconst == nullptr) {
+  cout << "Reservation allocation for kLtFconst failed." << endl;
+}
+CG_ASSERT(revInstanceFconst, "Reservation allocation for kLtFconst failed.");
+
+Reservation *revInstanceFpmul = new Reservation(kLtFpmul, 4, 2, GetUnitByUnitId(kUnitIdSlotS),
+                                                GetUnitByUnitId(kUnitIdFpMulS));
+if (revInstanceFpmul == nullptr) {
+  cout << "Reservation allocation for kLtFpmul failed." << endl;
+}
+CG_ASSERT(revInstanceFpmul, "Reservation allocation for kLtFpmul failed.");
+
+Reservation *revInstanceFpmac = new Reservation(kLtFpmac, 8, 6, GetUnitByUnitId(kUnitIdSlotS),
+                                                GetUnitByUnitId(kUnitIdFpMulS), nullptr, nullptr,
+                                                nullptr, GetUnitByUnitId(kUnitIdFpAluS));
+if (revInstanceFpmac == nullptr) {
+  cout << "Reservation allocation for kLtFpmac failed." << endl;
+}
+CG_ASSERT(revInstanceFpmac, "Reservation allocation for kLtFpmac failed.");
+
+Reservation *revInstanceR2f = new Reservation(kLtR2f, 2, 2, GetUnitByUnitId(kUnitIdSlotS),
+                                              GetUnitByUnitId(kUnitIdFpAluS));
+if (revInstanceR2f == nullptr) {
+  cout << "Reservation allocation for kLtR2f failed." << endl;
+}
+CG_ASSERT(revInstanceR2f, "Reservation allocation for kLtR2f failed.");
+
+Reservation *revInstanceF2r = new Reservation(kLtF2r, 4, 2, GetUnitByUnitId(kUnitIdSlotS),
+                                              GetUnitByUnitId(kUnitIdFpAluS));
+if (revInstanceF2r == nullptr) {
+  cout << "Reservation allocation for kLtF2r failed." << endl;
+}
+CG_ASSERT(revInstanceF2r, "Reservation allocation for kLtF2r failed.");
+
+Reservation *revInstanceR2fCvt = new Reservation(kLtR2fCvt, 4, 2, GetUnitByUnitId(kUnitIdSlotS),
+                                                 GetUnitByUnitId(kUnitIdFpAluS));
+if (revInstanceR2fCvt == nullptr) {
+  cout << "Reservation allocation for kLtR2fCvt failed." << endl;
+}
+CG_ASSERT(revInstanceR2fCvt, "Reservation allocation for kLtR2fCvt failed.");
+
+Reservation *revInstanceF2rCvt = new Reservation(kLtF2rCvt, 5, 2, GetUnitByUnitId(kUnitIdSlotS),
+                                                 GetUnitByUnitId(kUnitIdFpAluS));
+if (revInstanceF2rCvt == nullptr) {
+  cout << "Reservation allocation for kLtF2rCvt failed." << endl;
+}
+CG_ASSERT(revInstanceF2rCvt, "Reservation allocation for kLtF2rCvt failed.");
+
+Reservation *revInstanceFFlags = new Reservation(kLtFFlags, 5, 1, GetUnitByUnitId(kUnitIdSlotS));
+if (revInstanceFFlags == nullptr) {
+  cout << "Reservation allocation for kLtFFlags failed." << endl;
+}
+CG_ASSERT(revInstanceFFlags, "Reservation allocation for kLtFFlags failed.");
+
+Reservation *revInstanceFLoad64 = new Reservation(kLtFLoad64, 3, 2, GetUnitByUnitId(kUnitIdSlotSAgen),
+                                                  GetUnitByUnitId(kUnitIdLdAgu));
+if (revInstanceFLoad64 == nullptr) {
+  cout << "Reservation allocation for kLtFLoad64 failed." << endl;
+}
+CG_ASSERT(revInstanceFLoad64, "Reservation allocation for kLtFLoad64 failed.");
+
+Reservation *revInstanceFLoadMany = new Reservation(kLtFLoadMany, 4, 3, GetUnitByUnitId(kUnitIdSlotDAgen),
+                                                    GetUnitByUnitId(kUnitIdSlot0LdAgu),
+                                                    GetUnitByUnitId(kUnitIdLdAgu));
+if (revInstanceFLoadMany == nullptr) {
+  cout << "Reservation allocation for kLtFLoadMany failed." << endl;
+}
+CG_ASSERT(revInstanceFLoadMany, "Reservation allocation for kLtFLoadMany failed.");
+
+Reservation *revInstanceFStore64 = new Reservation(kLtFStore64, 0, 2, GetUnitByUnitId(kUnitIdSlotSAgen),
+                                                   GetUnitByUnitId(kUnitIdStAgu));
+if (revInstanceFStore64 == nullptr) {
+  cout << "Reservation allocation for kLtFStore64 failed." << endl;
+}
+CG_ASSERT(revInstanceFStore64, "Reservation allocation for kLtFStore64 failed.");
+
+Reservation *revInstanceFStoreMany = new Reservation(kLtFStoreMany, 0, 3, GetUnitByUnitId(kUnitIdSlotSAgen),
+                                                     GetUnitByUnitId(kUnitIdSlot0StAgu),
+                                                     GetUnitByUnitId(kUnitIdStAgu));
+if (revInstanceFStoreMany == nullptr) {
+  cout << "Reservation allocation for kLtFStoreMany failed." << endl;
+}
+CG_ASSERT(revInstanceFStoreMany, "Reservation allocation for kLtFStoreMany failed.");
+
+Reservation *revInstanceAdvsimdAlu = new Reservation(kLtAdvsimdAlu, 4, 2, GetUnitByUnitId(kUnitIdSlotS),
+                                                     GetUnitByUnitId(kUnitIdFpAluS));
+if (revInstanceAdvsimdAlu == nullptr) {
+  cout << "Reservation allocation for kLtAdvsimdAlu failed." << endl;
+}
+CG_ASSERT(revInstanceAdvsimdAlu, "Reservation allocation for kLtAdvsimdAlu failed.");
+
+Reservation *revInstanceAdvsimdAluQ = new Reservation(kLtAdvsimdAluQ, 4, 2, GetUnitByUnitId(kUnitIdSlot0),
+                                                      GetUnitByUnitId(kUnitIdFpAluD));
+if (revInstanceAdvsimdAluQ == nullptr) {
+  cout << "Reservation allocation for kLtAdvsimdAluQ failed." << endl;
+}
+CG_ASSERT(revInstanceAdvsimdAluQ, "Reservation allocation for kLtAdvsimdAluQ failed.");
+
+Reservation *revInstanceAdvsimdMul = new Reservation(kLtAdvsimdMul, 4, 2, GetUnitByUnitId(kUnitIdSlotS),
+                                                     GetUnitByUnitId(kUnitIdFpMulS));
+if (revInstanceAdvsimdMul == nullptr) {
+  cout << "Reservation allocation for kLtAdvsimdMul failed." << endl;
+}
+CG_ASSERT(revInstanceAdvsimdMul, "Reservation allocation for kLtAdvsimdMul failed.");
+
+Reservation *revInstanceAdvsimdMulQ = new Reservation(kLtAdvsimdMulQ, 4, 2, GetUnitByUnitId(kUnitIdSlot0),
+                                                      GetUnitByUnitId(kUnitIdFpMulD));
+if (revInstanceAdvsimdMulQ == nullptr) {
+  cout << "Reservation allocation for kLtAdvsimdMulQ failed." << endl;
+}
+CG_ASSERT(revInstanceAdvsimdMulQ, "Reservation allocation for kLtAdvsimdMulQ failed.");
+
+Reservation *revInstanceAdvsimdDivS = new Reservation(kLtAdvsimdDivS, 14, 3, GetUnitByUnitId(kUnitIdSlot0),
+                                                      GetUnitByUnitId(kUnitIdFpMulS), GetUnitByUnitId(kUnitIdFpDivS));
+if (revInstanceAdvsimdDivS == nullptr) {
+  cout << "Reservation allocation for kLtAdvsimdDivS failed." << endl;
+}
+CG_ASSERT(revInstanceAdvsimdDivS, "Reservation allocation for kLtAdvsimdDivS failed.");
+
+Reservation *revInstanceAdvsimdDivD = new Reservation(kLtAdvsimdDivD, 29, 3, GetUnitByUnitId(kUnitIdSlot0),
+                                                      GetUnitByUnitId(kUnitIdFpMulS), GetUnitByUnitId(kUnitIdFpDivS));
+if (revInstanceAdvsimdDivD == nullptr) {
+  cout << "Reservation allocation for kLtAdvsimdDivD failed." << endl;
+}
+CG_ASSERT(revInstanceAdvsimdDivD, "Reservation allocation for kLtAdvsimdDivD failed.");
+
+Reservation *revInstanceAdvsimdDivSQ = new Reservation(kLtAdvsimdDivSQ, 14, 3, GetUnitByUnitId(kUnitIdSlotD),
+                                                       GetUnitByUnitId(kUnitIdFpMulD), GetUnitByUnitId(kUnitIdFpDivD));
+if (revInstanceAdvsimdDivSQ == nullptr) {
+  cout << "Reservation allocation for kLtAdvsimdDivSQ failed." << endl;
+}
+CG_ASSERT(revInstanceAdvsimdDivSQ, "Reservation allocation for kLtAdvsimdDivSQ failed.");
+
+Reservation *revInstanceAdvsimdDivdQ = new Reservation(kLtAdvsimdDivdQ, 29, 3, GetUnitByUnitId(kUnitIdSlotD),
+                                                       GetUnitByUnitId(kUnitIdFpMulD), GetUnitByUnitId(kUnitIdFpDivD));
+if (revInstanceAdvsimdDivdQ == nullptr) {
+  cout << "Reservation allocation for kLtAdvsimdDivdQ failed." << endl;
+}
+CG_ASSERT(revInstanceAdvsimdDivdQ, "Reservation allocation for kLtAdvsimdDivdQ failed.");
+
+Reservation *revInstanceCryptoAese = new Reservation(kLtCryptoAese, 3, 1, GetUnitByUnitId(kUnitIdSlot0));
+if (revInstanceCryptoAese == nullptr) {
+  cout << "Reservation allocation for kLtCryptoAese failed." << endl;
+}
+CG_ASSERT(revInstanceCryptoAese, "Reservation allocation for kLtCryptoAese failed.");
+
+Reservation *revInstanceCryptoAesmc = new Reservation(kLtCryptoAesmc, 3, 1, GetUnitByUnitId(kUnitIdSlotS));
+if (revInstanceCryptoAesmc == nullptr) {
+  cout << "Reservation allocation for kLtCryptoAesmc failed." << endl;
+}
+CG_ASSERT(revInstanceCryptoAesmc, "Reservation allocation for kLtCryptoAesmc failed.");
+
+
+#endif // MPLAD_CORTEX_A55

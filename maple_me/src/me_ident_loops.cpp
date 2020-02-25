@@ -1,0 +1,107 @@
+/*
+ * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ *
+ * OpenArkCompiler is licensed under the Mulan PSL v1.
+ * You can use this software according to the terms and conditions of the Mulan PSL v1.
+ * You may obtain a copy of Mulan PSL v1 at:
+ *
+ *     http://license.coscl.org.cn/MulanPSL
+ *
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
+ * FIT FOR A PARTICULAR PURPOSE.
+ * See the Mulan PSL v1 for more details.
+ */
+
+#include "me_ident_loops.h"
+
+// This phase analyses the CFG and identify the loops.  The implementation is
+// based on the idea that, given two basic block a and b, if b is a's pred and
+// a dominates b, then there is a loop from a to b.  Loop identification is done
+// in a preorder traversal of the dominator tree.  In this order, outer loop is
+// always detected before its nested loop(s).  The building of the LoopDesc data
+// structure takes advantage of this ordering.
+
+namespace maple {
+
+LoopDesc *IdentifyLoops::CreateLoopDesc(BB *hd, BB *tail) {
+  LoopDesc *newloop = meloop_mp->New<LoopDesc>(&meloop_alloc, hd, tail);
+  meloops.push_back(newloop);
+  return newloop;
+}
+
+void IdentifyLoops::SetLoopParent4BB(const BB *bb, LoopDesc *aloop) {
+  if (bbloopparent[bb->id.idx] != nullptr) {
+    if (aloop->parent == nullptr) {
+      aloop->parent = bbloopparent[bb->id.idx];
+      aloop->nestdepth = aloop->parent->nestdepth + 1;
+    }
+  }
+  bbloopparent[bb->id.idx] = aloop;
+}
+
+// process each BB in preorder traversal of dominator tree
+void IdentifyLoops::ProcessBB(BB *bb) {
+  if (bb == nullptr || bb == func->commonExitBB) {
+    return;
+  }
+  for (BB *pred : bb->pred) {
+    if (dominance->Dominate(bb, pred)) {
+      // create a loop with bb as loop head and pred as loop tail
+      LoopDesc *aloop = CreateLoopDesc(bb, pred);
+      std::list<BB *> bodylist;
+      bodylist.push_back(pred);
+      while (!bodylist.empty()) {
+        BB *curr = bodylist.front();
+        bodylist.pop_front();
+        // skip bb or if it has already been dealt with
+        if (curr == bb || aloop->loop_bbs.count(curr->id) == 1) {
+          continue;
+        }
+        aloop->loop_bbs.insert(curr->id);
+        SetLoopParent4BB(curr, aloop);
+        for (BB *predi : curr->pred) {
+          bodylist.push_back(predi);
+        }
+      }
+      aloop->loop_bbs.insert(bb->id);
+      SetLoopParent4BB(bb, aloop);
+    }
+  }
+
+  // recursive call
+  MapleSet<BBId> *domChildren = &dominance->domChildren[bb->id.idx];
+  for (MapleSet<BBId>::iterator bbit = domChildren->begin(); bbit != domChildren->end(); bbit++) {
+    ProcessBB(func->bbVec.at(bbit->idx));
+  }
+}
+
+void IdentifyLoops::Dump() {
+  for (uint32 i = 0; i < meloops.size(); i++) {
+    LoopDesc *mploop = meloops[i];
+    // loop
+    LogInfo::MapleLogger() << "nest depth: " << mploop->nestdepth << " loop head BB: " << mploop->head->id.idx
+              << " tail BB:" << mploop->tail->id.idx << std::endl;
+    LogInfo::MapleLogger() << "loop body:";
+    for (MapleSet<BBId>::iterator it = mploop->loop_bbs.begin(); it != mploop->loop_bbs.end(); it++) {
+      BBId bdid = *it;
+      LogInfo::MapleLogger() << bdid.idx << " ";
+    }
+    LogInfo::MapleLogger() << std::endl;
+  }
+}
+
+AnalysisResult *MeDoMeLoop::Run(MeFunction *func, MeFuncResultMgr *m) {
+  Dominance *dom = static_cast<Dominance *>(m->GetAnalysisResult(MeFuncPhase_DOMINANCE, func));
+  CHECK_FATAL(dom, "dominance phase has problem");
+  MemPool *meloopmp = mempoolctrler.NewMemPool(PhaseName().c_str());
+  IdentifyLoops *identloops = meloopmp->New<IdentifyLoops>(meloopmp, func, dom);
+  identloops->ProcessBB(func->commonEntryBB);
+  if (DEBUGFUNC(func)) {
+    identloops->Dump();
+  }
+
+  return identloops;
+}
+
+}  // namespace maple
