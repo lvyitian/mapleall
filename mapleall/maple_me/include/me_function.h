@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #ifndef MAPLE_ME_INCLUDE_ME_FUNCTION_H
@@ -68,6 +68,7 @@ class MeFunction : public FuncEmit {
   bool hasEH;      /* current has try statement */
   bool secondPass;  // second pass for the same function
   bool isLno;
+  bool placementRCOn;   // whethering doing placement RC
 
   explicit MeFunction(MIRModule *mod, MIRFunction *func, MemPool *mp, MemPool *versmp, const std::string &fileName,
                       bool issecondpass = false, bool islno = false)
@@ -88,8 +89,8 @@ class MeFunction : public FuncEmit {
       bbTryNodeMap(alloc.Adapter()),
       endTryBB2TryBB(alloc.Adapter()),
       fileName(fileName) {
-      PartialInit(issecondpass);
-      isLno = islno;
+    PartialInit(issecondpass);
+    isLno = islno;
   }
 
   virtual ~MeFunction() {}

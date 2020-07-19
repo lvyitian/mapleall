@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #include "mir_parser.h"
@@ -45,16 +45,18 @@ bool ConstantFoldModule(maple::MIRModule *module) {
 int main(int argc, char **argv) {
   if (argc < 2) {
     MIR_PRINTF(
-      "usage: ./irbuild [-b] [-dumpfunc=<string>] <any number of .mplt, .mpl, .bpl or .tmpl files>\n"
+      "usage: ./irbuild [-b] [-dumpfunc=<string>] [-srclang=<string>] <any number of .mplt, .mpl, .bpl or .tmpl files>\n"
       "    By default, the files are converted to corresponding ascii format.\n"
       "    If -b is specified, output is binary format instead.\n"
       "    If -dumpfunc= is specified, only functions with name containing the string is output.\n"
       "    -dumpfunc= can be specified multiple times to give multiple strings.\n"
+      "    -srclang specifies the src language of the mpl files come from. \n"
       "    Each output file has .irb added after its file stem.\n");
     exit(1);
   }
   std::vector<maple::MIRModule *> themodule(argc, nullptr);
   bool useBinary = false;
+  MIRSrcLang srcLang = kSrcLangUnknown;
   // process the options which must come first
   maple::int32 i = 1;
   while (argv[i][0] == '-' ) {
@@ -63,6 +65,12 @@ int main(int argc, char **argv) {
     } else if (strncmp(argv[i], "-dumpfunc=", 10) == 0 && strlen(argv[i]) > 10) {
       std::string funcName(&argv[i][10]);
       dumpFuncSet.insert(funcName);
+    } else if (strcmp(argv[i], "-srclang=java") == 0 ) {
+      srcLang = kSrcLangJava;
+    } else if (strcmp(argv[i], "-srclang=c") == 0 ) {
+      srcLang = kSrcLangC;
+    } else if (strcmp(argv[i], "-srclang=c++") == 0 ) {
+      srcLang = kSrcLangCPlusPlus;
     } else {
       ERR(kLncErr, "irbuild: unrecognized command line option");
       return 1;
@@ -72,6 +80,7 @@ int main(int argc, char **argv) {
   // process the input files
   while (i < argc) {
     themodule[i] = new maple::MIRModule(argv[i]);
+    themodule[i]->srcLang = srcLang;
     std::string::size_type lastdot = themodule[i]->fileName.find_last_of(".");
     bool ismplt = themodule[i]->fileName.compare(lastdot, 5, ".mplt") == 0;
     bool istmpl = themodule[i]->fileName.compare(lastdot, 5, ".tmpl") == 0;

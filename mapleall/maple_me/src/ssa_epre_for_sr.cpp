@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #include "ssa_epre.h"
@@ -144,7 +144,8 @@ static int64 GetIncreAmtAndRhsVar(MeExpr *x, VarMeExpr *&rhsvar) {
   rhsvar = static_cast<VarMeExpr *>(opexpr->GetOpnd(0));
   MIRConst *constVal = static_cast<ConstMeExpr *>(opexpr->GetOpnd(1))->constVal;
   CHECK_FATAL(constVal->kind == kConstInt, "GetIncreAmtAndRhsVar: unexpected constant type");
-  return static_cast<MIRIntConst *>(constVal)->GetValueUnderType();
+  int64 amt = static_cast<MIRIntConst *>(constVal)->GetValueUnderType();
+  return (opexpr->op == OP_sub) ? -amt : amt;
 }
 
 static int64 GetIncreAmtAndRhsReg(MeExpr *x, RegMeExpr *&rhsreg) {
@@ -158,7 +159,12 @@ static int64 GetIncreAmtAndRhsReg(MeExpr *x, RegMeExpr *&rhsreg) {
 }
 
 MeExpr* SSAEPre::InsertRepairStmt(MeExpr *temp, int64 increAmt, MeStmt *injuringDef) {
-  MeExpr *rhs = irMap->CreateMeExprBinary(OP_add, temp->primType, temp, irMap->CreateIntConstMeExpr(increAmt, temp->primType));
+  MeExpr *rhs = nullptr;
+  if (increAmt >= 0) {
+    rhs = irMap->CreateMeExprBinary(OP_add, temp->primType, temp, irMap->CreateIntConstMeExpr(increAmt, temp->primType));
+  } else {
+    rhs = irMap->CreateMeExprBinary(OP_sub, temp->primType, temp, irMap->CreateIntConstMeExpr(-increAmt, temp->primType));
+  }
   BB *bb = injuringDef->bb;
   MeStmt *newstmt = nullptr;
   if (temp->meOp == kMeOpReg) {

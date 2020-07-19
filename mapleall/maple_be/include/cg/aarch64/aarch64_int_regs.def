@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 /*
@@ -20,12 +20,12 @@
 
   $ 4.1 Registers in AArch64 state
 
-  There is no register named W31 or X31. 
-  Depending on the instruction, register 31 is either the stack 
-  pointer or the zero register. When used as the stack pointer, 
-  you refer to it as "SP". When used as the zero register, you refer 
+  There is no register named W31 or X31.
+  Depending on the instruction, register 31 is either the stack
+  pointer or the zero register. When used as the stack pointer,
+  you refer to it as "SP". When used as the zero register, you refer
   to it as WZR in a 32-bit context or XZR in a 64-bit context.
-  The zero register returns 0 when read and discards data when 
+  The zero register returns 0 when read and discards data when
   written (e.g., when setting the status register for testing).
  */
 // ID, 32-bit prefix, 64-bit prefix
@@ -73,3 +73,4 @@ INT_REG_ALIAS(LR, 30, "", "" )
 // R19 is reserved for yieldpoint
 INT_REG_ALIAS(YP, 19, "", "" )
 
+INT_REG_ALIAS(LAST_INT_REG, 30, "", "" )

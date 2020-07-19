@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #ifndef MAPLE_IR_INCLUDE_MIR_CONST_H
@@ -168,7 +168,7 @@ class MIRVectorIntConst : public MIRConst {
   uint8 vecSize;
 
  public:
-  MIRVectorIntConst(uint8 size, MIRType *ty) : MIRConst(ty), vecSize(size){
+  MIRVectorIntConst(uint8 size, MIRType *ty, uint32 fieldID = 0) : MIRConst(ty, fieldID), vecSize(size){
     kind = kConstVecInt;
   }
   void AddValue(int64 val, uint32 index) {
@@ -181,9 +181,14 @@ class MIRVectorIntConst : public MIRConst {
 class MIRAddrofConst : public MIRConst {
   StIdx stIdx;
   FieldID fldID;
+  int32 offset;
 
  public:
-  MIRAddrofConst(StIdx sy, FieldID fi, MIRType *ty) : MIRConst(ty), stIdx(sy), fldID(fi) {
+  MIRAddrofConst(StIdx sy, FieldID fi, MIRType *ty, uint32 fieldID = 0) : MIRConst(ty, fieldID), stIdx(sy), fldID(fi), offset(0) {
+    kind = kConstAddrof;
+  }
+
+  MIRAddrofConst(StIdx sy, FieldID fi, MIRType *ty, int32 ofst, uint32 fieldID = 0) : MIRConst(ty, fieldID), stIdx(sy), fldID(fi), offset(ofst) {
     kind = kConstAddrof;
   }
 
@@ -195,6 +200,10 @@ class MIRAddrofConst : public MIRConst {
 
   FieldID GetFieldID() const {
     return fldID;
+  }
+
+  FieldID GetOffset() const {
+    return offset;
   }
 
   /* virtual */
@@ -226,12 +235,14 @@ class MIRAddroffuncConst : public MIRConst {
 class MIRLblConst : public MIRConst {
  public:
   LabelIdx value;
-  MIRLblConst(LabelIdx val, MIRType *type) : MIRConst(type), value(val) {
+  PUIdx puIdx;
+  MIRLblConst(LabelIdx val, PUIdx pidx, MIRType *type, uint32 fieldID = 0) : MIRConst(type, fieldID), value(val), puIdx(pidx) {
     kind = kConstLblConst;
   }
 
   ~MIRLblConst() {}
 
+  void Dump() const;
   bool operator==(MIRConst &rhs) const;
 };
 
@@ -243,7 +254,7 @@ class MIRStrConst : public MIRConst {
     kind = kConstStrConst;
   }
 
-  MIRStrConst(const std::string &str, MIRType *type);
+  MIRStrConst(const std::string &str, MIRType *type, uint32 fieldID = 0);
 
   ~MIRStrConst() {}
 
@@ -256,11 +267,11 @@ class MIRStr16Const : public MIRConst {
   using value_type = const char*;
   static const PrimType kPrimType = PTY_a64;
   U16StrIdx value;
-  MIRStr16Const(U16StrIdx val, MIRType *type) : MIRConst(type), value(val) {
+  MIRStr16Const(U16StrIdx val, MIRType *type, uint32 fieldID = 0) : MIRConst(type, fieldID), value(val) {
     kind = kConstStr16Const;
   }
 
-  MIRStr16Const(const std::u16string &str, MIRType *type);
+  MIRStr16Const(const std::u16string &str, MIRType *type, uint32 fieldID = 0);
 
   ~MIRStr16Const() {}
 
@@ -276,7 +287,7 @@ class MIRFloatConst : public MIRConst {
     value_type floatValue;
     int32 intValue;
   } value;
-  MIRFloatConst(float val, MIRType *type) : MIRConst(type) {
+  MIRFloatConst(float val, MIRType *type, uint32 fieldID = 0) : MIRConst(type, fieldID) {
     value.floatValue = val;
     kind = kConstFloatConst;
   }
@@ -333,7 +344,7 @@ class MIRDoubleConst : public MIRConst {
     value_type dValue;
     int64 intValue;
   } value;
-  MIRDoubleConst(double val, MIRType *type) : MIRConst(type) {
+  MIRDoubleConst(double val, MIRType *type, uint32 fieldID = 0) : MIRConst(type, fieldID) {
     value.dValue = val;
     kind = kConstDoubleConst;
   }
@@ -390,7 +401,7 @@ class MIRFloat128Const : public MIRConst {
   // value[0]: Low 64 bits; value[1]: High 64 bits.
   const uint64 *value;
 
-  MIRFloat128Const(const uint64 *val, MIRType *type) : MIRConst(type) {
+  MIRFloat128Const(const uint64 *val, MIRType *type, uint32 fieldID = 0) : MIRConst(type, fieldID) {
     MIR_ASSERT(val && "val must not nullptr!");
     value = val;
     kind = kConstFloat128Const;
@@ -419,13 +430,13 @@ class MIRAggConst : public MIRConst {
  public:
   MapleAllocator allocator;
   MapleVector<MIRConst*> constVec;
-  MIRAggConst(MIRModule *mod, MIRType *type)
-      : MIRConst(type), allocator(nullptr), constVec(mod->GetMPAllocator().Adapter()) {
+  MIRAggConst(MIRModule *mod, MIRType *type, uint32 fieldID = 0)
+      : MIRConst(type, fieldID), allocator(nullptr), constVec(mod->GetMPAllocator().Adapter()) {
     kind = kConstAggConst;
   }
 
-  MIRAggConst(MIRModule *mod, MIRType *type, MemPool *memPool)
-      : MIRConst(type), allocator(memPool), constVec(allocator.Adapter()) {
+  MIRAggConst(MIRModule *mod, MIRType *type, MemPool *memPool, uint32 fieldID = 0)
+      : MIRConst(type, fieldID), allocator(memPool), constVec(allocator.Adapter()) {
     kind = kConstAggConst;
   }
 
@@ -452,8 +463,8 @@ class MIRStConst : public MIRConst {
  public:
   MapleVector<MIRSymbol*> stVec;    // symbols that in the st const
   MapleVector<uint32> stOffsetVec;  // symbols offset
-  MIRStConst(MIRModule *mod, MIRType *type)
-      : MIRConst(type), stVec(mod->GetMPAllocator().Adapter()), stOffsetVec(mod->GetMPAllocator().Adapter()) {
+  MIRStConst(MIRModule *mod, MIRType *type, uint32 fieldID = 0)
+      : MIRConst(type, fieldID), stVec(mod->GetMPAllocator().Adapter()), stOffsetVec(mod->GetMPAllocator().Adapter()) {
     kind = kConstStConst;
   }
 

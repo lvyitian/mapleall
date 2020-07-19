@@ -1,22 +1,21 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #include "aarch64_immediate.h"
 #include "cg_assert.h"
 
-#if DEBUG
 #include <stdio.h>
 #include <set>
 
@@ -25,7 +24,6 @@ static std::set<maple::uint64> ValidBitmaskImmSet{
 #include "valid_bitmask_imm.txt"
 };
 }  // namespace maplebe
-#endif
 
 namespace maplebe {
 using namespace maple;
@@ -35,13 +33,11 @@ static uint64 BitmaskImmMultTable[] = {
 
 bool IsBitmaskImmediate(uint64 val, uint32 bitlen) {
   CG_ASSERT((val != 0 && static_cast<int64>(val) != -1), "IsBitmaskImmediate() don's accept 0 or -1");
-#if DEBUG
   uint64 val2 = val;
   if (bitlen == 32) {
     val2 = (val2 << 32) | (val2 & ((1ULL << 32) - 1));
   }
   bool expectedOutcome = ValidBitmaskImmSet.find(val2) != ValidBitmaskImmSet.end();
-#endif
 
   if ((val & 0x1) != 0) {
     // we want to work with
@@ -61,12 +57,9 @@ bool IsBitmaskImmediate(uint64 val, uint32 bitlen) {
   // now check if tmp is a power of 2 or tval==0.
   tval = tval & (tval - 1);
   if (tval == 0) {
-#if DEBUG
     if (!expectedOutcome) {
-      printf("0x%016llx\n", (unsigned long long)val);
+      return false;
     }
-    CG_ASSERT(expectedOutcome == true, "incorrect implementation: not valid value but returning true");
-#endif
     // power of two or zero ; return true
     return true;
   }

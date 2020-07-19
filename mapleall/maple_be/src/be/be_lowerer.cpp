@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #include "be_lowerer.h"
@@ -19,6 +19,7 @@
 #include "mir_builder.h"
 #include "opcode_info.h"
 #include "aarch64_rt_support.h"
+#include "cg_assert.h"
 #include <vector>
 #include <map>
 #include <cmath>
@@ -125,7 +126,7 @@ BaseNode *BELowerer::LowerIaddrof(const IreadNode *iaddrof) {
   MIRType *type = GlobalTables::GetTypeTable().GetTypeFromTyIdx(iaddrof->tyIdx);
   MIRPtrType *pointerty = dynamic_cast<MIRPtrType *>(type);
   CHECK_FATAL(pointerty, "LowerIaddrof: expect a pointer type at iaddrof node");
-  MIRStructType *structty = static_cast<MIRStructType *>(GlobalTables::GetTypeTable().GetTypeFromTyIdx(pointerty->pointedTyIdx));
+  MIRStructType *structty = GlobalTables::GetTypeTable().GetTypeFromTyIdx(pointerty->pointedTyIdx)->EmbeddedStructType();
   CHECK_FATAL(structty, "LowerIaddrof: non-zero fieldID for non-structure");
   offset = becommon.GetFieldOffset(structty, iaddrof->fieldID).first;
   if (offset == 0) {
@@ -230,22 +231,61 @@ BaseNode *BELowerer::LowerArray(ArrayNode *array) {
   }
 
   MIRArrayType *arraytype = static_cast<MIRArrayType *>(atype);
+  /* There are two cases where dimension > 1.
+   * 1) arraytype->dim > 1.  Process the current arraytype. (nestedArray = false)
+   * 2) arraytype->dim == 1, but arraytype->eTyIdx is another array. (nestedArray = true)
+   * Assume at this time 1) and 2) cannot mix.
+   * Along with the array dimension, there is the array indexing.
+   * It is allowed to index arrays less than the dimension.
+   * This is dictated by the number of indexes.
+   */
+  bool nestedArray = false;
   int dim = arraytype->dim;
+  MIRType *innerType = nullptr;
+  MIRArrayType *innerArrayType = nullptr;
+  uint32 elemSize = 0;
+  if (dim == 1) {
+    innerType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(arraytype->eTyIdx);
+    if (innerType->GetKind() == kTypeArray) {
+      nestedArray = true;
+      do {
+        innerArrayType = static_cast<MIRArrayType *>(innerType);
+        elemSize = becommon.type_size_table[innerArrayType->eTyIdx.GetIdx()];
+        dim++;
+        innerType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(innerArrayType->eTyIdx);
+      } while (innerType->GetKind() == kTypeArray);
+    }
+  }
+
+  int32 numIndex = array->NumOpnds() - 1;
+  MIRArrayType *curArrayType = arraytype;
   BaseNode *resNode = NodeConvert(array->primType, array->GetIndex(0));
   if (dim > 1) {
     BaseNode *prevNode = nullptr;
-    for (int i = 0; i < dim; i++) {
+    for (int i = 0; (i < dim) && (i < numIndex); i++) {
       if (i > 0) {
-        CHECK_FATAL(arraytype->sizeArray[i] > 0, "Zero size array dimension");
+        CHECK_FATAL(((!nestedArray && arraytype->sizeArray[i] > 0) ||
+                     (nestedArray && curArrayType->sizeArray[0] > 0)), "Zero size array dimension");
+        int32 numO = array->NumOpnds();
         resNode = NodeConvert(array->primType, array->GetIndex(i));
       }
       uint32 mpyDim = 1;
-      for (int j = i + 1; j < dim; j++) {
-        mpyDim *= arraytype->sizeArray[j];
+      if (nestedArray) {
+        innerType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(curArrayType->eTyIdx);
+        curArrayType = static_cast<MIRArrayType *>(innerType);
+        while (innerType->GetKind() == kTypeArray) {
+          innerArrayType = static_cast<MIRArrayType *>(innerType);
+          mpyDim *= innerArrayType->sizeArray[0];
+          innerType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(innerArrayType->eTyIdx);
+        }
+      } else {
+        for (int j = i + 1; j < dim; j++) {
+          mpyDim *= arraytype->sizeArray[j];
+        }
       }
 
       BaseNode *mpyNode;
-      if (mpyDim == 1) {
+      if (mpyDim == 1 && prevNode) {
         mpyNode = prevNode;
         prevNode = resNode;
       } else {
@@ -274,7 +314,12 @@ BaseNode *BELowerer::LowerArray(ArrayNode *array) {
 
   BaseNode *rMul = nullptr;
   // esize is the size of the array element (eg. int = 4 long = 8)
-  uint32 esize = GlobalTables::GetTypeTable().GetTypeFromTyIdx(arraytype->eTyIdx)->GetSize();
+  uint32 esize;
+  if (nestedArray) {
+    esize = elemSize;
+  } else {
+    esize = becommon.type_size_table[arraytype->eTyIdx.GetIdx()];
+  }
   Opcode opadd = OP_add;
   if (resNode->op == OP_constval) {
     // index is a constant, we can calculate the offset now
@@ -285,7 +330,7 @@ BaseNode *BELowerer::LowerArray(ArrayNode *array) {
                     GlobalTables::GetTypeTable().GetTypeFromTyIdx(TyIdx(array->primType)));
     rMul = mirModule.CurFuncCodeMemPool()->New<ConstvalNode>(econst);
     rMul->primType = array->primType;
-    if (dim == 1) {
+    if (dim == 1 && array->GetBase()->op == OP_addrof) {
       opadd = OP_CG_array_elem_add;
     }
   } else {
@@ -585,13 +630,21 @@ BlockNode *BELowerer::LowerReturnStruct(NaryStmtNode *retnode) {
     retnode->SetOpnd(LowerExpr(retnode, retnode, retnode->nOpnd[i], blk), i);
   }
   BaseNode *opnd0 = retnode->Opnd(0);
-  CHECK_FATAL(opnd0 && opnd0->primType == PTY_agg, "return struct should have a kid");
+  if (!(opnd0 && opnd0->primType == PTY_agg)) {
+    // It is possible function never returns and have a dummy return const instead of a struct.
+    CG_WARN("return struct should have a kid\n");
+  }
 
   MIRFunction *curfunc = GetCurrentFunc();
   MIRSymbol *retst = curfunc->formalDefVec[0].formalSym;
   MIRPtrType *retty = static_cast<MIRPtrType *>(retst->GetType());
   IassignNode *iassign = mirModule.CurFuncCodeMemPool()->New<IassignNode>();
-  iassign->tyIdx = retty->tyIdx;
+  if (becommon.type_size_table[retty->pointedTyIdx.GetIdx()] > 16 || !opnd0 || opnd0->primType != PTY_agg) {
+    iassign->tyIdx = retty->tyIdx;
+  } else {
+    // struct goes into registers
+    iassign->tyIdx = retty->pointedTyIdx;
+  }
   iassign->fieldID = 0;
   iassign->rhs = opnd0;
   if (retst->IsPreg()) {
@@ -821,7 +874,7 @@ BlockNode *BELowerer::LowerJavaThrow(UnaryStmtNode *throwstmt) {
 }
 
 // to lower call (including icall) and intrinsicall statements
-void BELowerer::LowerCallStmt(StmtNode *stmt, StmtNode *&nextstmt, BlockNode *newblk) {
+void BELowerer::LowerCallStmt(StmtNode *stmt, StmtNode *&nextstmt, BlockNode *newblk, MIRType *retty) {
   StmtNode *newstmt = nullptr;
   if (stmt->op == OP_intrinsiccall) {
     IntrinsiccallNode *intrnnode = static_cast<IntrinsiccallNode *>(stmt);
@@ -837,7 +890,7 @@ void BELowerer::LowerCallStmt(StmtNode *stmt, StmtNode *&nextstmt, BlockNode *ne
   }
 
   if (newstmt->op == OP_call || newstmt->op == OP_icall) {
-    newstmt = LowerCall(static_cast<CallNode *>(newstmt), nextstmt, newblk);
+    newstmt = LowerCall(static_cast<CallNode *>(newstmt), nextstmt, newblk, retty);
   }
 
   newblk->AddStatement(newstmt);
@@ -866,6 +919,7 @@ BlockNode *BELowerer::LowerCallAssignedStmt(StmtNode *stmt) {
       }
       CHECK_FATAL(newcall, "");
       p2nrets = &origcall->returnValues;
+      static_cast<CallNode *>(newcall)->returnValues = *p2nrets;
       funcCalled = origcall->puIdx;
       CHECK_FATAL((newcall->op == OP_call || newcall->op == OP_interfacecall),
              "virtual call or super class call are not expected");
@@ -894,6 +948,7 @@ BlockNode *BELowerer::LowerCallAssignedStmt(StmtNode *stmt) {
           }
         }
         p2nrets = &origcall->returnValues;
+        static_cast<IntrinsiccallNode *>(newcall)->returnValues = *p2nrets;
         funcCalled = bfunc;
         CHECK_FATAL((newcall->op == OP_call || newcall->op == OP_intrinsiccall), "xintrinsic call is not expected");
       }
@@ -936,6 +991,7 @@ BlockNode *BELowerer::LowerCallAssignedStmt(StmtNode *stmt) {
                                                                             origcall->nOpnd);
         }
         p2nrets = &origcall->returnValues;
+        static_cast<IntrinsiccallNode *>(newcall)->returnValues = *p2nrets;
         funcCalled = bfunc;
         CHECK_FATAL((newcall->op == OP_call || newcall->op == OP_intrinsiccallwithtype),
                "OP_call or OP_intrinsiccallwithtype is expected");
@@ -948,6 +1004,7 @@ BlockNode *BELowerer::LowerCallAssignedStmt(StmtNode *stmt) {
       CHECK_FATAL(newcall, "");
       p2nrets = &origcall->returnValues;
       funcCalled = kfuncNotFound;
+      static_cast<IcallNode *>(newcall)->returnValues = *p2nrets;
       break;
     }
     default:
@@ -993,26 +1050,36 @@ BlockNode *BELowerer::LowerCallAssignedStmt(StmtNode *stmt) {
     CHECK_FATAL(p2nrets != nullptr && p2nrets->size() <= 1, "");
     // Create DassignStmt to save kSregRetval0.
     StmtNode *dstmt = nullptr;
+    MIRType *rettype = nullptr;
     if (p2nrets->size() == 1) {
       StIdx stIdx = (*p2nrets)[0].first;
-      // uint16 fieldID = (*p2nrets)[0].second;
-      RegFieldPair regfieldpair = (*p2nrets)[0].second;
-      if (!regfieldpair.IsReg()) {
-        uint16 fieldID = regfieldpair.GetFieldid();
-        DassignNode *dn = SaveReturnValueInLocal(stIdx, fieldID);
-        CHECK_FATAL(dn->fieldID == 0, "");
-        LowerDassign(dn, blk);
-        CHECK_FATAL(newcall == blk->GetLast() || newcall->GetNext() == blk->GetLast(), "");
-        dstmt = (newcall == blk->GetLast()) ? nullptr : blk->GetLast();
-        CHECK_FATAL(newcall->GetNext() == dstmt, "");
-      } else {
-        uint32 pregIdx = static_cast<uint32>(regfieldpair.GetPregidx());
-        MIRPreg *mirpreg = GetCurrentFunc()->pregTab->PregFromPregIdx(pregIdx);
-        RegreadNode *regnode = mirModule.mirBuilder->CreateExprRegread(mirpreg->primType, -kSregRetval0);
-        RegassignNode *regassign =
-          mirModule.mirBuilder->CreateStmtRegassign(mirpreg->primType, regfieldpair.GetPregidx(), regnode);
-        blk->AddStatement(regassign);
-        dstmt = regassign;
+      MIRSymbol *sym = GetCurrentFunc()->symTab->GetSymbolFromStIdx(stIdx.Idx());
+      bool sizeIs0 = false;
+      if (sym) {
+        rettype = GlobalTables::GetTypeTable().GetTypeFromTyIdx(sym->tyIdx);
+        if (becommon.type_size_table[rettype->tyIdx.GetIdx()] == 0) {
+          sizeIs0 = true;
+        }
+      }
+      if (sizeIs0 == false) {
+        RegFieldPair regfieldpair = (*p2nrets)[0].second;
+        if (!regfieldpair.IsReg()) {
+          uint16 fieldID = regfieldpair.GetFieldid();
+          DassignNode *dn = SaveReturnValueInLocal(stIdx, fieldID);
+          CHECK_FATAL(dn->fieldID == 0, "");
+          LowerDassign(dn, blk);
+          CHECK_FATAL(newcall == blk->GetLast() || newcall->GetNext() == blk->GetLast(), "");
+          dstmt = (newcall == blk->GetLast()) ? nullptr : blk->GetLast();
+          CHECK_FATAL(newcall->GetNext() == dstmt, "");
+        } else {
+          uint32 pregIdx = static_cast<uint32>(regfieldpair.GetPregidx());
+          MIRPreg *mirpreg = GetCurrentFunc()->pregTab->PregFromPregIdx(pregIdx);
+          RegreadNode *regnode = mirModule.mirBuilder->CreateExprRegread(mirpreg->primType, -kSregRetval0);
+          RegassignNode *regassign =
+            mirModule.mirBuilder->CreateStmtRegassign(mirpreg->primType, regfieldpair.GetPregidx(), regnode);
+          blk->AddStatement(regassign);
+          dstmt = regassign;
+        }
       }
     }
 
@@ -1031,7 +1098,7 @@ BlockNode *BELowerer::LowerCallAssignedStmt(StmtNode *stmt) {
     }
 
     CHECK_FATAL(!dstmt || dstmt->GetNext() == nullptr, "");
-    LowerCallStmt(newcall, dstmt, blk);
+    LowerCallStmt(newcall, dstmt, blk, rettype);
     if (dstmt != nullptr) {
       blk->AddStatement(dstmt);
     }
@@ -1057,6 +1124,9 @@ BlockNode *BELowerer::LowerBlock(BlockNode *block) {
   StmtNode *nextstmt = block->GetFirst();
   do {
     StmtNode *stmt = nextstmt;
+#if !TARGARK
+    stmt->Dump(&mirModule, 0);
+#endif
     nextstmt = stmt->GetNext();
     stmt->SetNext(nullptr);
     current_blk_ = newblk;
@@ -1150,9 +1220,12 @@ BlockNode *BELowerer::LowerBlock(BlockNode *block) {
         break;
       case OP_catch:
       case OP_javacatch:
-      case OP_cppcatch:
         LowerStmt(stmt, newblk);
         newblk->AddStatement(stmt);
+        break;
+      case OP_cppcatch:
+        newblk->AddStatement(stmt);
+        LowerCppCatch(newblk);
         break;
       case OP_throw:
         if (mirModule.IsJavaModule()) {
@@ -1184,7 +1257,7 @@ BlockNode *BELowerer::LowerBlock(BlockNode *block) {
   return newblk;
 }
 
-StmtNode *BELowerer::LowerCall(CallNode *callnode, StmtNode *&nextstmt /*in-out*/, BlockNode *newblk) {
+StmtNode *BELowerer::LowerCall(CallNode *callnode, StmtNode *&nextstmt /*in-out*/, BlockNode *newblk, MIRType *retty) {
   // call $foo(constVal u32 128)
   // dassign %jlt (dread agg %%retval)
   bool isarraystore = false;
@@ -1282,10 +1355,6 @@ StmtNode *BELowerer::LowerCall(CallNode *callnode, StmtNode *&nextstmt /*in-out*
     }
   }
 
-  if (callnode->op == OP_icall) {
-    return callnode;
-  }
-
   DassignNode *dassignnode = nullptr;
   if (nextstmt && nextstmt->op == OP_dassign) {
     dassignnode = static_cast<DassignNode *>(nextstmt);
@@ -1296,23 +1365,38 @@ StmtNode *BELowerer::LowerCall(CallNode *callnode, StmtNode *&nextstmt /*in-out*
     return callnode;
   }
 
-  MIRFunction *calleefunc = GlobalTables::GetFunctionTable().GetFunctionFromPuidx(callnode->puIdx);
-  MIRType *rettype = GlobalTables::GetTypeTable().GetTypeFromTyIdx(calleefunc->GetReturnTyIdx());
-  if (calleefunc->IsReturnStruct() && rettype->primType == PTY_void) {
-    MIRPtrType *prettype = static_cast<MIRPtrType *>(GlobalTables::GetTypeTable().GetTypeFromTyIdx(calleefunc->formalDefVec[0].formalTyIdx));
-    CHECK_FATAL(prettype, "null ptr check");
-    rettype = GlobalTables::GetTypeTable().GetTypeFromTyIdx(prettype->pointedTyIdx);
-    CHECK_FATAL(rettype->typeKind == kTypeStruct, "");
+  if (retty && becommon.type_size_table[retty->tyIdx.GetIdx()] <= 16) {
+      // return structure fitting in one or two regs.
+      return callnode;
+  }
+
+  MIRType *rettype = nullptr;
+  if (callnode->op == OP_icall) {
+    if (retty == nullptr) {
+      return callnode;
+    } else {
+      rettype = retty;
+    }
+  }
+
+  if (rettype == nullptr) {
+    MIRFunction *calleefunc = GlobalTables::GetFunctionTable().GetFunctionFromPuidx(callnode->puIdx);
+    rettype = GlobalTables::GetTypeTable().GetTypeFromTyIdx(calleefunc->GetReturnTyIdx());
+    if (calleefunc->IsReturnStruct() && rettype->primType == PTY_void) {
+      MIRPtrType *prettype = static_cast<MIRPtrType *>(GlobalTables::GetTypeTable().GetTypeFromTyIdx(calleefunc->formalDefVec[0].formalTyIdx));
+      CHECK_FATAL(prettype, "null ptr check");
+      rettype = GlobalTables::GetTypeTable().GetTypeFromTyIdx(prettype->pointedTyIdx);
+      CHECK_FATAL((rettype->typeKind == kTypeStruct || rettype->typeKind == kTypeUnion), "");
+    }
   }
 
   // if return type is not of a struct, return
-  if (rettype->typeKind != kTypeStruct) {
+  if (rettype->typeKind != kTypeStruct && rettype->typeKind != kTypeUnion) {
     return callnode;
   }
 
   MIRSymbol *dsgnst = mirModule.CurFunction()->GetLocalOrGlobalSymbol(dassignnode->stIdx);
   MIRStructType *structty = dynamic_cast<MIRStructType *>(dsgnst->GetType());
-  CHECK_FATAL(structty, "expects that the assignee variable should have a struct type");
   if (!structty) {
     return callnode;
   }
@@ -1332,9 +1416,19 @@ StmtNode *BELowerer::LowerCall(CallNode *callnode, StmtNode *&nextstmt /*in-out*
   AddrofNode *addrofnode = mirModule.CurFuncCodeMemPool()->New<AddrofNode>(OP_addrof);
   addrofnode->primType = (SIZEOFPTR == 4 ? PTY_a32 : PTY_a64);
   addrofnode->stIdx = dsgnst->GetStIdx();
-  newnopnd.push_back(addrofnode);
-  for (auto it : callnode->nOpnd) {
-    newnopnd.push_back(it);
+  if (callnode->op == OP_icall) {
+    MapleVector<BaseNode *>::iterator ond;
+    ond = callnode->nOpnd.begin();
+    newnopnd.push_back(*ond);
+    newnopnd.push_back(addrofnode);
+    for (++ond; ond != callnode->nOpnd.end(); ++ond) {
+      newnopnd.push_back(*ond);
+    }
+  } else {
+    newnopnd.push_back(addrofnode);
+    for (auto it : callnode->nOpnd) {
+      newnopnd.push_back(it);
+    }
   }
   callnode->nOpnd = newnopnd;
   callnode->numOpnds = callnode->nOpnd.size();
@@ -1352,12 +1446,18 @@ void BELowerer::LowerEntry(MIRFunction *func) {
     MIRSymbol *funcSt = GlobalTables::GetGsymTable().GetSymbolFromStIdx(func->stIdx.Idx());
     retname.append(funcSt->GetName());
     retst->SetNameStridx(GlobalTables::GetStrTable().GetOrCreateStrIdxFromName(retname));
-    MIRType *pointtype = becommon.BeGetOrCreatePointerType(GlobalTables::GetTypeTable().GetTypeFromTyIdx(func->GetReturnTyIdx()));
+    TyIdx tyidx = func->GetReturnTyIdx();
+    MIRType *pointtype = becommon.BeGetOrCreatePointerType(GlobalTables::GetTypeTable().GetTypeFromTyIdx(tyidx));
 
     retst->SetTyIdx(pointtype->tyIdx);
     FormalDef formalDef(retst, retst->GetType()->tyIdx, TypeAttrs());
     func->formalDefVec.insert(func->formalDefVec.begin(), formalDef);
-    func->SetReturnTyIdx(GlobalTables::GetTypeTable().typeTable.at(static_cast<int>(PTY_void))->tyIdx);
+
+    becommon.funcReturnType[func] = tyidx;
+
+    MIRFuncType *newFuncType = static_cast<MIRFuncType*>(becommon.BeGetOrCreateFunctionType(TyIdx(PTY_void), func->funcType->paramTypeList, func->funcType->paramAttrsList));
+    newFuncType->isVarArgs = func->funcType->isVarArgs;
+    func->funcType = static_cast<MIRFuncType *>(GlobalTables::GetTypeTable().GetOrCreateMIRTypeNode(newFuncType));
   }
 }
 
@@ -1695,6 +1795,20 @@ static void lValidateStmtList(StmtNode *head, StmtNode *detached = nullptr) {
 
 #endif
 
+void BELowerer::LowerCppCatch(BlockNode *blk) {
+  MIRFunction *func = mirModule.CurFunction();
+  GStrIdx strIdx = GlobalTables::GetStrTable().GetStrIdxFromName("__Exc_Ptr__");
+  MIRSymbol *thrownValSym = func->symTab->GetSymbolFromStrIdx(strIdx);
+  CHECK_FATAL(thrownValSym != nullptr, "LowerCppCatch: cannot find __Exc_Ptr__ symbol");
+  strIdx = GlobalTables::GetStrTable().GetStrIdxFromName("__Exc_Filter__");
+  MIRSymbol *filterSym = func->symTab->GetSymbolFromStrIdx(strIdx);
+  CHECK_FATAL(filterSym != nullptr, "LowerCppCatch: cannot find __Exc_Filter__ symbol");
+  RegreadNode *regread = mirModule.mirBuilder->CreateExprRegread(PTY_a64, -kSregRetval0);
+  blk->AddStatement(mirModule.mirBuilder->CreateStmtDassign(thrownValSym, 0, regread));
+  regread = mirModule.mirBuilder->CreateExprRegread(PTY_a64, -kSregRetval1);
+  blk->AddStatement(mirModule.mirBuilder->CreateStmtDassign(filterSym, 0, regread));
+}
+
 void BELowerer::LowerJavaTryCatchBlocks(BlockNode *body) {
   if (!has_javatry_) {
     return;
@@ -1807,7 +1921,6 @@ void BELowerer::LowerJavaTryCatchBlocks(BlockNode *body) {
        */
       case OP_try:
       case OP_javatry:
-      case OP_cpptry:
       case OP_endtry: {
         CHECK_FATAL(curbb, "");  // because a label statement is inserted at the function entry
         CHECK_FATAL(curbb->br_condjmp == nullptr && curbb->br_fallthru == nullptr, "");
@@ -1826,7 +1939,6 @@ void BELowerer::LowerJavaTryCatchBlocks(BlockNode *body) {
         }
         break;
       }
-      case OP_cppcatch:
       case OP_catch:
       case OP_javacatch: {
 #if DEBUG
@@ -2470,7 +2582,6 @@ void BELowerer::LowerJavaTryCatchBlocks(BlockNode *body) {
           break;
         case OP_catch:
         case OP_javacatch:
-        case OP_cppcatch:
           if (openJt) {
             CatchNode *jcn = static_cast<CatchNode *>(stmt);
             const MapleVector<TyIdx> &exceptiontyidxvec = jcn->exceptionTyIdxVec;
@@ -2520,6 +2631,7 @@ void BELowerer::LowerFunc(MIRFunction *func) {
   locksymbol.clear();
   lockreg.clear();
   BlockNode *newbody = LowerBlock(origbody);
+  becommon.FinalizeTypeTable();
   func->body = newbody;
   if (need_branch_cleanup_) {
     CleanupBranches(func);

@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #ifndef MAPLEBE_INCLUDE_CG_AARCH64MEMLAYOUT_H_
@@ -24,15 +24,19 @@ namespace maplebe {
 class AArch64SymbolAlloc : public SymbolAlloc {
   AArch64reg_t reg0;
   AArch64reg_t reg1;
+  AArch64reg_t reg2;
+  AArch64reg_t reg3;
 
  public:
   AArch64SymbolAlloc() : reg0(kRinvalid), reg1(kRinvalid) {}
 
   ~AArch64SymbolAlloc() {}
 
-  void SetRegisters(AArch64reg_t r0, AArch64reg_t r1) {
+  void SetRegisters(AArch64reg_t r0, AArch64reg_t r1, AArch64reg_t r2, AArch64reg_t r3) {
     reg0 = r0;
     reg1 = r1;
+    reg2 = r2;
+    reg3 = r3;
   }
 
   inline bool IsRegister() {
@@ -149,6 +153,8 @@ class AArch64MemLayout : public MemLayout {
      MemSegment seg_actual;
    */
   MemSegment seg_reflocals;
+  MemSegment seg_GRSavearea;
+  MemSegment seg_VRSavearea;
 
   // callee saved register R19-R28 (10)
   MemSegment seg__spillreg;
@@ -164,6 +170,8 @@ class AArch64MemLayout : public MemLayout {
   explicit AArch64MemLayout(BECommon *b, MIRFunction *f, MapleAllocator *mallocator)
     : MemLayout(b, f, mallocator),
       seg_reflocals(kMsReflocals),
+      seg_GRSavearea(kMsGRSavearea),
+      seg_VRSavearea(kMsVRSavearea),
       seg__spillreg(kMsSpillReg),
       seg_lockobjslot(kMsLockslot),
       seg_locals(kMsLocals),
@@ -203,6 +211,14 @@ class AArch64MemLayout : public MemLayout {
     return seg_reflocals;
   }
 
+  inline MemSegment &GRSavearea() {
+    return seg_GRSavearea;
+  }
+
+  inline MemSegment &VRSavearea() {
+    return seg_VRSavearea;
+  }
+
   inline int32 GetSizeOfSpillReg() {
     return seg__spillreg.GetSize();
   }
@@ -215,7 +231,17 @@ class AArch64MemLayout : public MemLayout {
     return seg_reflocals.GetSize();
   }
 
+  inline int32 GetSizeOfGRSavearea() {
+    return seg_GRSavearea.GetSize();
+  }
+
+  inline int32 GetSizeOfVRSavearea() {
+    return seg_VRSavearea.GetSize();
+  }
+
   int32 GetReflocbaseLoc();
+  int32 GetGRSaveareaBaseLoc();
+  int32 GetVRSaveareaBaseLoc();
   void AdjustOffsetForCalleeSaved(SymbolAlloc &sym);
 };
 

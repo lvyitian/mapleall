@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #include "occur.h"
@@ -172,6 +172,7 @@ uint32 PreWorkCand::ComputeWorkCandHashIndex(MeExpr *x) {
   switch (meOp) {
     case kMeOpAddrof:
     case kMeOpAddroffunc:
+    case kMeOpAddroflabel:
     case kMeOpGcmalloc:
     case kMeOpConst:
     case kMeOpConststr:
@@ -290,7 +291,7 @@ uint32 PreStmtWorkCand::ComputeStmtWorkCandHashIndex(MeStmt *stmt) {
     }
     case OP_dassign: {
       CHECK_FATAL(stmt->GetVarLhs() != nullptr && stmt->GetRhs() != nullptr, "null ptr check");
-      VarMeExpr *varmeexpr = stmt->GetVarLhs();
+      ScalarMeExpr *varmeexpr = stmt->GetVarLhs();
       hidx += varmeexpr->ost->index.idx << 4;
       hidx += ComputeWorkCandHashIndex(stmt->GetRhs()) << 1;
       break;

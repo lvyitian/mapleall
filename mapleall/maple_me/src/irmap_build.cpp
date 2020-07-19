@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #include "irmap_build.h"
@@ -56,7 +56,6 @@ MeExpr *IrMapBuild::BuildLhsVar(const VersionSt *verst, DassignMeStmt *defmestmt
   VarMeExpr *medef = GetOrCreateVarFromVerSt(verst);
   medef->def.defStmt = defmestmt;
   medef->defBy = kDefByStmt;
-  irMap->verst2MeExprTable.at(verst->index) = medef;
   return medef;
 }
 
@@ -65,7 +64,6 @@ MeExpr *IrMapBuild::BuildLhsReg(const VersionSt *verst, AssignMeStmt *defmestmt,
   medef->primType = regassign->primType;
   medef->def.defStmt = defmestmt;
   medef->defBy = kDefByStmt;
-  irMap->verst2MeExprTable.at(verst->index) = medef;
   return medef;
 }
 
@@ -76,9 +74,20 @@ void IrMapBuild::BuildChiList(MeStmt *mestmt, MapleMap<OStIdx, MayDefNode> &mayD
     MayDefNode &maydefnode = it->second;
     VersionSt *opndst = maydefnode.opnd;
     VersionSt *resst = maydefnode.result;
+
     ChiMeNode *chimestmt = irMap->New<ChiMeNode>(mestmt);
-    chimestmt->rhs = GetOrCreateVarFromVerSt(opndst);
-    VarMeExpr *lhs = GetOrCreateVarFromVerSt(resst);
+    if (opndst->ost->IsSymbol()) {
+      chimestmt->rhs = GetOrCreateVarFromVerSt(opndst);
+    } else {
+      chimestmt->rhs = GetOrCreateRegFromVerSt(opndst);
+    }
+
+    ScalarMeExpr *lhs = nullptr;
+    if (resst->ost->IsSymbol()) {
+      lhs = GetOrCreateVarFromVerSt(resst);
+    } else {
+      lhs = GetOrCreateRegFromVerSt(resst);
+    }
     lhs->defBy = kDefByChi;
     lhs->def.defChi = chimestmt;
     chimestmt->lhs = lhs;
@@ -91,7 +100,12 @@ void IrMapBuild::BuildMustdefList(MeStmt *mestmt, MapleVector<MustDefNode> &must
   for (MapleVector<MustDefNode>::iterator it = mustdeflist.begin(); it != mustdeflist.end(); it++) {
     MustDefNode &mustdefnode = *it;
     VersionSt *verSt = mustdefnode.result;
-    VarMeExpr *lhs = GetOrCreateVarFromVerSt(verSt);
+    ScalarMeExpr *lhs = nullptr;
+    if (verSt->ost->IsSymbol()) {
+      lhs = GetOrCreateVarFromVerSt(verSt);
+    } else {
+      lhs = GetOrCreateRegFromVerSt(verSt);
+    }
     mustdefList.push_back(MustDefMeNode(lhs, mestmt));
   }
 }
@@ -126,12 +140,17 @@ void IrMapBuild::BuildPhiMeNode(BB *bb) {
   }
 }
 
-void IrMapBuild::BuildMuList(MapleMap<OStIdx, MayUseNode> &mayuselist, MapleMap<OStIdx, VarMeExpr *> &mulist) {
+void IrMapBuild::BuildMuList(MapleMap<OStIdx, MayUseNode> &mayuselist, MapleMap<OStIdx, ScalarMeExpr *> &mulist) {
   for (std::pair<OStIdx, MayUseNode> mapitem : mayuselist) {
     MayUseNode &mayusenode = mapitem.second;
     VersionSt *verSt = mayusenode.opnd;
-    VarMeExpr *varmeexpr = GetOrCreateVarFromVerSt(verSt);
-    mulist.insert(std::make_pair(varmeexpr->ost->index, varmeexpr));
+    ScalarMeExpr *scalarMeExpr = nullptr;
+    if (verSt->ost->IsSymbol()) {
+      scalarMeExpr = GetOrCreateVarFromVerSt(verSt);
+    } else {
+      scalarMeExpr = GetOrCreateRegFromVerSt(verSt);
+    }
+    mulist.insert(std::make_pair(scalarMeExpr->ost->index, scalarMeExpr));
   }
 }
 
@@ -174,6 +193,18 @@ MeExpr *IrMapBuild::BuildExpr(BaseNode *mirnode, bool atParm, bool noProp) {
       } else {
         retmeexpr = varmeexpr;
       }
+      uint32 typesize = GetPrimTypeSize(retmeexpr->primType);
+      if (typesize < GetPrimTypeSize(addrofnode->primType) && typesize != 0) {
+        // need to insert a convert
+        if (typesize < 4) {
+          OpMeExpr opmeexpr(-1, IsSignedInteger(addrofnode->primType) ? OP_sext : OP_zext, addrofnode->primType, 1);
+          opmeexpr.bitsSize = typesize * 8;
+          opmeexpr.SetOpnd(retmeexpr, 0);
+          retmeexpr = irMap->HashMeExpr(&opmeexpr);
+        } else {
+          retmeexpr = irMap->CreateMeExprTypeCvt(addrofnode->primType, retmeexpr->primType, retmeexpr);
+        }
+      }
       break;
     }
     case OP_regread: {
@@ -189,6 +220,13 @@ MeExpr *IrMapBuild::BuildExpr(BaseNode *mirnode, bool atParm, bool noProp) {
       PUIdx puIdx = addfuncnode->puIdx;
       AddroffuncMeExpr addrfuncme(-1, puIdx);
       retmeexpr = irMap->HashMeExpr(&addrfuncme);
+      break;
+    }
+    case OP_addroflabel: {
+      AddroflabelNode *addlabelnode = static_cast<AddroflabelNode *>(mirnode);
+      LabelIdx lIdx = addlabelnode->offset;
+      AddroflabelMeExpr addrlabelme(-1, lIdx);
+      retmeexpr = irMap->HashMeExpr(&addrlabelme);
       break;
     }
     case OP_gcmalloc:
@@ -236,6 +274,18 @@ MeExpr *IrMapBuild::BuildExpr(BaseNode *mirnode, bool atParm, bool noProp) {
         retmeexpr = simplifiedMeexpr ? simplifiedMeexpr : propedMeExpr;
       } else {
         retmeexpr = canIvar;
+      }
+      uint32 typesize = GetPrimTypeSize(retmeexpr->primType);
+      if (typesize < GetPrimTypeSize(ireadnode->primType) && typesize != 0) {
+        // need to insert a convert
+        if (typesize < 4) {
+          OpMeExpr opmeexpr(-1, IsSignedInteger(ireadnode->primType) ? OP_sext : OP_zext, ireadnode->primType, 1);
+          opmeexpr.bitsSize = typesize * 8;
+          opmeexpr.SetOpnd(retmeexpr, 0);
+          retmeexpr = irMap->HashMeExpr(&opmeexpr);
+        } else {
+          retmeexpr = irMap->CreateMeExprTypeCvt(ireadnode->primType, retmeexpr->primType, retmeexpr);
+        }
       }
       break;
     }
@@ -800,6 +850,7 @@ MeStmt *IrMapBuild::BuildMeStmt(StmtNode *stmt) {
     }
     case OP_assertnonnull:
     case OP_eval:
+    case OP_igoto:
     case OP_free: {
       UnaryStmtNode *unarystmt = static_cast<UnaryStmtNode *>(stmt);
       UnaryMeStmt *unmestmt = irMap->New<UnaryMeStmt>(stmt);

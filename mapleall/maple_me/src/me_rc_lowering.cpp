@@ -1,23 +1,21 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #include "me_rc_lowering.h"
-
-#include <cstring>
 #include "me_option.h"
-#include "class_hierarchy.h"
+#include "name_mangler.h"
 
 /*
  * RCLowering phase generate RC intrinsic for reference assignment
@@ -26,7 +24,6 @@
  */
 
 namespace maple {
-
 static MIRIntrinsicID rcIntrin[] = {
 #define GETINTRINID(intrinid, index) INTRN_##intrinid,
   RC_INTRINSICS(GETINTRINID)
@@ -324,7 +321,7 @@ void RCLowering::RCLower(BB *bb) {
       case OP_dassign:
       case OP_maydassign: {
         MeExpr *rhs = stmt->GetRhs();
-        VarMeExpr *lhs = stmt->GetVarLhs();
+        VarMeExpr *lhs = static_cast<VarMeExpr *>(stmt->GetVarLhs());
         bool incWithLhs = stmt->NeedIncref();
         bool decWithLhs = stmt->NeedDecref();
         CHECK_FATAL(rhs != nullptr, "null ptr check");
@@ -426,6 +423,16 @@ void RCLowering::RCLower(BB *bb) {
         }
         MeExpr *rhs = stmt->GetRhs();
         bool isReferent = false;
+        if (rcCheckReferent) {
+          // check if iassign field is volatile T referent;
+          FieldID id = mirModule->mirBuilder->GetStructFieldIdFromFieldNameParentFirst(structType, "referent");
+          if (id == iassign->lhsVar->fieldID) {
+            MeStmt *writeReferentCall =
+              CreateIntrinsicWithTwoArg(kWriteReferent, stmt, lhs->base->GetAddrExprBase(), rhs);
+            bb->InsertMeStmtAfter(stmt, writeReferentCall);
+            isReferent = true;
+          }
+        }
         if (incWithLhs && HandleSpecialRHS(stmt)) {
           incWithLhs = false;
           rhs = stmt->GetRhs();
@@ -594,6 +601,7 @@ void RCLowering::PostBBLower() {
         continue;
       }
       mirfunction->formalDefVec[i].formalAttrs.SetAttr(ATTR_localrefvar);
+      sym->SetLocalRefVar();
     }
   }
 
@@ -658,7 +666,7 @@ void RCLowering::PostBBLower() {
               }
             }
           }
-        } else if (!(MeOption::placementrc && sym && sym->storageClass == kScFormal && assignedPtrSym.count(sym) == 1)) {
+        } else if (!(func->placementRCOn && sym && sym->storageClass == kScFormal && assignedPtrSym.count(sym) == 1)) {
           // if returning formal, incref unless placementrc is used and formal is NOT reassigned
           if (assignedPtrSym.count(sym) == 0) {
             MeStmt *increfstmt = CreateIntrinsicWithOneArg(kIncRef, stmt, retVar, true);
@@ -856,6 +864,10 @@ AnalysisResult *MeDoRCLowering::Run(MeFunction *func, MeFuncResultMgr *m, Module
   if (DEBUGFUNC(func)) {
     LogInfo::MapleLogger() << "Handling function " << funcname << std::endl;
   }
+  string referenceString = NameMangler::kJavaLang +
+    string("ref_2FReference_3B_7C_3Cinit_3E_7C_28") + NameMangler::kJavaLangObjectStr +
+    NameMangler::kJavaLang + string("ref_2FReferenceQueue_3B_29V");
+  rcLowering.rcCheckReferent = (funcname == referenceString);
 
   // preparation steps before going through basicblocks
   size_t bitsSize = mirfunction->symTab->GetSymbolTableSize();

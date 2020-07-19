@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2019-2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2019-2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 #include "driver_runner.h"
 #include <iostream>
@@ -60,9 +60,19 @@
     }                         \
   } while (0)
 
-#define ADD_PHASE(name, condition)       \
-  if ((condition)) {                     \
-    phases.push_back(std::string(name)); \
+#define ADD_MODPREPHASE(name, condition)       \
+  if ((condition) && Options::skipPhase.compare(name) != 0) { \
+    modprephases.push_back(std::string(name)); \
+  }
+
+#define ADD_MEPHASE(name, condition)       \
+  if ((condition) && meOptions->GetSkipPhases().find(name) == meOptions->GetSkipPhases().end()) { \
+    mephases.push_back(std::string(name)); \
+  }
+
+#define ADD_MODPOSTPHASE(name, condition)       \
+  if ((condition) && Options::skipPhase.compare(name) != 0) { \
+    modpostphases.push_back(std::string(name)); \
   }
 
 #define ADD_EXTRA_PHASE(name, timephases, timeStart)                                                    \
@@ -90,15 +100,6 @@ enum OptLevel {
   kLevelO2
 };
 
-static bool HasMplCg(std::vector<std::string> &exeNames) {
-  for (std::string exeName : exeNames) {
-    if (exeName == kMplCg) {
-      return true;
-    }
-  }
-  return false;
-}
-
 ErrorCode DriverRunner::Run() {
   CHECK_MODULE(kErrorExit);
 
@@ -120,12 +121,17 @@ ErrorCode DriverRunner::Run() {
     return kErrorExit;
   }
   if (mpl2mplOptions != nullptr || meOptions != nullptr || cgOptions != nullptr) {
-    originBaseName.append(".VtableImpl");
+    if (HasThisPhase(kMpl2mpl)) {
+      originBaseName.append(".VtableImpl");
+    }
     std::string vtableImplFile = originBaseName;
+    if (!HasThisPhase(kMpl2mpl) && HasThisPhase(kMplMe)) {
+      vtableImplFile.append(".me");
+    }
     vtableImplFile.append(".mpl");
     std::string dotSFile = originBaseName;
     dotSFile.append(".s");
-    ProcessMpl2mplAndMeAndMplCgPhases(vtableImplFile, dotSFile, originBaseName, HasMplCg(exeNames));
+    ProcessMpl2mplAndMeAndMplCgPhases(vtableImplFile, dotSFile, originBaseName);
   }
   return kErrorNoError;
 }
@@ -178,7 +184,16 @@ ErrorCode DriverRunner::ParseInput(const std::string &outputFile, const std::str
   return ret;
 }
 
-void DriverRunner::ProcessMpl2mplAndMeAndMplCgPhases(const std::string &interimOutputFile, const std::string &outputFile, const std::string &origBaseName, bool runMplCg) const {
+bool DriverRunner::HasThisPhase(std::string phaseName) const {
+  for (std::string exeName : exeNames) {
+    if (exeName == phaseName) {
+      return true;
+    }
+  }
+  return false;
+}
+
+void DriverRunner::ProcessMpl2mplAndMeAndMplCgPhases(const std::string &interimOutputFile, const std::string &outputFile, const std::string &origBaseName) const {
   CHECK_MODULE();
 
   LogInfo::MapleLogger() << "Processing mpl2mpl&mplme" << '\n';
@@ -186,11 +201,18 @@ void DriverRunner::ProcessMpl2mplAndMeAndMplCgPhases(const std::string &interimO
   timer.Start();
 
   InterleavedManager mgr(optMp, theModule, meInput, timePhases);
-  std::vector<std::string> phases;
+  std::vector<std::string> modprephases;
+  std::vector<std::string> mephases;
+  std::vector<std::string> modpostphases;
 #include "phases.def"
   MInline::level = Options::inlineLev;
   MInline::inlineFuncList = MeOption::inlinefunclist;
-  InitPhases(mgr, phases);
+//InitPhases(mgr, phases);
+  mgr.AddPhases(modprephases, true /* isModulePhase */, timePhases);
+  if (meOptions) {
+    mgr.AddPhases(mephases, false, timePhases, genMeMpl);
+  }
+  mgr.AddPhases(modpostphases, true, timePhases);
   mgr.Run();
 
   // emit after module phase
@@ -200,7 +222,7 @@ void DriverRunner::ProcessMpl2mplAndMeAndMplCgPhases(const std::string &interimO
 
   timer.Stop();
   LogInfo::MapleLogger() << "Mpl2mpl&mplme consumed " << timer.Elapsed() << "s" << '\n';
-  if (!runMplCg) {
+  if (!HasThisPhase(kMplCg)) {
     return;
   }
 
@@ -287,9 +309,6 @@ void DriverRunner::ProcessMpl2mplAndMeAndMplCgPhases(const std::string &interimO
       }
 #endif
 
-      if (cgOptions->WithDwarf()) {
-        thecg.emitter_->EmitDIHeader();
-      }
       // 3. generate phase pipeline based on function.
       unsigned long rangeNum = 0;
       if (!CGOptions::quiet) {
@@ -334,26 +353,22 @@ void DriverRunner::ProcessMpl2mplAndMeAndMplCgPhases(const std::string &interimO
         MapleAllocator funcscopeAllocator(funcMp);
         // 4, Create CGFunc
         CGFunc *cgfunc = thecg.CreateCGFunc(theModule, mirFunc, becommon, funcMp, &funcscopeAllocator);
-        if (cgOptions->WithDwarf()) {
-          cgfunc->SetDebugInfo(theModule->dbgInfo);
-        }
         CG::curCgFunc = cgfunc;
+        CG::curPuIdx = cgfunc->mirModule.CurFunction()->puIdx;
         // 5. Run the cg optimizations phases.
         if (CGOptions::useRange && (rangeNum >= CGOptions::range[0] && rangeNum <= CGOptions::range[1])) {
           CGOptions::inRange = true;
         }
         cgfpm.Run(cgfunc);
-        // 6. Invalid all analysis result.
         cgfpm.Emit(cgfunc);
+
+        thecg.emitter_->EmitLocalVariable(cgfunc);
+        // 6. Invalid all analysis result.
         cgfpm.GetAnalysisResultManager()->InvalidIRbaseAnalysisResult(cgfunc);
         // 7, delete mempool.
         mempoolctrler.DeleteMemPool(funcMp);
         rangeNum++;
         CGOptions::inRange = false;
-      }
-
-      if (cgOptions->WithDwarf()) {
-        thecg.emitter_->EmitDIFooter();
       }
 
 #if TARGAARCH64
@@ -391,17 +406,8 @@ void DriverRunner::ProcessMpl2mplAndMeAndMplCgPhases(const std::string &interimO
       thecg.emitter_->EmitGlobalVariable();
       if (JAVALANG) {
         thecg.emitter_->EmitMplPersonalityV0();
-      }
-      // 10. emit debug infomation.
-      if (cgOptions->WithDwarf()) {
-        thecg.emitter_->SetupDBGInfo(theModule->dbgInfo);
-        thecg.emitter_->EmitDIHeaderFileInfo();
-        thecg.emitter_->EmitDIDebugInfoSection(theModule->dbgInfo);
-        thecg.emitter_->EmitDIDebugAbbrevSection(theModule->dbgInfo);
-        thecg.emitter_->EmitDIDebugARangesSection();
-        thecg.emitter_->EmitDIDebugRangesSection();
-        thecg.emitter_->EmitDIDebugLineSection();
-        thecg.emitter_->EmitDIDebugStrSection();
+      } else if (theModule->srcLang == kSrcLangCPlusPlus) {
+        thecg.emitter_->EmitGxxPersonalityV0();
       }
       thecg.emitter_->CloseOutput();
     } else {
@@ -417,61 +423,6 @@ void DriverRunner::ProcessMpl2mplAndMeAndMplCgPhases(const std::string &interimO
 
   timer.Stop();
   LogInfo::MapleLogger() << "MplCg consumed " << timer.Elapsed() << "s" << '\n';
-}
-
-void DriverRunner::InitPhases(InterleavedManager &mgr, const std::vector<std::string> &phases) const {
-  if (phases.empty()) {
-    return;
-  }
-
-  const PhaseManager *curManager = nullptr;
-  std::vector<std::string> curPhases;
-
-  for (const std::string &phase : phases) {
-    const PhaseManager *supportManager = mgr.GetSupportPhaseManager(phase);
-    if (supportManager != nullptr) {
-      if (curManager != nullptr && curManager != supportManager && !curPhases.empty()) {
-        AddPhases(mgr, curPhases, *curManager);
-        curPhases.clear();
-      }
-
-      if (curManager != supportManager) {
-        curManager = supportManager;
-      }
-      AddPhase(curPhases, phase, *supportManager);
-    }
-  }
-
-  if (curManager != nullptr && !curPhases.empty()) {
-    AddPhases(mgr, curPhases, *curManager);
-  }
-}
-
-void DriverRunner::AddPhases(InterleavedManager &mgr, const std::vector<std::string> &phases,
-                             const PhaseManager &phaseManager) const {
-  const auto &type = typeid(phaseManager);
-  if (type == typeid(ModulePhaseManager)) {
-    mgr.AddPhases(phases, true, timePhases);
-  } else if (type == typeid(MeFuncPhaseManager)) {
-    mgr.AddPhases(phases, false, timePhases, genMeMpl);
-  } else {
-    CHECK_FATAL(false, "Should not reach here, phases should be handled");
-  }
-}
-
-void DriverRunner::AddPhase(std::vector<std::string> &phases, const std::string phase,
-                            const PhaseManager &phaseManager) const {
-  if (typeid(phaseManager) == typeid(ModulePhaseManager)) {
-    if (mpl2mplOptions && Options::skipPhase.compare(phase) != 0) {
-      phases.push_back(phase);
-    }
-  } else if (typeid(phaseManager) == typeid(MeFuncPhaseManager)) {
-    if (meOptions && meOptions->GetSkipPhases().find(phase) == meOptions->GetSkipPhases().end()) {
-      phases.push_back(phase);
-    }
-  } else {
-    CHECK_FATAL(false, "Should not reach here, phase should be handled");
-  }
 }
 
 }  // namespace maple

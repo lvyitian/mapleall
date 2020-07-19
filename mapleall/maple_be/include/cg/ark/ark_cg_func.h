@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #ifndef MAPLEBE_INCLUDE_CG_ARK_ARKCGFUNC_H
@@ -19,6 +19,7 @@
 #include "cg.h"
 #include "cg_func.h"
 #include "ark_mem_layout.h"
+#include "name_mangler.h"
 
 namespace maplebe {
 
@@ -97,6 +98,7 @@ class ArkCGFunc : public CGFunc {
   void SelectIassign(IassignNode *stmt) override {}
   void SelectAggIassign(IassignNode *stmt, Operand *lhsaddropnd) override {}
   void SelectReturn(NaryStmtNode *stmt, Operand *opnd) override {}
+  Operand *SelectIgoto(Operand *opnd0) override { return nullptr; }
   void SelectCondGoto(CondGotoNode *stmt, Operand *opnd0, Operand *opnd1) override {}
   void SelectCondSpecial(CondGotoNode *stmt, BaseNode *opnd0) override {}
   void SelectGoto(GotoNode *stmt) override {}
@@ -110,6 +112,7 @@ class ArkCGFunc : public CGFunc {
   RegOperand *SelectRegread(BaseNode *parent, RegreadNode *expr) override { return nullptr; }
   Operand *SelectAddrof(AddrofNode *expr) override { return nullptr; }
   Operand *SelectAddroffunc(AddroffuncNode *expr) override { return nullptr; }
+  Operand *SelectAddroflabel(AddroflabelNode *expr) override { return nullptr; }
   Operand *SelectIread(BaseNode *parent, IreadNode *expr) override { return nullptr; }
   Operand *SelectIntconst(MIRIntConst *floatconst) override { return nullptr; }
   Operand *SelectVectorIntconst(MIRVectorIntConst *vintconst) override { return nullptr; }

@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #include "me_ssa_update.h"
@@ -46,12 +46,12 @@ void SSAUpdate::InsertPhis() {
       bb->mePhiList.insert(std::make_pair(it->first, phimenode));
     }
     // initialize its rename stack
-    renameStacks[it->first] = ssaUpdateMp->New<MapleStack<VarMeExpr *>>(ssaUpdateAlloc.Adapter());
+    renameStacks[it->first] = ssaUpdateMp->New<MapleStack<ScalarMeExpr *>>(ssaUpdateAlloc.Adapter());
   }
 }
 
 void SSAUpdate::RenamePhi(BB *bb) {
-  MapleMap<OStIdx, MapleStack<VarMeExpr *> *>::iterator it1 = renameStacks.begin();
+  MapleMap<OStIdx, MapleStack<ScalarMeExpr *> *>::iterator it1 = renameStacks.begin();
   for (; it1 != renameStacks.end(); it1++) {
     MapleMap<OStIdx, MePhiNode *>::iterator it2 = bb->mePhiList.find(it1->first);
     if (it2 != bb->mePhiList.end()) {
@@ -80,12 +80,12 @@ MeExpr *SSAUpdate::RenameExpr(MeExpr *meexpr, bool &changed) {
   switch (meexpr->meOp) {
     case kMeOpVar: {
       VarMeExpr *varexpr = static_cast<VarMeExpr *>(meexpr);
-      MapleMap<OStIdx, MapleStack<VarMeExpr *> *>::iterator it1 = renameStacks.find(varexpr->ost->index);
+      MapleMap<OStIdx, MapleStack<ScalarMeExpr *> *>::iterator it1 = renameStacks.find(varexpr->ost->index);
       if (it1 == renameStacks.end()) {
         return meexpr;
       }
-      MapleStack<VarMeExpr *> *renamestack = it1->second;
-      VarMeExpr *curvar = renamestack->top();
+      MapleStack<ScalarMeExpr *> *renamestack = it1->second;
+      ScalarMeExpr *curvar = renamestack->top();
       if (varexpr == curvar) {
         return meexpr;
       }
@@ -151,7 +151,7 @@ void SSAUpdate::RenameStmts(BB *bb) {
       stmt->SetMeStmtOpnd(i, RenameExpr(stmt->GetMeStmtOpnd(i), changed /* dummy */));
 
     // process the LHS
-    VarMeExpr *lhsVar;
+    ScalarMeExpr *lhsVar;
     if (stmt->op == OP_dassign || stmt->op == OP_maydassign) {
       lhsVar = stmt->GetVarLhs();
     } else if (kOpcodeInfo.IsCallAssigned(stmt->op)) {
@@ -166,11 +166,11 @@ void SSAUpdate::RenameStmts(BB *bb) {
     } else {
       continue;
     }
-    MapleMap<OStIdx, MapleStack<VarMeExpr *> *>::iterator it = renameStacks.find(lhsVar->ost->index);
+    MapleMap<OStIdx, MapleStack<ScalarMeExpr *> *>::iterator it = renameStacks.find(lhsVar->ost->index);
     if (it == renameStacks.end()) {
       continue;
     }
-    MapleStack<VarMeExpr *> *renamestack = it->second;
+    MapleStack<ScalarMeExpr *> *renamestack = it->second;
     renamestack->push(lhsVar);
   }
 }
@@ -186,15 +186,15 @@ void SSAUpdate::RenamePhiOpndsInSucc(BB *bb) {
       index++;
     }
     ASSERT(index < succ->pred.size(), "RenamePhiOpndsinSucc: cannot find corresponding pred");
-    MapleMap<OStIdx, MapleStack<VarMeExpr *> *>::iterator it1 = renameStacks.begin();
+    MapleMap<OStIdx, MapleStack<ScalarMeExpr *> *>::iterator it1 = renameStacks.begin();
     for (; it1 != renameStacks.end(); it1++) {
       MapleMap<OStIdx, MePhiNode *>::iterator it2 = succ->mePhiList.find(it1->first);
       if (it2 == succ->mePhiList.end()) {
         continue;
       }
       MePhiNode *phi = it2->second;
-      MapleStack<VarMeExpr *> *renamestack = it1->second;
-      VarMeExpr *curvar = renamestack->top();
+      MapleStack<ScalarMeExpr *> *renamestack = it1->second;
+      ScalarMeExpr *curvar = renamestack->top();
       if (phi->opnds[index] != curvar) {
         phi->opnds[index] = curvar;
       }
@@ -206,7 +206,7 @@ void SSAUpdate::RenameBB(BB *bb) {
   // for recording stack height on entering this BB, to pop back to same height
   // when backing up the dominator tree
   std::map<OStIdx, uint32> origStackSize((std::less<OStIdx>()));
-  MapleMap<OStIdx, MapleStack<VarMeExpr *> *>::iterator it = renameStacks.begin();
+  MapleMap<OStIdx, MapleStack<ScalarMeExpr *> *>::iterator it = renameStacks.begin();
   for (; it != renameStacks.end(); it++) {
     origStackSize[it->first] = it->second->size();
   }
@@ -236,11 +236,11 @@ void SSAUpdate::Run() {
   InsertPhis();
 
   // push zero-version varmeexpr nodes to rename stacks
-  MapleMap<OStIdx, MapleStack<VarMeExpr *> *>::iterator it = renameStacks.begin();
+  MapleMap<OStIdx, MapleStack<ScalarMeExpr *> *>::iterator it = renameStacks.begin();
   for (; it != renameStacks.end(); it++) {
     OriginalSt *ost = ssaTab->GetSymbolOriginalStFromid(it->first);
     VarMeExpr *zeroversvar = irMap->GetOrCreateZeroVersionVarMeExpr(ost);
-    MapleStack<VarMeExpr *> *renamestack = it->second;
+    MapleStack<ScalarMeExpr *> *renamestack = it->second;
     renamestack->push(zeroversvar);
   }
 

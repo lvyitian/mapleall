@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #ifndef MAPLEBE_INCLUDE_CG_AARCH64ABI_H
@@ -62,8 +62,12 @@ enum AArch64_ArgumentClass {
 struct PLocInfo {
   AArch64reg_t reg0;  // 0 means parameter is stored on the stack
   AArch64reg_t reg1;
+  AArch64reg_t reg2;
+  AArch64reg_t reg3;
   int32 memoffset;
   int32 memsize;
+  uint32 fpSize;
+  uint32 numFpPureRegs;
 };
 
 /*
@@ -88,7 +92,8 @@ class ParmLocator {
   virtual ~ParmLocator() {}
 
   // Return size of aggregate structure copy on stack.
-  int32 LocateNextParm(MIRType *ty, PLocInfo &ploc);
+  int32 LocateNextParm(MIRType *ty, PLocInfo &ploc, bool isFirst = false);
+  void InitPlocInfo(PLocInfo &ploc);
 
  private:
   inline AArch64reg_t AllocateGPRegister() {
@@ -108,6 +113,35 @@ class ParmLocator {
     return (NSRN < AArch64Abi::kNumFloatParmRegs) ? AArch64Abi::float_parm_regs[NSRN++] : kRinvalid;
   }
 
+  inline void AllocateNSIMDFPRegisters(PLocInfo &ploc, uint32 num) {
+    if ((NSRN + num - 1) < AArch64Abi::kNumFloatParmRegs) {
+      switch (num) {
+      case 1:
+        ploc.reg0 = AArch64Abi::float_parm_regs[NSRN++];
+        break;
+      case 2:
+        ploc.reg0 = AArch64Abi::float_parm_regs[NSRN++];
+        ploc.reg1 = AArch64Abi::float_parm_regs[NSRN++];
+        break;
+      case 3:
+        ploc.reg0 = AArch64Abi::float_parm_regs[NSRN++];
+        ploc.reg1 = AArch64Abi::float_parm_regs[NSRN++];
+        ploc.reg2 = AArch64Abi::float_parm_regs[NSRN++];
+        break;
+      case 4:
+        ploc.reg0 = AArch64Abi::float_parm_regs[NSRN++];
+        ploc.reg1 = AArch64Abi::float_parm_regs[NSRN++];
+        ploc.reg2 = AArch64Abi::float_parm_regs[NSRN++];
+        ploc.reg3 = AArch64Abi::float_parm_regs[NSRN++];
+        break;
+      default:
+        CHECK_FATAL(0, "AllocateNSIMDFPRegisters: unsupported");
+      }
+    } else {
+      ploc.reg0 = kRinvalid;
+    }
+  }
+
   inline void RoundNGRNUpToNextEven() {
     NGRN = static_cast<int32>((NGRN + 1) & ~static_cast<int32>(1));
   }
@@ -120,8 +154,11 @@ class ReturnMechanism {
                       // bool fake_first_parm; // whether returning in memory via fake first parameter
   AArch64reg_t reg0;  // first register storing the return value
   AArch64reg_t reg1;  // second register storing the return value
+  AArch64reg_t reg2;  // third register storing the return value
+  AArch64reg_t reg3;  // fourth register storing the return value
   PrimType ptype0;    // the primitive type stored in reg0
   PrimType ptype1;    // the primitive type stored in reg1
+                      // There is no need for extra ptype, as reg2 and reg3 should be same as reg0
 
   ReturnMechanism(MIRType *retty, BECommon &be);
 

@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #ifndef MAPLE_UTIL_INCLUDE_NAME_MANGLER_H
@@ -136,11 +136,14 @@ static constexpr const char kRightBracketStr[] = "_29";  // 29 is the ascii code
 static constexpr const char kRightBracketStrSuffix[] = "_29V";
 static constexpr const char kClassNameSplitterStr[] = "_3B_7C";
 static constexpr const char kJavaLangClassStr[] = "Ljava_2Flang_2FClass_3B";
+static constexpr const char kJavaLangInvoke[] = "Ljava_2Flang_2Finvoke_2F";
+static constexpr const char kJavaLangReflect[] = "Ljava_2Flang_2Freflect_2F";
 static constexpr const char kJavaLangObjectStr[] = "Ljava_2Flang_2FObject_3B";
 static constexpr const char kJavaLangRef[] = "Ljava_2Flang_2Fref_2F";
 static constexpr const char kJavaLangClassloader[] = "Ljava_2Flang_2FClassLoader_3B";
 static constexpr const char kJavaLangObjectStrJVersion[] = "Ljava/lang/Object;";
 static constexpr const char kJavaLangStringStr[] = "Ljava_2Flang_2FString_3B";
+static constexpr const char kJavaLangStringfactoryStr[] = "Ljava_2Flang_2FStringFactory_3B";
 static constexpr const char kJavaLangExceptionStr[] = "Ljava_2Flang_2FException_3B";
 static constexpr const char kJavaUtilFormatterFlags[] = "Ljava_2Futil_2FFormatter_24Flags_3B";
 static constexpr const char kJavaUtilHashMapNode[] = "Ljava_2Futil_2FHashMap_24Node_3B";
@@ -225,10 +228,77 @@ static constexpr const char kRefWeakReference[] = "ref_2FWeakReference_3B";
 static constexpr const char kRefFinalizeReference[] = "ref_2FFinalizerReference_3B";
 
 static constexpr const char kJavaIo[] = "Ljava_2Fio_2F";
+static constexpr const char kJavaNio[] = "Ljava_2Fnio_2F";
+static constexpr const char kJavaNioChannels[] = "Ljava_2Fnio_2Fchannels_2F";
+static constexpr const char kJavaNioChannelsSpi[] = "Ljava_2Fnio_2Fchannels_2Fspi_2F";
+static constexpr const char kJavaNioCharset[] = "Ljava_2Fnio_2Fcharset_2F";
+static constexpr const char kJavaNioFile[] = "Ljava_2Fnio_2Ffile_2F";
+static constexpr const char kJavaNet[] = "Ljava_2Fnet_2F";
+static constexpr const char kJavaMath[] = "Ljava_2Fmath_2F";
+static constexpr const char kJavaSecurity[] = "Ljava_2Fsecurity_2F";
+static constexpr const char kJavaSecurityCert[] = "Ljava_2Fsecurity_2Fcert_2F";
+static constexpr const char kJavaSecuritySpec[] = "Ljava_2Fsecurity_2Fspec_2F";
+static constexpr const char kJavaText[] = "Ljava_2Ftext_2F";
 static constexpr const char kSerializable[] = "Serializable_3B";
 static constexpr const char kFile[] = "File_3B";
 
 static constexpr const char kJavaUtil[] = "Ljava_2Futil_2F";
+static constexpr const char kJavaUtilConcurrent[] = "Ljava_2Futil_2Fconcurrent_2F";
+static constexpr const char kJavaUtilConcurrentAtomic[] = "Ljava_2Futil_2Fconcurrent_2Fatomic_2F";
+static constexpr const char kJavaUtilConcurrentLocks[] = "Ljava_2Futil_2Fconcurrent_2Flocks_2F";
+static constexpr const char kJavaUtilJar[] = "Ljava_2Futil_2Fjar_2F";
+static constexpr const char kJavaUtilLogging[] = "Ljava_2Futil_2Flogging_2F";
+static constexpr const char kJavaUtilPrefs[] = "Ljava_2Futil_2Fprefs_2F";
+static constexpr const char kJavaUtilRegex[] = "Ljava_2Futil_2Fregex_2F";
+static constexpr const char kJavaUtilStream[] = "Ljava_2Futil_2Fstream_2F";
+static constexpr const char kJavaUtilUtil[] = "Ljava_2Futil_2Futil_2F";
+static constexpr const char kJavaUtilZip[] = "Ljava_2Futil_2Fzip_2F";
+
+static constexpr const char kSunInvoke[] = "Lsun_2Finvoke_2F";
+static constexpr const char kSunInvokeUtil[] = "Lsun_2Finvoke_2Futil_2F";
+static constexpr const char kSunMisc[] = "Lsun_2Fmisc_2F";
+static constexpr const char kSunNet[] = "Lsun_2Fnet_2F";
+static constexpr const char kSunNetSpi[] = "Lsun_2Fnet_2Fspi_2F";
+static constexpr const char kSunNetWww[] = "Lsun_2Fnet_2Fwww_2F";
+static constexpr const char kSunNetWwwProtocol[] = "Lsun_2Fnet_2Fwww_2Fprotocol_2F";
+static constexpr const char kSunNetWwwProtocolFile[] = "Lsun_2Fnet_2Fwww_2Fprotocol_2Ffile_2F";
+static constexpr const char kSunNio[] = "Lsun_2Fnio_2F";
+static constexpr const char kSunNioCh[] = "Lsun_2Fnio_2Fch_2F";
+static constexpr const char kSunNioCs[] = "Lsun_2Fnio_2Fcs_2F";
+static constexpr const char kSunNioFs[] = "Lsun_2Fnio_2Ffs_2F";
+static constexpr const char kSunSecurity[] = "Lsun_2Fsecurity_2F";
+static constexpr const char kSunSecurityJca[] = "Lsun_2Fsecurity_2Fjca_2F";
+static constexpr const char kSunSecurityPkcs[] = "Lsun_2Fsecurity_2Fpkcs_2F";
+static constexpr const char kSunSecurityProvider[] = "Lsun_2Fsecurity_2Fprovider_2F";
+static constexpr const char kSunSecurityProviderCertpath[] = "Lsun_2Fsecurity_2Fprovider_2Fcertpath_2F";
+static constexpr const char kSunSecurityUtil[] = "Lsun_2Fsecurity_2Futil_2F";
+static constexpr const char kSunSecurityX509[] = "Lsun_2Fsecurity_2Fx509_2F";
+static constexpr const char kSunUtil[] = "Lsun_2Futil_2F";
+static constexpr const char kSunUtilCalendar[] = "Lsun_2Futil_2Flocale_2Fcalendar_2F";
+static constexpr const char kSunUtilLocale[] = "Lsun_2Futil_2Flocale_2F";
+static constexpr const char kSunUtilLogging[] = "Lsun_2Futil_2Flogging_2F";
+
+static constexpr const char kLibcoreIcu[] = "Llibcore_2Ficu_2F";
+static constexpr const char kLibcoreIo[] = "Llibcore_2Fio_2F";
+static constexpr const char kLibcoreMath[] = "Llibcore_2Fmath_2F";
+static constexpr const char kLibcoreNet[] = "Llibcore_2Fnet_2F";
+static constexpr const char kLibcoreNetEvent[] = "Llibcore_2Fnet_2Fevent_2F";
+static constexpr const char kLibcoreReflect[] = "Llibcore_2Freflect_2F";
+static constexpr const char kLibcoreUtil[] = "Llibcore_2Futil_2F";
+
+static constexpr const char kOrgApacheHarmonyXml[] = "Lorg_2Fapache_2Fharmony_2Fxml_2F";
+static constexpr const char kOrgApacheHarmonyXmlDom[] = "Lorg_2Fapache_2Fharmony_2Fxml_2Fdom_2F";
+static constexpr const char kOrgApacheHarmonyXmlParsers[] = "Lorg_2Fapache_2Fharmony_2Fxml_2Fparsers_2F";
+static constexpr const char kOrgJson[] = "Lorg_2Fjson_2F";
+
+static constexpr const char kJavaxCrypto[] = "Ljavax_2Fcrypto_2F";
+static constexpr const char kJavaxNet[] = "Ljavax_2Fnet_2F";
+static constexpr const char kJavaxNetSsl[] = "Ljavax_2Fnet_2Fssl_2F";
+static constexpr const char kJavaxSecurity[] = "Ljavax_2Fsecurity_2F";
+static constexpr const char kJavaxSecurityCert[] = "Ljavax_2Fsecurity_2Fcert_2F";
+static constexpr const char kJavaxXml[] = "Ljavax_2Fxml_2F";
+static constexpr const char kJavaxXmlParsers[] = "Ljavax_2Fxml_2Fparsers_2F";
+
 static constexpr const char kHashMapNode[] = "HashMap_24Node_3B";
 static constexpr const char kFormatterFormatString[] = "Formatter_24FormatString_3B";
 static constexpr const char kHashtableHashtableEntry[] = "Hashtable_24HashtableEntry_3B";

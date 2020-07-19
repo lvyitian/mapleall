@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #include "ssa_mir_nodes.h"
@@ -123,7 +123,7 @@ void DSE::MarkBBLive(BB *bb) {
     if (lastStmt != nullptr) {
       // if bb's last stmt is a branch instruction, it is also needed
       Opcode op = lastStmt->op;
-      if (lastStmt->IsCondBr() || op == OP_goto || op == OP_switch) {
+      if (lastStmt->IsCondBr() || op == OP_goto || op == OP_switch || op == OP_igoto) {
         MarkStmt(lastStmt, bb);
       }
     }
@@ -139,7 +139,7 @@ void DSE::MarkBBLive(BB *bb) {
       StmtNode *lastStmt = cdBb->stmtNodeList.last;
       if (lastStmt != nullptr) {
         Opcode op = lastStmt->op;
-        if (lastStmt->IsCondBr() || op == OP_goto || op == OP_switch) {
+        if (lastStmt->IsCondBr() || op == OP_goto || op == OP_switch || op == OP_igoto) {
           MarkStmt(lastStmt, cdBb);
         }
       }

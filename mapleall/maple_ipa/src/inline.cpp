@@ -1,21 +1,22 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #include "clone.h"
 #include "inline.h"
 #include "mpl_logging.h"
+#include "name_mangler.h"
 #include <iostream>
 #include <fstream>
 using namespace std;
@@ -651,7 +652,6 @@ bool MInline::SpendBudget(BaseNode *bn, int32 &budget, unordered_map<MIRFunction
       }
       budget--;
       break;
-#if 1
     case OP_intrinsiccall:
     case OP_intrinsiccallwithtype:
     case OP_xintrinsiccall:
@@ -663,7 +663,6 @@ bool MInline::SpendBudget(BaseNode *bn, int32 &budget, unordered_map<MIRFunction
       }
       budget -= 4;
       break;
-#endif
     // call is okay, if inlinable we need to have the budget for the body.
     case OP_virtualcall:
     case OP_superclasscall:
@@ -867,7 +866,7 @@ void MInline::CanInline(CGNode *node, unordered_map<MIRFunction *, int32> &toInl
       func->GetAttr(FUNCATTR_synchronized) || (func->GetAttr(FUNCATTR_synthetic) && inlineLevel <= 2) ||
       func->GetAttr(FUNCATTR_varargs) || (func->GetAttr(FUNCATTR_virtual) && inlineLevel <= 2) ||
       func->GetAttr(FUNCATTR_nosideeffect) || func->GetAttr(FUNCATTR_pure) ||
-      (func->GetAttr(FUNCATTR_weak) && func->GetName() != "Ljava_2Flang_2FObject_3B_7C_3Cinit_3E_7C_28_29V")) {
+      (func->GetAttr(FUNCATTR_weak) && func->GetName() != std::string(NameMangler::kJavaLangObjectStr)+NameMangler::kInitSuffix)) {
     return;
   }
 
@@ -897,7 +896,7 @@ void MInline::CheckCalleeAndInline(MIRFunction *caller, BlockNode *enclosingBlk,
   }
 
   const string &name = callee->GetName();
-  if (name != "Ljava_2Futil_2FArrayList_3B_7Csize_7C_28_29I") {
+  if (name != (std::string(NameMangler::kJavaUtil) + "ArrayList_3B_7Csize_7C_28_29I")) {
     return;
   }
 

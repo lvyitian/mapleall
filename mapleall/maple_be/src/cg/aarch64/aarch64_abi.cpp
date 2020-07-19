@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #include "aarch64_abi.h"
@@ -22,13 +22,55 @@ namespace maplebe {
 
 using namespace maple;
 
+void ParmLocator::InitPlocInfo(PLocInfo &ploc) {
+  ploc.reg0 = kRinvalid;
+  ploc.reg1 = kRinvalid;
+  ploc.reg2 = kRinvalid;
+  ploc.reg3 = kRinvalid;
+  ploc.memoffset = NSAA;
+  ploc.fpSize = 0;
+  ploc.numFpPureRegs = 0;
+}
+
+static PrimType TraverseStructFieldsForFp(MIRType *ty, uint32 &numregs) {
+  if (ty->typeKind == kTypeArray) {
+    MIRArrayType *arrtype = static_cast<MIRArrayType *>(ty);
+    MIRType *pty = GlobalTables::GetTypeTable().GetTypeFromTyIdx(arrtype->eTyIdx);
+    if (pty->typeKind == kTypeArray || pty->typeKind == kTypeStruct) {
+      return TraverseStructFieldsForFp(pty, numregs);
+    }
+    for (uint32 i = 0; i < arrtype->dim; ++i) {
+      numregs += arrtype->sizeArray[i];
+    }
+    return pty->primType;
+  } else if (ty->typeKind == kTypeStruct) {
+    MIRStructType *sttype = static_cast<MIRStructType *>(ty);
+    FieldVector fields = sttype->fields;
+    PrimType oldtype = PTY_void;
+    for (uint32 fcnt = 0; fcnt < fields.size(); ++fcnt) {
+      TyIdx fieldtyidx = fields[fcnt].second.first;
+      MIRType *fieldty = GlobalTables::GetTypeTable().GetTypeFromTyIdx(fieldtyidx);
+      PrimType ptype = TraverseStructFieldsForFp(fieldty, numregs);
+      if (oldtype != PTY_void && oldtype != ptype) {
+        return PTY_void;
+      } else {
+        oldtype = ptype;
+      }
+    }
+    return oldtype;
+  } else {
+    numregs++;
+    return ty->primType;
+  }
+}
+
 /*
    Analyze the given aggregate using the rules given by the ARM 64-bit ABI and
    return the number of doublewords to be passed in registers; the classes of
    the doublewords are returned in parameter "classes"; if 0 is returned, it
    means the whole aggregate is passed in memory.
  */
-static int32 ClassifyAggregate(BECommon &be, MIRType *ty, AArch64_ArgumentClass classes[2], size_t classesLength) {
+static int32 ClassifyAggregate(BECommon &be, MIRType *ty, AArch64_ArgumentClass classes[4], size_t classesLength, uint32 &fpSize) {
   CHECK_FATAL(classesLength > 0, "invalid index");
   uint32 sizeofty = be.type_size_table.at(ty->tyIdx.GetIdx());
   // Rule B.3.
@@ -50,7 +92,7 @@ static int32 ClassifyAggregate(BECommon &be, MIRType *ty, AArch64_ArgumentClass 
   for (i = 0; i < sizeoftyInDwords; i++) {
     classes[i] = kAArch64NoClass;
   }
-  if (ty->typeKind != kTypeStruct && ty->typeKind != kTypeArray) {
+  if (ty->typeKind != kTypeStruct && ty->typeKind != kTypeUnion && ty->typeKind != kTypeArray) {
     // scalar type
     switch (ty->GetPrimType()) {
       case PTY_u1:
@@ -80,6 +122,49 @@ static int32 ClassifyAggregate(BECommon &be, MIRType *ty, AArch64_ArgumentClass 
     // should not reach to this point
     return 0;
   } else {
+    // If small struct is composed of all float or all double, cannot mix with each
+    // other type including the float or double, then the fp fields are passed in
+    // fp param registers exclusively.  However, it is all or nothing, so if there
+    // are not enough fp registers to satisfy the demand, then it will be passed in
+    // memory. Type float, 4 bytes, is the smallest type supported.
+    if (CGOptions::doStructFpInInt) {
+    if (ty->typeKind == kTypeStruct) {
+      MIRStructType *sty = static_cast<MIRStructType *>(ty);
+      FieldVector fields = sty->fields;
+      bool isF32 = false;
+      bool isF64 = false;
+      uint32 numregs = 0;
+      for (uint32 fcnt = 0; fcnt < fields.size(); ++fcnt) {
+        TyIdx fieldtyidx = fields[fcnt].second.first;
+        MIRType *fieldty = GlobalTables::GetTypeTable().GetTypeFromTyIdx(fieldtyidx);
+        PrimType ptype = TraverseStructFieldsForFp(fieldty, numregs);
+        if (ptype == PTY_f32) {
+          if (isF64) {
+            isF32 = isF64 = false;
+            break;
+          }
+          isF32 = true;
+        } else if (ptype == PTY_f64) {
+          if (isF32) {
+            isF32 = isF64 = false;
+            break;
+          }
+          isF64 = true;
+        } else {
+          isF32 = isF64 = false;
+          break;
+        }
+      }
+      if (isF32 || isF64) {
+        for (uint32 i = 0; i < fields.size(); ++i) {
+          classes[i] = kAArch64FloatClass;
+        }
+        fpSize = isF32 ? 4 : 8;
+        return numregs;
+      }
+    }
+    }
+
     classes[0] = kAArch64IntegerClass;
     if (sizeoftyInDwords == 2) {
       classes[1] = kAArch64IntegerClass;
@@ -95,12 +180,51 @@ static int32 ClassifyAggregate(BECommon &be, MIRType *ty, AArch64_ArgumentClass 
 // LocateNextParm should be called with each parameter in the parameter list
 // starting from the beginning, one call per parameter in sequence; it returns
 // the information on how each parameter is passed in ploc
-int32 ParmLocator::LocateNextParm(MIRType *ty, PLocInfo &ploc) {
+int32 ParmLocator::LocateNextParm(MIRType *ty, PLocInfo &ploc, bool isFirst) {
+  InitPlocInfo(ploc);
+  if (isFirst) {
+    MIRFunction *func = _be.mirModule.CurFunction();
+    auto funcIt = _be.funcReturnType.find(func);
+    if (funcIt != _be.funcReturnType.end()) {
+      TyIdx retidx = funcIt->second;
+      uint32 retsz = _be.type_size_table[retidx.GetIdx()];
+      if (retsz == 0) {
+        // For return struct size 0 there is no return value.
+        return 0;
+      } else if (retsz <= 16) {
+        // For return struct size less or equal to 16 bytes, the values
+        // are returned in register pairs.
+        AArch64_ArgumentClass classes[4]; // Max of four floats.
+        uint32 fpsize;
+        MIRType *retty = GlobalTables::GetTypeTable().GetTypeFromTyIdx(retidx);
+        int32 numregs = ClassifyAggregate(_be, retty, classes, sizeof(classes), fpsize);
+        if (classes[0] == kAArch64FloatClass) {
+          CHECK_FATAL(numregs <= 4, "LocateNextParm: illegal number of regs");
+          AllocateNSIMDFPRegisters(ploc, numregs);
+          ploc.numFpPureRegs = numregs;
+          ploc.fpSize = fpsize;
+          return 0;
+        } else {
+          CHECK_FATAL(numregs <= 2, "LocateNextParm: illegal number of regs");
+          if (numregs == 1) {
+            ploc.reg0 = AllocateGPRegister();
+          } else {
+            AllocateTwoGPRegisters(ploc);
+          }
+          return 0;
+        }
+      } else {
+        // For return struct size > 16 bytes the pointer returns in x8.
+        ploc.reg0 = R8;
+        return SIZEOFPTR;
+      }
+    }
+  }
   int typesize = _be.type_size_table.at(ty->tyIdx.GetIdx());
+  if (typesize == 0) {
+    return 0;
+  }
   int typealign = _be.type_align_table[ty->tyIdx.GetIdx()];
-  ploc.reg0 = kRinvalid;
-  ploc.reg1 = kRinvalid;
-  ploc.memoffset = NSAA;
   // Rule C.12 states that we do round NSAA up before we use its value
   // according to the alignment requirement of the argument being processed.
   // We do the rounding up at the end of LocateNextParm(),
@@ -166,10 +290,10 @@ int32 ParmLocator::LocateNextParm(MIRType *ty, PLocInfo &ploc) {
        try allocate two consecutive registers at once.
      */
     case PTY_agg: {
-      // In AArch64, integer-float or float-integer
-      // argument passing is not allowed. All should go through
-      // integer-integer.
-      AArch64_ArgumentClass classes[2];
+      // In AArch64, all should go through integer-integer, except in the case
+      // where a struct is homogeneous composed of one of the fp types.
+      // Then it can be passed through float-float.
+      AArch64_ArgumentClass classes[4]; // Max of four floats.
       ploc.memsize = typesize;
       if (typesize > 16) {
         aggCopySize = RoundUp(typesize, SIZEOFPTR);
@@ -181,8 +305,15 @@ int32 ParmLocator::LocateNextParm(MIRType *ty, PLocInfo &ploc) {
         RoundNGRNUpToNextEven();
       }
 
-      int32 numregs = ClassifyAggregate(_be, ty, classes, sizeof(classes));
-      if (numregs == 1) {  // passing in registers
+      uint32 fpsize;
+      int32 numregs = ClassifyAggregate(_be, ty, classes, sizeof(classes), fpsize);
+      if (classes[0] == kAArch64FloatClass) {
+        CHECK_FATAL(numregs <= 4, "LocateNextParm: illegal number of regs");
+        typesize = 8;
+        AllocateNSIMDFPRegisters(ploc, numregs);
+        ploc.numFpPureRegs = numregs;
+        ploc.fpSize = fpsize;
+      } else if (numregs == 1) {  // passing in registers
         typesize = 8;
         if (classes[0] == kAArch64FloatClass) {
           CHECK_FATAL(0, "PTY_agg: param passing in FP reg not allowed.");
@@ -323,9 +454,30 @@ ReturnMechanism::ReturnMechanism(MIRType *retty, BECommon &be)
         SetupToReturnThroughMemory();
         return;
       }
-      AArch64_ArgumentClass classes[2];
-      regcount = ClassifyAggregate(be, retty, classes, sizeof(classes));
-      if (regcount == 0) {
+      uint32 fpsize;
+      AArch64_ArgumentClass classes[4];
+      regcount = ClassifyAggregate(be, retty, classes, sizeof(classes), fpsize);
+      if (classes[0] == kAArch64FloatClass) {
+        switch (regcount) {
+        case 4:
+          reg3 = AArch64Abi::float_return_regs[3];
+        case 3:
+          reg2 = AArch64Abi::float_return_regs[2];
+        case 2:
+          reg1 = AArch64Abi::float_return_regs[1];
+        case 1:
+          reg0 = AArch64Abi::float_return_regs[0];
+          break;
+        default:
+          CHECK_FATAL(0, "ReturnMechanism: unsupported");
+        }
+        if (fpsize == 4) {
+          ptype0 = ptype1 = PTY_f32;
+        } else {
+          ptype0 = ptype1 = PTY_f64;
+        }
+        return;
+      } else if (regcount == 0) {
         SetupToReturnThroughMemory();
         return;
       } else {

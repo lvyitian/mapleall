@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #include "cg_func.h"
@@ -24,7 +24,6 @@
 #include "aarch64_insn.h"
 #endif
 #include "mir_builder.h"
-#include "debug_info.h"
 #include "name_mangler.h"
 #include "cg_cfg.h"
 #include "cg_assert.h"
@@ -38,7 +37,9 @@ namespace maplebe {
 using namespace maple;
 using namespace std;
 
+#define CLANG  (mirModule.IsCModule())
 #define JAVALANG (mirModule.IsJavaModule())
+
 const int kFreqBase = 10000;
 CGFunc::CGFunc(MIRModule *mod, CG *c, MIRFunction *f, BECommon *bec, MemPool *mp, MapleAllocator *mallocator)
   : cg(c),
@@ -85,10 +86,9 @@ CGFunc::CGFunc(MIRModule *mod, CG *c, MIRFunction *f, BECommon *bec, MemPool *mp
     isAggParamInReg(false),
     isAfterRegAlloc(false),
     needSplit(false),
+    hasTakenLabel(false),
+    hasAlloca(false),
     frequency(0),
-    dbginfo(nullptr),
-    dbg_callframe_locations(mallocator->Adapter()),
-    dbg_callframe_offset(0),
     rd(nullptr),
     sbb(nullptr) {
   mirModule.SetCurFunction(func);
@@ -126,6 +126,12 @@ CGFunc::CGFunc(MIRModule *mod, CG *c, MIRFunction *f, BECommon *bec, MemPool *mp
       }
     }
   }
+
+  if (func->symTab) {
+    lsymSize = func->symTab->GetSymbolTableSize();
+  } else {
+    lsymSize = 0;
+  }
 }
 
 CGFunc::~CGFunc() {
@@ -149,12 +155,6 @@ void CGFunc::CreateStartEndLabel() {
   end_label = mirbuilder->CreateStmtLabel(endLblidx);
   func->body->InsertLast(end_label);
   CG_ASSERT(func->body->GetLast() == end_label, "");
-  if (cg->cgopt_.WithDwarf()) {
-    DebugInfo *di = mirModule.dbgInfo;
-    DBGDie *fdie = di->GetDie(func);
-    fdie->SetAttr(DW_AT_low_pc, startLblidx);
-    fdie->SetAttr(DW_AT_high_pc, endLblidx);
-  }
 }
 
 void CGFunc::HandleLabel(LabelNode *stmt) {
@@ -165,32 +165,6 @@ void CGFunc::HandleLabel(LabelNode *stmt) {
   CG_ASSERT(newbb, "");
   lab2bbmap[newbb->labidx] = newbb;
   curbb = newbb;
-
-  if (cg->cgopt_.WithDwarf()) {
-    if (lbnode->labelIdx < first_cggen_labelidx) {
-      DebugInfo *di = mirModule.dbgInfo;
-      GStrIdx gStrIdx = func->GetLabelStringIndex(lbnode->labelIdx);
-      DBGDie *lbldie = di->GetLocalDie(func, gStrIdx);
-      if (lbldie) {
-        for (auto a : lbldie->attrvec_)
-          if (a->dwattr_ == DW_AT_name) {
-            CG_ASSERT(a->val_.id == gStrIdx.GetIdx(), "");
-          }
-        cg->AddLabelDieToLabelIdxMapping(lbldie, lbnode->labelIdx);
-      }
-#if DEBUG
-      else if (!CGOptions::quiet) {
-        LogInfo::MapleLogger() << "Warning: label idx = " << lbnode->labelIdx
-             << " seems added before CodeGen starts but after parsing is done" << endl;
-      }
-#endif
-    }
-#if DEBUG
-    else if (!CGOptions::quiet) {
-      LogInfo::MapleLogger() << "label idx = " << lbnode->labelIdx << " ; CG Gen, skip it" << endl;
-    }
-#endif
-  }
 }
 
 void CGFunc::HandleGoto(GotoNode *stmt) {
@@ -206,6 +180,20 @@ void CGFunc::HandleGoto(GotoNode *stmt) {
   if (gtnode->GetNext() && gtnode->GetNext()->op != OP_label) {
     CG_ASSERT(curbb->prev->laststmt == stmt, "");
   }
+}
+
+void CGFunc::HandleIgoto(UnaryStmtNode *stmt) {
+#if TARGARK
+  return;
+#else
+  Operand *targetOpnd = HandleExpr(stmt, stmt->uOpnd);
+  targetOpnd = SelectIgoto(targetOpnd);
+  curbb->SetKind(BB::kBBIgoto);
+#if TARGAARCH64
+  curbb->AppendInsn(cg->BuildInstruction<AArch64Insn>(MOP_xbr, targetOpnd));
+#endif
+  curbb = StartNewBB(stmt);
+#endif
 }
 
 void CGFunc::HandleCondbr(CondGotoNode *stmt) {
@@ -291,11 +279,13 @@ void CGFunc::HandleCondbr(CondGotoNode *stmt) {
       }
       bool isfloat = IsPrimitiveFloat(operandType);
       CG_ASSERT(isfloat, "incorrect operand types");
-      SelectAArch64FPCmpQuiet(opnd0, opnd1, GetPrimTypeBitSize(operandType));
+      SelectFPCmpQuiet(opnd0, opnd1, GetPrimTypeBitSize(operandType));
       Operand *rflag = GetOrCreateRflag();
       LabelIdx labelIdx = stmt->offset;
       LabelOperand *targetopnd = GetOrCreateLabelOperand(labelIdx);
+#if TARGAARCH64
       curbb->AppendInsn(cg->BuildInstruction<AArch64Insn>(MOP_blo, rflag, targetopnd));
+#endif
       curbb = StartNewBB(stmt);
       return;
     }
@@ -410,6 +400,15 @@ void CGFunc::HandleReturn(NaryStmtNode *retnode) {
   if (retnode->NumOpnds() != 0) {
     opnd = HandleExpr(retnode, retnode->Opnd(0));
   }
+#if !TARGARK
+  if (needSplit) {
+    // Return might contain op that convers to a call
+    BB *oldBB = curbb;
+    curbb = StartNewBB(retnode);
+    SplitCallBB(oldBB);
+    needSplit = false;
+  }
+#endif
   SelectReturn(retnode, opnd);
   curbb->SetKind(BB::kBBReturn);
   curbb = StartNewBB(retnode);
@@ -427,8 +426,8 @@ Operand *CGFunc::HandleDread(BaseNode *parent, AddrofNode *dreadnode) {
 }
 
 Operand *CGFunc::HandleRegread(BaseNode *parent, RegreadNode *regreadnode) {
-  if (regreadnode->regIdx == -kSregRetval0) {
-    return GetTargetRetOperand(regreadnode->primType);
+  if ((regreadnode->regIdx == -kSregRetval0) || (regreadnode->regIdx == -kSregRetval1)) {
+    return GetTargetRetOperand(regreadnode->primType, -(regreadnode->regIdx));
   }
   return SelectRegread(parent, regreadnode);
 }
@@ -441,6 +440,11 @@ Operand *CGFunc::HandleAddrof(BaseNode *parent, AddrofNode *addrofnode) {
 Operand *CGFunc::HandleAddroffunc(BaseNode *parent, AddroffuncNode *expr) {
   CG_ASSERT(expr, "expect AddroffuncNode");
   return SelectAddroffunc(expr);
+}
+
+Operand *CGFunc::HandleAddroflabel(BaseNode *parent, AddroflabelNode *expr) {
+  CG_ASSERT(expr, "expect AddroflabelNode");
+  return SelectAddroflabel(expr);
 }
 
 Operand *CGFunc::HandleIread(BaseNode *parent, IreadNode *ireadnode) {
@@ -526,6 +530,9 @@ Operand *CGFunc::HandleExpr(BaseNode *parent, BaseNode *expr) {
     case OP_addroffunc:
       result = HandleAddroffunc(parent, static_cast<AddroffuncNode *>(expr));
       break;
+    case OP_addroflabel:
+      result = HandleAddroflabel(parent, static_cast<AddroflabelNode *>(expr));
+      break;
     case OP_iread:
       result = HandleIread(parent, static_cast<IreadNode *>(expr));
       break;
@@ -597,6 +604,9 @@ Operand *CGFunc::HandleExpr(BaseNode *parent, BaseNode *expr) {
       break;
     case OP_floor:
       result = SelectFloor(static_cast<TypeCvtNode *>(expr), HandleExpr(expr, expr->Opnd(0)));
+      if (CLANG) {
+        needSplit = true;
+      }
       break;
     case OP_retype:
       result = SelectRetype(static_cast<TypeCvtNode *>(expr), HandleExpr(expr, expr->Opnd(0)));
@@ -670,6 +680,9 @@ void CGFunc::GeneratePrologEpilog() {
   } else {
     hasProEpilogue = true;
   }
+  if (hasAlloca) {
+    hasProEpilogue = true;
+  }
 
   if (hasProEpilogue) {
     Genstackguard(firstbb);
@@ -734,6 +747,12 @@ void CGFunc::GenerateCfiPrologEpilog() {
       cg->BuildInstruction<cfi::CfiInsn>(cfi::OP_CFI_personality_symbol, CreateCfiImmOperand(EHFunc::kTypeEncoding, 8),
                                          CreateCfiStrOperand("DW.ref.__mpl_personality_v0"));
     ipoint = firstbb->InsertInsnAfter(ipoint, personality);
+  } else if (mirModule.srcLang == kSrcLangCPlusPlus && ehfunc && ehfunc->NeedFullLSDA()) {
+    Insn *personality =
+      cg->BuildInstruction<cfi::CfiInsn>(cfi::OP_CFI_personality_symbol, CreateCfiImmOperand(EHFunc::kTypeEncoding, 8),
+                                         CreateCfiStrOperand("DW.ref.__gxx_personality_v0"));
+    ipoint = firstbb->InsertInsnAfter(ipoint, personality);
+    GenerateCfiForLSDA(firstbb, ipoint);
   }
   // epilog
   if (cg->GenerateCfiDirectives()) {
@@ -745,11 +764,7 @@ Insn *CGFunc::InsertCFIDefCfaOffset(int &cfiOffset /*in-out*/, Insn *insertAfter
   cfiOffset = AddtoOffsetFromCFA(cfiOffset);
   Insn *cfiInsn = cg->BuildInstruction<cfi::CfiInsn>(cfi::OP_CFI_def_cfa_offset, CreateCfiImmOperand(cfiOffset, 64));
   Insn *newIpoint = curbb->InsertInsnAfter(insertAfter, cfiInsn);
-  if (dbg_callframe_offset == 0) {
-    dbg_callframe_offset = cfiOffset;
-  } else {
-    CG_ASSERT(0, "InsertCFIDefCfaOffset() should be called only once?");
-  }
+  CG_ASSERT(0, "InsertCFIDefCfaOffset() should be called only once?");
   return newIpoint;
 }
 #endif
@@ -943,35 +958,10 @@ void CGFunc::HandleFunction(void) {
   bool isJavaCatchCall = false;
   Insn *tempinsn = nullptr;
 
+  cout << "===============================================\n";
   for (; stmt; stmt = stmt->GetNext()) {
     needSplit = false;
-    // insert Insn for .loc before cg for the stmt
-    //stmt->Dump(func->module,0);
-    if (cg->cgopt_.WithLoc() && stmt->op != OP_label && stmt->op != OP_comment) {
-      // if original src file location info is availiable for this stmt,
-      // use it and skip mpl file location info for this stmt
-      uint32 newsrcloc = cg->cgopt_.WithSrc() ? stmt->srcPosition.Linenum() : 0;
-      if (newsrcloc != 0 && newsrcloc != lastsrcloc) {
-        // .loc for original src file
-        uint32 fileid = stmt->srcPosition.Filenum();
-        Operand *o0 = CreateDbgImmOperand(fileid);
-        Operand *o1 = CreateDbgImmOperand(newsrcloc);
-        Insn *loc = cg->BuildInstruction<mpldbg::DbgInsn>(mpldbg::OP_DBG_loc, o0, o1);
-        curbb->AppendInsn(loc);
-        lastsrcloc = newsrcloc;
-      } else {
-        // .loc for mpl file
-        uint32 newmplloc = cg->cgopt_.WithMpl() ? stmt->srcPosition.MplLinenum() : 0;
-        if (newmplloc != 0 && newmplloc != lastmplloc) {
-          uint32 fileid = 1;
-          Operand *o0 = CreateDbgImmOperand(fileid);
-          Operand *o1 = CreateDbgImmOperand(newmplloc);
-          Insn *loc = cg->BuildInstruction<mpldbg::DbgInsn>(mpldbg::OP_DBG_loc, o0, o1);
-          curbb->AppendInsn(loc);
-          lastmplloc = newmplloc;
-        }
-      }
-    }
+    stmt->Dump(func->module,0);
     isVolLoad = false;
     opcode = stmt->op;
     StmtNode *next = stmt->GetRealNext();
@@ -1079,6 +1069,9 @@ void CGFunc::HandleFunction(void) {
         CG_ASSERT(stmt->GetNext()->op == OP_call, "The next statement of OP_javacatch should be OP_call.");
         isJavaCatchCall = true;
         break;
+      case OP_cppcatch:
+        isJavaCatchCall = true;
+        break;
       case OP_try:
       case OP_javatry:
       case OP_cpptry:
@@ -1093,6 +1086,9 @@ void CGFunc::HandleFunction(void) {
         break;
       case OP_assertnonnull:
         HandleAssertnull(static_cast<UnaryStmtNode *>(stmt));
+        break;
+      case OP_igoto:
+        HandleIgoto(static_cast<UnaryStmtNode *>(stmt));
         break;
       default:
         CG_ASSERT(false, "NYI");
@@ -1202,12 +1198,12 @@ void CGFunc::HandleFunction(void) {
       }
     }
   }
-  //MarkCatchBBs();
   if (mirModule.IsJavaModule()) {
     MarkCatchBBs();
     MarkCleanupEntryBB();
   }
   DetermineReturnTypeofCall();
+  theCFG->MarkLabelTakenBB();
   theCFG->UnreachCodeAnalysis();
 }
 
@@ -1348,9 +1344,6 @@ AnalysisResult *CgDoOffAdjFPLR::Run(CGFunc *cgfunc, CgFuncResultMgr *m) {
 }
 
 AnalysisResult *CgFixCFLocOsft::Run(CGFunc *cgfunc, CgFuncResultMgr *m) {
-  if (cgfunc->cg->cgopt_.WithDwarf()) {
-    cgfunc->DBGFixCallFrameLocationOffsets();
-  }
   return nullptr;
 }
 

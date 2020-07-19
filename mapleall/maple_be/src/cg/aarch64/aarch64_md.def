@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 // MOP_undef,
@@ -759,17 +759,23 @@
 
 // MOP_clinit
 // will be emit to four instructions in a row:
-// adrp  xd, :got:label
-//  ldr xd, [xd,#:got_lo12:label]
+// adrp  xd, :got:__classinfo__Ljava_2Futil_2Fconcurrent_2Fatomic_2FAtomicInteger_3B
+//  ldr xd, [xd,#:got_lo12:__classinfo__Ljava_2Futil_2Fconcurrent_2Fatomic_2FAtomicInteger_3B]
 //  ldr xd, [xd,#112]
 //   ldr wzr, [xd]
 {MOP_clinit, {MOPD_Reg64ID,MOPD_Literal,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISATOMIC|CANTHROW,kLtLoad1,"intrinsic_clinit","0,1", 1, 1},
 
 // will be emit to two instructions in a row:
-//  adrp    xd, label
-//  ldr     xd, [xd, #:lo12:label]
+//  adrp    xd, _PTR__cinf_Ljava_2Flang_2FSystem_3B
+//  ldr     xd, [xd, #:lo12:_PTR__cinf_Ljava_2Flang_2FSystem_3B]
 //MOP_adrp_ldr
 {MOP_adrp_ldr, {MOPD_Reg64ID, MOPD_Literal,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISATOMIC|CANTHROW,kLtLoad1,"intrinsic_adrpldr","0,1", 1, 1},
+
+// will be emit to two instructions in a row:
+//  adrp    xd, label
+//  add     xd, xd, #:lo12:label
+//MOP_adrp_label
+{MOP_adrp_label, {MOPD_Reg64ID,MOPD_Imm64,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,kLtAlu,"intrinsic_adrplabel","0,1", 1, 1},
 
 //  ldr x17, [xs,#112]
 //   ldr wzr, [x17]

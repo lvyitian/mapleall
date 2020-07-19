@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #include "ssa_epre.h"
@@ -32,6 +32,23 @@ void SSAEPre::GenerateSaveLhsRealocc(MeRealOcc *realocc, ScalarMeExpr *regorvar)
   AssignMeStmt *rass = nullptr;
   if (!work_cand->needlocalrefvar || placementrc_on) {
     CHECK_FATAL(regorvar->meOp == kMeOpReg, "GenerateSaveLhsRealocc: EPRE temp must b e preg here");
+    PrimType lhsPrimType = thelhs->GetType()->primType;
+    if (GetPrimTypeSize(savedRhs->primType) > GetPrimTypeSize(lhsPrimType)) {
+      // insert integer truncation to the rhs
+      if (GetPrimTypeSize(lhsPrimType) >= 4) {
+        savedRhs = irMap->CreateMeExprTypeCvt(lhsPrimType, savedRhs->primType, savedRhs);
+      } else {
+        Opcode extOp = IsSignedInteger(lhsPrimType) ? OP_sext : OP_zext;
+        PrimType newPrimType = PTY_u32;
+        if (IsSignedInteger(lhsPrimType)) {
+          newPrimType = PTY_i32;
+        }
+        OpMeExpr opmeexpr(-1, extOp, newPrimType, 1);
+        opmeexpr.bitsSize = GetPrimTypeSize(lhsPrimType) * 8;
+        opmeexpr.SetOpnd(savedRhs, 0);
+        savedRhs = irMap->HashMeExpr(&opmeexpr);
+      }
+    }
     // change original iassign to regassign;
     // use placement new to modify in place, because other occ nodes are pointing
     // to this statement in order to get to the rhs expression;
@@ -363,6 +380,7 @@ void SSAEPre::BuildWorkListExpr(MeStmt *mestmt, int32 seqstmt, MeExpr *meexpr, b
     case kMeOpReg:
     case kMeOpAddrof:
     case kMeOpAddroffunc:
+    case kMeOpAddroflabel:
     case kMeOpGcmalloc:
     case kMeOpConst:
     case kMeOpConststr:

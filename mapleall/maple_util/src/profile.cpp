@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #include "profile.h"
@@ -51,7 +51,7 @@ std::string Profile::GetProfileNameByType(uint8_t type) const {
   return "";
 }
 
-bool Profile::DeCompress(const std::string &path, const std::string &javaName) {
+bool Profile::DeCompress(const std::string &path, const std::string &name) {
   bool res = true;
   std::ifstream in(path, std::ios::binary);
   if (!in) {
@@ -126,10 +126,10 @@ bool Profile::DeCompress(const std::string &path, const std::string &javaName) {
         MapleFileProf<FunctionItem> *funcProf =
             reinterpret_cast<MapleFileProf<FunctionItem> *>(buf + profileData->profileDataOff + offset);
         if (debug) {
-          std::cout << " function profile java "
+          std::cout << " function profile "
                     << ":" << strMap.at(funcProf->idx) << ":" << funcProf->num << "\n";
         }
-        if (javaName.find(strMap.at(funcProf->idx)) != std::string::npos) {
+        if (name.find(strMap.at(funcProf->idx)) != std::string::npos) {
           for (item = 0; item < funcProf->num; item++) {
             FunctionItem *funcItem = &(funcProf->items[item]);
             std::string funcName = strMap.at(funcItem->classIdx) + NameMangler::kNameSplitterStr + strMap.at(funcItem->methodIdx) + NameMangler::kNameSplitterStr +
@@ -143,11 +143,15 @@ bool Profile::DeCompress(const std::string &path, const std::string &javaName) {
         MapleFileProf<MetaItem> *metaProf =
             reinterpret_cast<MapleFileProf<MetaItem> *>(buf + profileData->profileDataOff + offset);
         if (debug) {
-          std::cout << " meta profile java "
+          std::cout << " meta profile "
                     << ":" << strMap.at(metaProf->idx) << ":" << metaProf->num << "\n";
         }
         std::unordered_set<std::string> &metaData = GetMeta(profileData->profileType);
-        if (javaName.find(strMap.at(metaProf->idx)) != std::string::npos) {
+#ifdef __OPENJDK__
+        if (strMap.at(metaProf->idx).compare("core-all") == 0) {
+#else
+        if (name.find(strMap.at(metaProf->idx)) != std::string::npos) {
+#endif
           for (item = 0; item < metaProf->num; item++) {
             MetaItem *metaItem = &(metaProf->items[item]);
             metaData.insert(strMap.at(metaItem->idx));

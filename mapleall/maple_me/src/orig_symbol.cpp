@@ -1,19 +1,26 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #include "orig_symbol.h"
+
+// following cannot be assumed final even though they are declared final
+static const std::set<std::string> kStaticFinalBlackList{
+  "Ljava_2Flang_2FSystem_3B_7Cout",
+  "Ljava_2Flang_2FSystem_3B_7Cerr",
+  "Ljava_2Flang_2FSystem_3B_7Cin",
+};
 
 namespace maple {
 
@@ -45,6 +52,7 @@ void OriginalSt::Dump() const {
     }
   } else if (ostType == kPregOst) {
     LogInfo::MapleLogger() << "%" << GetMIRPreg()->pregNo;
+    LogInfo::MapleLogger() << "<" << static_cast<int32>(indirectLev) << ">";
   }
 }
 
@@ -91,11 +99,12 @@ OriginalSt *OriginalStTable::CreateSymbolOriginalSt(MIRSymbol *mirst, PUIdx pidx
   if (fld == 0) {
     ost->tyIdx = mirst->tyIdx;
     const std::string &symname = mirst->GetName();
-    ost->isFinal = mirst->IsFinal();
+    ost->isFinal = (mirst->IsFinal() && kStaticFinalBlackList.find(symname) == kStaticFinalBlackList.end()) ||
+                    mirst->IsLiteral() || mirst->IsLiteralPtr();
     ost->isPrivate = mirst->IsPrivate();
   } else {
-    MIRStructType *structty = dynamic_cast<MIRStructType *>(GlobalTables::GetTypeTable().GetTypeFromTyIdx(mirst->tyIdx));
-    CHECK_FATAL(structty, "CreateSymbolOriginalSt: non-zero fieldID for non-structure");
+    CHECK_FATAL(mirst->GetType()->HasFields(), "CreateSymbolOriginalSt: non-zero fieldID for non-structure");
+    MIRStructType *structty = mirst->GetType()->EmbeddedStructType();
     TyidxFieldAttrPair fldpair = structty->TraverseToField(fld).second;
     ost->tyIdx = fldpair.first;
     ost->isFinal = fldpair.second.GetAttr(FLDATTR_final) && !mirModule->CurFunction()->IsConstructor();

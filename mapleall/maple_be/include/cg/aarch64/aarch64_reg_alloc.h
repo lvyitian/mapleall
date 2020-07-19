@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #ifndef MAPLEBE_INCLUDE_CG_AARCH64REGALLOC_H_
@@ -33,6 +33,7 @@ class AArch64RegAllocator : public RegAllocator {
   MapleMap<uint32, AArch64reg_t> reg_map_;  // virtual-register-to-physical-register map
   MapleSet<uint8> live_reg_;                // a set of currently live physical registers
   MapleSet<Operand *> allocated_set_;       // already allocated
+  MapleMap<Operand *, uint32> regLiveness;
 
   AArch64reg_t atomic_store_result_reg;
 
@@ -47,6 +48,7 @@ class AArch64RegAllocator : public RegAllocator {
       reg_map_(std::less<uint32>(), mallocator->Adapter()),
       live_reg_(std::less<uint8>(), mallocator->Adapter()),
       allocated_set_(std::less<Operand *>(), mallocator->Adapter()),
+      regLiveness(std::less<Operand *>(), mallocator->Adapter()),
       atomic_store_result_reg(kRinvalid) {
     for (int i = 0; i != MAXREG; i++) {
       avail_reg_set_[i] = false;

@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #include "aarch64_peep.h"
@@ -513,7 +513,6 @@ void AArch64Peep::Peephole() {
           if (curSrcRegopnd->GetRegisterNumber() != prevSrcRegopnd->GetRegisterNumber()) {
             break;
           }
-          // LogInfo::MapleLogger() << GetName() << "\n";
           RegOperand *curDstRegopnd = static_cast<RegOperand *>(insn->opnds[0]);
           regno_t curDstReg = curDstRegopnd->GetRegisterNumber();
           // optimize case 1
@@ -1741,7 +1740,7 @@ void AArch64Peep::RemoveIncDecRef2Param() {
         continue;
       }
       FuncNameOperand *target = static_cast<FuncNameOperand *>(insnLast->opnds[0]);
-      if (target->GetName() != "MCC_IncDecRef_NaiveRCFast") {
+      if (target->GetName() != GetIntrinsicFuncName(INTRN_MCCIncDecRef)) {
         continue;
       }
       Insn *insnMov2 = insnLast->GetPreviousMachineInsn();
@@ -1825,7 +1824,7 @@ void AArch64Peep::ReplaceIncDecWithInc() {
         continue;
       }
       FuncNameOperand *target = static_cast<FuncNameOperand *>(insnLast->opnds[0]);
-      if (target->GetName() != "MCC_IncDecRef_NaiveRCFast") {
+      if (target->GetName() != GetIntrinsicFuncName(INTRN_MCCIncDecRef)) {
         continue;
       }
       Insn *insnMov = insnLast->GetPreviousMachineInsn();
@@ -1840,7 +1839,7 @@ void AArch64Peep::ReplaceIncDecWithInc() {
           !insnMov->opnds[1]->IsZeroRegister()) {
         continue;
       }
-      std::string funcName = "MCC_IncRef_NaiveRCFast";
+      std::string funcName = GetIntrinsicFuncName(INTRN_MCCIncRef);
       GStrIdx strIdx = GlobalTables::GetStrTable().GetStrIdxFromName(funcName);
       MIRSymbol *st = GlobalTables::GetGsymTable().GetSymbolFromStrIdx(strIdx, true);
       if (!st) {
@@ -1993,10 +1992,10 @@ bool AArch64Peep::IfOperandIsLiveAfterInsn(RegOperand *regOpnd, Insn *insn) {
   return false;
 }
 
-/* add     x0, x1, #:lo12:label
+/* add     x0, x1, #:lo12:Ljava_2Futil_2FLocale_241_3B_7C_24SwitchMap_24java_24util_24Locale_24Category
    ldr     x2, [x0]
    ==>
-   ldr     x2, [x1, #:lo12:label]
+   ldr     x2, [x1, #:lo12:Ljava_2Futil_2FLocale_241_3B_7C_24SwitchMap_24java_24util_24Locale_24Category]
  */
 void AArch64Peep::ComplexMemOperandOpt() {
   AArch64CGFunc *acgfunc = static_cast<AArch64CGFunc *>(cgfunc);
@@ -2112,8 +2111,14 @@ void AArch64Peep::ComplexMemOperandOptLSL() {
             continue;
           }
           BitShiftOperand *lsl = static_cast<BitShiftOperand *>(insn->GetOperand(3));
-          if ((memOpnd->GetSize() == 32 && (lsl->GetShiftAmount() != 0 && lsl->GetShiftAmount() != 2)) ||
-              (memOpnd->GetSize() == 64 && (lsl->GetShiftAmount() != 0 && lsl->GetShiftAmount() != 3))) {
+          uint32 shftsize = lsl->GetShiftAmount();
+          if ((memOpnd->GetSize() == 32 && (shftsize != 0 && shftsize != 2)) ||
+              (memOpnd->GetSize() == 64 && (shftsize != 0 && shftsize != 3))) {
+            continue;
+          }
+          uint32 destsize = nextInsn->GetOperand(0)->GetSize();
+          if ((destsize == 32 && (shftsize != 0 && shftsize != 2)) ||
+              (destsize == 64 && (shftsize != 0 && shftsize != 3))) {
             continue;
           }
 

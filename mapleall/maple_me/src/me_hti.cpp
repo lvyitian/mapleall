@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 
@@ -159,16 +159,16 @@ void MeTI::BuildUseFromExpr(MeExpr *expr, MeStmt *mestmt) {
 void MeTI::AnalyzeChiList(MapleMap<OStIdx, ChiMeNode *> chilist) {
   for (MapleMap<OStIdx, ChiMeNode *>::iterator it = chilist.begin(); it != chilist.end(); it++) {
     ChiMeNode *chinode = it->second;
-    VarMeExpr *var = chinode->rhs;
+    VarMeExpr *var = static_cast<VarMeExpr *>(chinode->rhs);
     if (infer_status[var->vstIdx] != kNoneedInfer) {
       infer_status[var->vstIdx] = kMustNotInfer;
     }
   }
 }
 
-void MeTI::AnalyzeMuList(MapleMap<OStIdx, VarMeExpr *> mulist) {
-  for (MapleMap<OStIdx, VarMeExpr *>::iterator it = mulist.begin(); it != mulist.end(); it++) {
-    VarMeExpr *var = it->second;
+void MeTI::AnalyzeMuList(MapleMap<OStIdx, ScalarMeExpr *> mulist) {
+  for (MapleMap<OStIdx, ScalarMeExpr *>::iterator it = mulist.begin(); it != mulist.end(); it++) {
+    ScalarMeExpr *var = it->second;
     if (infer_status[var->vstIdx] != kNoneedInfer) {
       infer_status[var->vstIdx] = kMustNotInfer;
     }
@@ -179,7 +179,7 @@ void MeTI::FindMuList(MeExpr *expr) {
   switch (expr->meOp) {
     case kMeOpIvar: {
       IvarMeExpr *ivar = static_cast<IvarMeExpr *>(expr);
-      VarMeExpr *var = ivar->mu;
+      ScalarMeExpr *var = ivar->mu;
       if (var != nullptr && var->vstIdx < infer_status.size() && infer_status[var->vstIdx] != kNoneedInfer) {
         infer_status[var->vstIdx] = kMustNotInfer;
       }
@@ -1283,8 +1283,8 @@ MeExpr *MeTI::RebuildIntrinop(MeExpr *meexpr) {
   return meexpr;
 }
 
-void MeTI::RebuildMuList(MapleMap<OStIdx, VarMeExpr *> &mulist) {
-  for (MapleMap<OStIdx, VarMeExpr *>::iterator it = mulist.begin(); it != mulist.end(); it++) {
+void MeTI::RebuildMuList(MapleMap<OStIdx, ScalarMeExpr *> &mulist) {
+  for (MapleMap<OStIdx, ScalarMeExpr *>::iterator it = mulist.begin(); it != mulist.end(); it++) {
     mulist[it->first] = static_cast<VarMeExpr *>(RebuildExpr(it->second));
   }
 }

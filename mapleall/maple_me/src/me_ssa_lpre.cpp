@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #include "me_ssa_lpre.h"
@@ -48,10 +48,26 @@ void MeSSALPre::GenerateSaveRealocc(MeRealOcc *realocc) {
       }
     CHECK_FATAL(i < func->mirFunc->formalDefVec.size(), "Cannot replace promoted formal");
   } else if (realocc->mestmt->op == OP_dassign || realocc->mestmt->op == OP_maydassign) {
-    VarMeExpr *thelhs = realocc->mestmt->GetVarLhs();
+    ScalarMeExpr *thelhs = realocc->mestmt->GetVarLhs();
     MeExpr *savedRhs = realocc->mestmt->GetRhs();
     CHECK_FATAL(thelhs != nullptr && savedRhs != nullptr, "null ptr check");
     CHECK_FATAL(realocc->mestmt->GetChiList() != nullptr, "null ptr check");
+    if (GetPrimTypeSize(savedRhs->primType) > GetPrimTypeSize(thelhs->primType)) {
+      // insert integer truncation to the rhs
+      if (GetPrimTypeSize(thelhs->primType) >= 4) {
+        savedRhs = irMap->CreateMeExprTypeCvt(thelhs->primType, savedRhs->primType, savedRhs);
+      } else {
+        Opcode extOp = IsSignedInteger(thelhs->primType) ? OP_sext : OP_zext;
+        PrimType newPrimType = PTY_u32;
+        if (IsSignedInteger(thelhs->primType)) {
+          newPrimType = PTY_i32;
+        }
+        OpMeExpr opmeexpr(-1, extOp, newPrimType, 1);
+        opmeexpr.bitsSize = GetPrimTypeSize(thelhs->primType) * 8;
+        opmeexpr.SetOpnd(savedRhs, 0);
+        savedRhs = irMap->HashMeExpr(&opmeexpr);
+      }
+    }
     realocc->mestmt->GetChiList()->clear();
     SrcPosition savedSrcpos = realocc->mestmt->srcPos;
     BB *savedBb = realocc->mestmt->bb;
@@ -173,7 +189,7 @@ void MeSSALPre::BuildEntryLhsOcc4Formals() {
   if (ost->fieldID != 0) {
     return;
   }
-  if (JAVALANG && assignedFormals.find(ost->index) != assignedFormals.end()) {
+  if (assignedFormals.find(ost->index) != assignedFormals.end()) {
     return;  // the formal's memory location has to be preserved
   }
   // if (ost->GetMIRSymbol()->GetName() == "_this")
@@ -193,13 +209,13 @@ void MeSSALPre::BuildWorkListLHSOcc(MeStmt *mestmt, int32 seqstmt) {
     return;
   }
   if (mestmt->op == OP_dassign || mestmt->op == OP_maydassign) {
-    VarMeExpr *lhs = mestmt->GetVarLhs();
+    ScalarMeExpr *lhs = mestmt->GetVarLhs();
     CHECK_FATAL(lhs != nullptr, "null ptr check");
     OriginalSt *ost = lhs->ost;
-    if (mirModule->IsCModule() && ost->fieldID != 0) {
+    if (mirModule->IsCModule()) {
       MIRType *ty = GlobalTables::GetTypeTable().GetTypeFromTyIdx(ost->tyIdx);
-      if (ty->typeKind == kTypeBitField) {
-        return;  // no advantage for bitfields
+      if (ty->typeKind == kTypeBitField || ty->GetSize() < 4) {
+        return;  // no advantage
       }
     }
     if (ost->isFormal) {
@@ -278,11 +294,17 @@ void MeSSALPre::BuildWorkListExpr(MeStmt *mestmt, int32 seqstmt, MeExpr *meexpr,
         break;
       }
       MIRSymbol *sym = ost->GetMIRSymbol();
-      if (sym->instrumented == 1 && !MeOption::placementrc) {
+      if (sym->instrumented == 1 && !func->placementRCOn) {
         // not doing because its SSA form is not complete
         break;
       }
+      if (sym->storageClass == kScFormal && sym->IsRefType()) {
+        break;
+      }
       if (meexpr->primType == PTY_agg) {
+        break;
+      }
+      if (sym->GetType()->typeKind == kTypeUnion) {
         break;
       }
       CreateRealOcc(mestmt, seqstmt, meexpr, false);
@@ -315,6 +337,7 @@ void MeSSALPre::BuildWorkListExpr(MeStmt *mestmt, int32 seqstmt, MeExpr *meexpr,
       }
       break;
     }
+    case kMeOpAddroflabel:
     default:
       break;
   }

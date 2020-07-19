@@ -1,22 +1,22 @@
 #
-# Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+# Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
 #
-# OpenArkCompiler is licensed under the Mulan PSL v1.
-# You can use this software according to the terms and conditions of the Mulan PSL v1.
-# You may obtain a copy of Mulan PSL v1 at:
+# Licensed under the Mulan Permissive Software License v2.
+# You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+# You may obtain a copy of MulanPSL - 2.0 at:
 #
-#     http://license.coscl.org.cn/MulanPSL
+#     https://opensource.org/licenses/MulanPSL-2.0
 #
 # THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
 # EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
 # FIT FOR A PARTICULAR PURPOSE.
-# See the Mulan PSL v1 for more details.
+# See the MulanPSL - 2.0 for more details.
 #
-open(my $aarch64isa_def_h, '<',  "aarch64_isa.def.in") or die "can't open aarch64_isa.def.in";
-open(my $aarch64isa_def, '>',  "aarch64_isa.def") or die "can't open aarch64_isa.def";
-print $aarch64isa_def "\/\/Do not modify this file manually\n";
+open(my $aarch64_isa.def_h, '<',  "aarch64isa.def.in") or die "can't open aarch64isa.def.in";
+open(my $aarch64_isa.def, '>',  "aarch64isa.def") or die "can't open aarch64isa.def";
+print $aarch64_isa.def "\/\/Do not modify this file manually\n";
 my $insn_count=1;
-while(my $line = <$aarch64isa_def_h>) {
+while(my $line = <$aarch64_isa.def_h>) {
   if ($line =~ /\/\//){
     next;
   }
@@ -27,8 +27,8 @@ while(my $line = <$aarch64isa_def_h>) {
   }else {
     next;
   }
-  print $aarch64isa_def $line;
+  print $aarch64_isa.def $line;
 }
-print $aarch64isa_def "\#define kMopLast ".$insn_count."\n";
-close $aarch64isa_def;
-close $aarch64isa_def_h;
+print $aarch64_isa.def "\#define kMopLast ".$insn_count."\n";
+close $aarch64_isa.def;
+close $aarch64_isa.def_h;

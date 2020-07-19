@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #include "cg_cfg.h"
@@ -23,6 +23,8 @@
 #include "securec.h"
 
 namespace maplebe {
+
+#define CLANG (cgfunc->func->module->IsCModule())
 
 void CGCFG::BuildCFG() {
   // Second Pass:
@@ -94,6 +96,15 @@ void CGCFG::BuildCFG() {
         curbb->succs.push_back(gotobb);
         CHECK_FATAL(gotobb, "gotobb is null");
         gotobb->preds.push_back(curbb);
+        break;
+      }
+      case BB::kBBIgoto: {
+        for (auto lidx : cgfunc->func->labelTab->addrTakenLabels) {
+          BB *igotobb = lab2bbmap[lidx];
+          CHECK_FATAL(igotobb, "igotobb is null");
+          curbb->succs.push_back(igotobb);
+          igotobb->preds.push_back(curbb);
+        }
         break;
       }
       case BB::kBBRangegoto: {
@@ -384,7 +395,7 @@ void CGCFG::FindAndMarkUnreachable(CGFunc *cgfunc) {
     if (bb->firststmt == cgfunc->cleanup_label || InSwitchTable(bb->labidx, cgfunc) || isFirstBBInfunc ||
         isLastBBInfunc) {
       toBeAnalyzedBBs.push(bb);
-    } else {
+    } else if (bb->labelTaken == false) {
       bb->unreachable = true;
     }
     bb = bb->next;
@@ -440,11 +451,11 @@ void CGCFG::FlushUnReachableStatusAndRemoveRelations(BB *bb, CGFunc *cgfunc) {
       bool isLastBBInfunc = (it == cgfunc->lastbb);
       if (it->firststmt != cgfunc->cleanup_label &&
           (it->preds.empty() || (it->preds.size() == 1 && it->preds.front() == it)) && it->eh_preds.empty() &&
-          !isFirstBBInfunc && !isLastBBInfunc && !InSwitchTable(it->labidx, cgfunc)) {
+          !isFirstBBInfunc && !isLastBBInfunc && !InSwitchTable(it->labidx, cgfunc) && (bb->labelTaken == false)) {
         it->unreachable = true;
 
         /*
-         * Handle exception in aarch64storeloadopt.cpp CG_ASSERT(insn->defs[0], "Internal error.");
+         * Handle exception in aarch64_store_load_opt.cpp CG_ASSERT(insn->defs[0], "Internal error.");
          * suggested by William.
          */
         it->firstinsn = nullptr;
@@ -1333,11 +1344,29 @@ Insn *CGCFG::BuildConditionSelectionInsn(BB *testBB, BB *ifBB, BB *elseBB) {
   }
 }
 
+void CGCFG::MarkLabelTakenBB() {
+  if (!CLANG) {
+    return;
+  }
+  for (BB *bb = cgfunc->firstbb; bb != nullptr; bb = bb->next) {
+    if (cgfunc->func->labelTab->addrTakenLabels.find(bb->labidx) !=
+        cgfunc->func->labelTab->addrTakenLabels.end()) {
+      cgfunc->SetHasTakenLabel();
+      bb->labelTaken = true;
+    }
+  }
+}
+
 /*
  *analyse the CFG to find the BBs that are not reachable from function entries
  *and delete them
  */
 void CGCFG::UnreachCodeAnalysis() {
+  if (CLANG &&
+      (cgfunc->HasTakenLabel() ||
+      (cgfunc->ehfunc && cgfunc->ehfunc->lsda_header))) {
+    return;
+  }
   /**
    * Find all reachable BBs by dfs in cgfunc and mark their field<unreachable> false,
    * then all other bbs should be unreachable.
@@ -1357,7 +1386,9 @@ void CGCFG::UnreachCodeAnalysis() {
     } else {
       unreachBBs.insert(bb);
     }
-    bb->unreachable = true;
+    if (bb->labelTaken == false) {
+      bb->unreachable = true;
+    }
     bb = bb->next;
   }
 

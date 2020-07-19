@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #include "mpl_logging.h"
@@ -32,17 +32,48 @@ inline bool IsReadOnlyOst(OriginalSt *ost) {
   return ost->GetMIRSymbol()->HasAddrOfValues();
 }
 
-inline bool IsPotentialAddress(PrimType primType) {
-  return IsAddress(primType) || IsPrimitiveDynType(primType);
+inline bool IsPotentialAddress(PrimType primType, MIRModule *mirModule) {
+  return IsAddress(primType) || IsPrimitiveDynType(primType) ||
+         (primType == PTY_u64 && mirModule->IsCModule());
 }
 
-inline bool IsPotentialAddress(TyIdx tyIdx) {
+inline bool IsPotentialAddress(TyIdx tyIdx, MIRModule *mirModule) {
   PrimType primType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(tyIdx)->GetPrimType();
-  return IsPotentialAddress(primType);
+  return IsPotentialAddress(primType, mirModule);
+}
+
+// return true if this expression opcode can result in a valid address
+static bool OpCanFormAddress(Opcode op) {
+  switch (op) {
+  case OP_dread:
+  case OP_regread:
+  case OP_iread:
+  case OP_ireadoff:
+  case OP_ireadfpoff:
+  case OP_ireadpcoff:
+  case OP_addrof:
+  case OP_addroffunc:
+  case OP_addroflabel:
+  case OP_addroffpc:
+  case OP_iaddrof:
+  case OP_constval:
+  case OP_conststr:
+  case OP_conststr16:
+  case OP_alloca:
+  case OP_malloc:
+  case OP_add:
+  case OP_sub:
+  case OP_select:
+  case OP_array:
+  case OP_intrinsicop:
+    return true;
+  default: ;
+  }
+  return false;
 }
 
 inline bool IsNullOrDummySymbolOst(OriginalSt *ost) {
-  if ((ost == nullptr) || (ost && (ost->GetMIRSymbol()->GetName() == "__nads_dummysym__"))) {
+  if ((ost == nullptr) || (ost && ost->IsSymbol() && (ost->GetMIRSymbol()->GetName() == "__nads_dummysym__"))) {
     return true;
   }
   return false;
@@ -137,6 +168,11 @@ AliasElem *AliasClass::FindOrCreateAliasElem(OriginalSt *ost) {
           }
           aelem->nextLevNotAllDefsSeen = true;
         }
+      } else if (mirModule->IsCModule() &&
+                 (sym->storageClass == kScPstatic || sym->storageClass == kScFstatic)) {
+        globalsAffectedByCalls.insert(aelem->id);
+        aelem->notAllDefsSeen = true;
+        aelem->nextLevNotAllDefsSeen = true;
       }
     }
     if (aelem->ost->isFormal && ost->indirectLev != -1) {
@@ -188,6 +224,9 @@ AliasInfo AliasClass::CreateAliasElemsExpr(BaseNode *expr) {
         ainfo = CreateAliasElemsExpr(iread->uOpnd);
       }
       if (ainfo.ae == nullptr) {
+        if (mirModule->IsCModule()) {
+          ainfo.ae = FindOrCreateDummyNADSAe();
+        }
         return ainfo;
       }
       OriginalSt *newost =
@@ -242,6 +281,22 @@ AliasInfo AliasClass::CreateAliasElemsExpr(BaseNode *expr) {
       }
       return ainfo;
     }
+    case OP_select: {
+      CreateAliasElemsExpr(expr->Opnd(0));
+      AliasInfo ainfo = CreateAliasElemsExpr(expr->Opnd(1));
+      AliasInfo ainfo2 = CreateAliasElemsExpr(expr->Opnd(2));
+      if (!OpCanFormAddress(expr->Opnd(1)->op) || !OpCanFormAddress(expr->Opnd(2)->op)) {
+        break;
+      }
+      if (ainfo.ae == nullptr) {
+        return ainfo2;
+      }
+      if (ainfo2.ae == nullptr) {
+        return ainfo;
+      }
+      ApplyUnionForDassignCopy(ainfo.ae, ainfo2.ae, expr->Opnd(2));
+      return ainfo;
+    }
     case OP_intrinsicop: {
       IntrinsicopNode *intrn = static_cast<IntrinsicopNode *>(expr);
       if (intrn->intrinsic == INTRN_JAVA_MERGE && intrn->NumOpnds() == 1 && intrn->nOpnd[0]->op == OP_dread) {
@@ -270,7 +325,7 @@ void AliasClass::SetNotAllDefsSeenForMustDefs(const StmtNode *callas) {
 }
 
 void AliasClass::ApplyUnionForDassignCopy(const AliasElem *lhsAe, AliasElem *rhsAe, const BaseNode *rhs) {
-  if (!IsPotentialAddress(rhs->primType)) {
+  if (!IsPotentialAddress(rhs->primType, mirModule)) {
     return;
   }
   if (HasMallocOpnd(rhs)) {
@@ -292,7 +347,7 @@ void AliasClass::SetPtrOpndsNextLevNADS(uint start, uint end, MapleVector<BaseNo
   for (uint i = start; i < end; i++) {
     BaseNode *opnd = opnds[i];
     AliasInfo ainfo = CreateAliasElemsExpr(opnd);
-    if (IsPotentialAddress(opnd->primType) && ainfo.ae != nullptr) {
+    if (IsPotentialAddress(opnd->primType, mirModule) && ainfo.ae != nullptr) {
       if (opnd->op == OP_addrof && IsReadOnlyOst(ainfo.ae->ost)) {
         continue;
       }
@@ -338,6 +393,10 @@ void AliasClass::ApplyUnionForCopies(StmtNode *stmt) {
         lhsAinfo = CreateAliasElemsExpr(iass->addrExpr);
       }
       if (lhsAinfo.ae == nullptr) {
+        if (mirModule->IsCModule()) {
+          lhsAinfo.ae = FindOrCreateDummyNADSAe();
+          ApplyUnionForDassignCopy(lhsAinfo.ae, rhsAinfo.ae, iass->rhs);
+        }
         return;
       }
       OriginalSt *newost =
@@ -357,7 +416,7 @@ void AliasClass::ApplyUnionForCopies(StmtNode *stmt) {
     case OP_throw: {
       UnaryStmtNode *tstmt = static_cast<UnaryStmtNode *>(stmt);
       AliasInfo ainfo = CreateAliasElemsExpr(tstmt->uOpnd);
-      if (IsPotentialAddress(tstmt->uOpnd->primType) && ainfo.ae != nullptr) {
+      if (IsPotentialAddress(tstmt->uOpnd->primType, mirModule) && ainfo.ae != nullptr) {
         if (!(tstmt->uOpnd->op == OP_addrof && IsReadOnlyOst(ainfo.ae->ost))) {
           ainfo.ae->nextLevNotAllDefsSeen = true;
         }
@@ -366,6 +425,9 @@ void AliasClass::ApplyUnionForCopies(StmtNode *stmt) {
     }
     case OP_call:
     case OP_callassigned: {
+      for (int32 i = 0; i < stmt->NumOpnds(); i++) {
+        CreateAliasElemsExpr(stmt->Opnd(i));
+      }
       CallNode *call = static_cast<CallNode *>(stmt);
       CHECK(call->puIdx < GlobalTables::GetFunctionTable().funcTable.size(), "index out of range in AliasClass::ApplyUnionForCopies");
       SetPtrOpndsNextLevNADS(0, call->NumOpnds(), call->nOpnd);
@@ -376,6 +438,9 @@ void AliasClass::ApplyUnionForCopies(StmtNode *stmt) {
     }
     case OP_icall:
     case OP_icallassigned: {
+      for (int32 i = 0; i < stmt->NumOpnds(); i++) {
+        CreateAliasElemsExpr(stmt->Opnd(i));
+      }
       IcallNode *icall = static_cast<IcallNode *>(stmt);
       SetPtrOpndsNextLevNADS(1, icall->NumOpnds(), icall->nOpnd);
       if (stmt->op == OP_icallassigned) {
@@ -402,7 +467,7 @@ void AliasClass::ApplyUnionForCopies(StmtNode *stmt) {
         CallNode *call = static_cast<CallNode *>(stmt);
         for (int32 i = 1; i < call->NumOpnds(); i++) {
           AliasInfo ainfo = CreateAliasElemsExpr(call->nOpnd[i]);
-          if (IsPotentialAddress(call->nOpnd[i]->primType) && ainfo.ae != nullptr) {
+          if (IsPotentialAddress(call->nOpnd[i]->primType, mirModule) && ainfo.ae != nullptr) {
             if (call->nOpnd[i]->op == OP_addrof && IsReadOnlyOst(ainfo.ae->ost)) {
               continue;
             }
@@ -421,6 +486,9 @@ void AliasClass::ApplyUnionForCopies(StmtNode *stmt) {
     // Todo: needs to review and update intrinsic sideeffect description.
     case OP_intrinsiccall:
     case OP_intrinsiccallassigned: {
+      for (int32 i = 0; i < stmt->NumOpnds(); i++) {
+        CreateAliasElemsExpr(stmt->Opnd(i));
+      }
       IntrinsiccallNode *innode = static_cast<IntrinsiccallNode *>(stmt);
       if (innode->intrinsic == INTRN_JAVA_POLYMORPHIC_CALL) {
         SetPtrOpndsNextLevNADS(0, innode->NumOpnds(), innode->nOpnd);
@@ -586,7 +654,7 @@ AliasElem *AliasClass::FindOrCreateDummyNADSAe() {
   dummySym->isTmp = true;
   dummySym->wpofakeRet = true;
   dummySym->SetIsDeleted();
-  OriginalSt *dummyOst = ssaTab->originalStTable.CreateSymbolOriginalSt(dummySym, 0, 0);
+  OriginalSt *dummyOst = ssaTab->originalStTable.FindOrCreateSymbolOriginalSt(dummySym, 0, 0);
   ssaTab->versionStTable.CreateZeroVersionSt(dummyOst);
 
   if (osym2Elem.size() > dummyOst->index.idx && osym2Elem[dummyOst->index.idx] != nullptr) {
@@ -668,17 +736,22 @@ void AliasClass::UnionForNotAllDefsSeen() {
   }
 }
 
-// This is applicable only for C language.  For each level 0 ost, union all
-// fields within the same struct
+// This is applicable only for C language.  For each ost with field ID 0,
+// union all fields within the same struct
 void AliasClass::ApplyUnionForStorageOverlaps() {
   // iterate through all the alias elems
   for (AliasElem *ae : id2Elem) {
     OriginalSt *ost = ae->ost;
-    if (ost->indirectLev != 0 || ost->fieldID != 0) {
-      continue;
-    }
     OriginalSt *prevLevOst = ost->prevlevelnode;
     if (prevLevOst == nullptr) {
+      continue;
+    }
+    MIRType *prevLevType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(prevLevOst->tyIdx);
+    if (prevLevType->typeKind != kTypePointer) {
+      continue;
+    }
+    MIRType *prevLevPointedType = static_cast<MIRPtrType *>(prevLevType)->GetPointedType();
+    if (ost->fieldID != 0 && prevLevPointedType->typeKind != kTypeUnion) {
       continue;
     }
     for (OriginalSt *sameLevOst : prevLevOst->nextlevelnodes) {
@@ -987,7 +1060,7 @@ void AliasClass::InsertReturnOpndMayUse(StmtNode *stmt) {
     // insert mayuses for the return operand's next level
     BaseNode *retv = stmt->Opnd(0);
     AliasInfo aInfo = CreateAliasElemsExpr(retv);
-    if (IsPotentialAddress(retv->primType) && aInfo.ae != nullptr) {
+    if (IsPotentialAddress(retv->primType, mirModule) && aInfo.ae != nullptr) {
       if (retv->op == OP_addrof && IsReadOnlyOst(aInfo.ae->ost)) {
         return;
       }
@@ -1034,6 +1107,7 @@ void AliasClass::CollectMayDefForDassign(const StmtNode *stmt, std::set<Original
 
   OriginalSt *ostOfLhsAe = lhsAe->ost;
   MIRType *lhsAeType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(ostOfLhsAe->tyIdx);
+  MIRType *lhsSymType = ostOfLhsAe->symOrPreg.mirSt->GetType();
   for (uint elemId : *(lhsAe->classSet)) {
     if (elemId == lhsAe->id) {
       continue;
@@ -1045,7 +1119,8 @@ void AliasClass::CollectMayDefForDassign(const StmtNode *stmt, std::set<Original
       }
     } else {
       if (ostOfAliasAe->symOrPreg.mirSt == ostOfLhsAe->symOrPreg.mirSt &&
-          ostOfAliasAe->fieldID != ostOfLhsAe->fieldID) {
+          ostOfAliasAe->fieldID != ostOfLhsAe->fieldID &&
+          lhsSymType->typeKind != kTypeUnion) {
         MIRType *aliasAeType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(ostOfAliasAe->tyIdx);
         if (!lhsAeType->HasFields() && !aliasAeType->HasFields()) {
           continue;
@@ -1121,7 +1196,8 @@ void AliasClass::CollectMayDefForIassign(StmtNode *stmt, std::set<OriginalSt *> 
       }
     } else {
       if (ostOfAliasAe->symOrPreg.mirSt == ostOfLhsAe->symOrPreg.mirSt &&
-          ostOfAliasAe->fieldID != ostOfLhsAe->fieldID) {
+          ostOfAliasAe->fieldID != ostOfLhsAe->fieldID &&
+          ostOfAliasAe->fieldID != 0 && ostOfLhsAe->fieldID != 0) {
         MIRType *aliasAeType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(ostOfAliasAe->tyIdx);
         if (!lhsAeType->HasFields() && !aliasAeType->HasFields()) {
           continue;
@@ -1272,7 +1348,7 @@ void AliasClass::CollectMayUseForCallOpnd(StmtNode *stmt, std::set<OriginalSt *>
     BaseNode *expr = stmt->Opnd(i);
     InsertMayUseExpr(expr);
     AliasInfo aInfo = CreateAliasElemsExpr(expr);
-    if (!IsPotentialAddress(expr->primType) || aInfo.ae == nullptr) {
+    if (!IsPotentialAddress(expr->primType, mirModule) || aInfo.ae == nullptr) {
       continue;
     }
     if (aInfo.ae->nextLevNotAllDefsSeen && aInfo.ae->ost->indirectLev > 0) {
@@ -1359,16 +1435,20 @@ void AliasClass::InsertMayUseNodeExcludeFinalOst(std::set<OriginalSt *> &mayUseO
 // Four kinds of mayDefs and mayUses are inserted, which are caused by callee
 // opnds, not_all_def_seen_ae, globalsAffectedByCalls, and mustDefs.
 void AliasClass::InsertMayDefUseIntrncall(StmtNode *stmt, BBId bbid) {
-  // 1. insert mayUses caused by intrinsiccall opnds
-  for (int32 i = 0; i < stmt->NumOpnds(); i++) {
-    InsertMayUseExpr(stmt->Opnd(i));
-  }
-
   MayDefMayUsePart *theSSAPart = static_cast<MayDefMayUsePart *>(ssaTab->stmtsSSAPart.SsapartOf(stmt));
   IntrinsiccallNode *innode = static_cast<IntrinsiccallNode *>(stmt);
   IntrinDesc *intrindesc = &IntrinDesc::intrintable[innode->intrinsic];
 
   std::set<OriginalSt *> mayDefUseOsts;
+  // 1. insert mayUses caused by intrinsiccall opnds
+  if (!mirModule->IsCModule()) {
+    for (int32 i = 0; i < stmt->NumOpnds(); i++) {
+      InsertMayUseExpr(stmt->Opnd(i));
+    }
+  } else {
+    CollectMayUseForCallOpnd(stmt, mayDefUseOsts);
+  }
+
   // 2. collect mayDefs and mayUses caused by not_all_defs_seen_ae
   CollectMayUseFromNADS(mayDefUseOsts);
   // 3. collect mayDefs and mayUses caused by globalsAffectedByCalls

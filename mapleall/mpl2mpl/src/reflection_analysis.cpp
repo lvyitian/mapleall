@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #include "vtable_analysis.h"
@@ -20,6 +20,7 @@
 #include "mir_builder.h"
 #include "name_mangler.h"
 #include "itab_util.h"
+#include "name_mangler.h"
 #include <unordered_map>
 #include <algorithm>
 #include <functional>
@@ -40,20 +41,27 @@ namespace maple {
 #define TBD_VALUE (0xABCD)
 #define MAX_ANNOS_NUM (4000)
 
-#define JAVA_LANG_ANNOTATION_RETENTION_STR "Ljava_2Flang_2Fannotation_2FRetention_3B"
-#define JAVA_LANG_ENUM_STR "Ljava_2Flang_2FEnum_3B"
-#define REFLECTION_METHOD_PREFIX_STR "Ljava_2Flang_2Freflect_2FMethod_3B"
-#define REFLECTION_METHOD_241_PREFIX_STR "Ljava_2Flang_2Freflect_2FMethod_241_3B"
-#define REFLECTION_FIELD_PREFIX_STR "Ljava_2Flang_2Freflect_2FField_3B"
-#define REFLECTION_EXECUTABLE_PREFIX_STR "Ljava_2Flang_2Freflect_2FExecutable_3B"
-#define REFLECTION_CONSTRUCTOR_PREFIX_STR "Ljava_2Flang_2Freflect_2FConstructor_3B"
-#define REFLECTION_PROXY_PREFIX_STR "Ljava_2Flang_2Freflect_2FProxy_3B"
-#define REFLECTION_PROXY_241_PREFIX_STR "Ljava_2Flang_2Freflect_2FProxy_241_3B"
-#define REFLECTION_REFERENCE_PREFIX_STR "Ljava_2Flang_2Fref_2FReference_3B"
-#define REFLECTION_ACCESSIBLEOBJECT_PREFIX_STR "Ljava_2Flang_2Freflect_2FAccessibleObject_3B"
+#define JAVA_LANG_ANNOTATION_RETENTION_STR (std::string(NameMangler::kJavaLang) + "annotation_2FRetention" + NameMangler::kClassMethodSplitterStr)
+#define JAVA_LANG_ENUM_STR (std::string(NameMangler::kJavaLang) + "Enum" + NameMangler::kClassMethodSplitterStr)
+#define REFLECTION_METHOD_PREFIX_STR (std::string(NameMangler::kJavaLang) + "reflect_2FMethod" + NameMangler::kClassMethodSplitterStr)
+#define REFLECTION_METHOD_241_PREFIX_STR (std::string(NameMangler::kJavaLang) + "reflect_2FMethod_241" + NameMangler::kClassMethodSplitterStr)
+#define REFLECTION_FIELD_PREFIX_STR (std::string(NameMangler::kJavaLang) + "reflect_2FField" + NameMangler::kClassMethodSplitterStr)
+#define REFLECTION_EXECUTABLE_PREFIX_STR (std::string(NameMangler::kJavaLang) + "reflect_2FExecutable" + NameMangler::kClassMethodSplitterStr)
+#define REFLECTION_CONSTRUCTOR_PREFIX_STR (std::string(NameMangler::kJavaLang) + "reflect_2FConstructor" + NameMangler::kClassMethodSplitterStr)
+#define REFLECTION_PROXY_PREFIX_STR (std::string(NameMangler::kJavaLang) + "reflect_2FProxy" + NameMangler::kClassMethodSplitterStr)
+#define REFLECTION_PROXY_241_PREFIX_STR (std::string(NameMangler::kJavaLang) + "reflect_2FProxy_241" + NameMangler::kClassMethodSplitterStr)
+#define REFLECTION_REFERENCE_PREFIX_STR (std::string(NameMangler::kJavaLang) + "ref_2FReference" + NameMangler::kClassMethodSplitterStr)
+#ifdef __OPENJDK__
+#define JAVA_LANG_CLASS_PREFIX_STR (std::string(NameMangler::kJavaLang)) + "Class_3B"
+#endif
+#if defined(__x86_64__)
+#define SUN_REFLECT_REFLECTION_STR (std::string("Lsun_2Freflect_2FReflection") + NameMangler::kClassMethodSplitterStr)
+#endif
+#define REFLECTION_ACCESSIBLEOBJECT_PREFIX_STR (std::string(NameMangler::kJavaLang) + "reflect_2FAccessibleObject" + NameMangler::kClassMethodSplitterStr)
 #define CLASS_INIT_PROTECT_REGION_STR "__ClassInitProtectRegion__"
 #define CLASS_STATE_INITIALIZED_STR "__ClassStateInitialized__"
 #define INIT_FUNTION_STR "_3Cinit_3E"
+#define INNERCLASS_STR (std::string("annotation_2FInnerClass") + NameMangler::kClassMethodSplitterStr)
 
 static bool raDebug = false;
 
@@ -1544,7 +1552,7 @@ int ReflectionAnalysis::GeneAnnotation(string &annoArr, MIRClassType *ctype, Pra
 
 bool ReflectionAnalysis::IsAnonymousClass(std::string annotationString) {
   // eg: `IC!`AF!4!0!name!30!!
-  size_t pos = annotationString.find("`IC", 0);
+  size_t pos = annotationString.find(INNERCLASS_STR, 0);
   if (pos != std::string::npos) {
     int i = 5;
     while (i--) {
@@ -1776,6 +1784,12 @@ void ReflectionAnalysis::MarkWeakMethods() {
                              GlobalTables::GetStrTable().GetOrCreateStrIdxFromName(REFLECTION_PROXY_PREFIX_STR),
                              GlobalTables::GetStrTable().GetOrCreateStrIdxFromName(REFLECTION_PROXY_241_PREFIX_STR),
                              GlobalTables::GetStrTable().GetOrCreateStrIdxFromName(REFLECTION_REFERENCE_PREFIX_STR),
+#if __OPENJDK__
+                             GlobalTables::GetStrTable().GetOrCreateStrIdxFromName(JAVA_LANG_CLASS_PREFIX_STR),
+#endif
+#if defined(__x86_64__)
+                             GlobalTables::GetStrTable().GetOrCreateStrIdxFromName(SUN_REFLECT_REFLECTION_STR),
+#endif
                              GlobalTables::GetStrTable().GetOrCreateStrIdxFromName(REFLECTION_ACCESSIBLEOBJECT_PREFIX_STR) };
   for (GStrIdx nameIdx : classNames) {
     Klass *klass = klassh->GetKlassFromStridx(nameIdx);

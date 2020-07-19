@@ -1,19 +1,20 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #include "java_lowering.h"
+#include "name_mangler.h"
 #include <fstream>
 #include <algorithm>
 #include <cstdio>
@@ -72,12 +73,12 @@ void JavaLowering::InitFuncs() {
 
   string funcClassForName3 = funcClassForNamePrefix + string("Z") + NameMangler::kJavaLangClassloader
         + NameMangler::kRightBracketStr + NameMangler::kJavaLangClassStr;
-#define FUNC_GET_CURRENT_CL "MCC_GetCurrentClassLoader"
   mClassForname1Func = builder->GetFunctionFromName(funcClassForName1);
   CHECK_FATAL(mClassForname1Func, "mClassForname1Func is null in JavaLowering::ProcessForNameClassloader");
   mClassForname3Func = builder->GetFunctionFromName(funcClassForName3);
   CHECK_FATAL(mClassForname3Func, "mClassForname3Func is null in JavaLowering::ProcessForNameClassloader");
 
+#define FUNC_GET_CURRENT_CL "MCC_GetCurrentClassLoader"
   // MCC_GetCurrentClassLoader
   mGetCurrentClassLoaderFunc = builder->GetFunctionFromName(FUNC_GET_CURRENT_CL);
   if (!mGetCurrentClassLoaderFunc) {
@@ -321,12 +322,10 @@ BaseNode *JavaLowering::JavaMergeToCvtType(PrimType dtyp, PrimType styp, BaseNod
         src->primType = dtyp;
         return src;
       }
-#if 1
       // Force type cvt here because we currently do not run constant folding
       // or contanst propagation before CG. We may revisit this decision later.
     } else if (GetPrimTypeBitSize(styp) < GetPrimTypeBitSize(dtyp)) {
       return builder->CreateExprTypeCvt(OP_cvt, totype, fromtype, src);
-#endif
     } else if (IsConstvalZero(src)) {
       return builder->CreateIntConst(0, dtyp);
     } else {

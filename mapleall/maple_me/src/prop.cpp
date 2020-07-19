@@ -1,26 +1,30 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #include "prop.h"
 #include "me_irmap.h"
 #include "dominance.h"
 #include "constant_fold.h"
+#include "name_mangler.h"
 
 #define JAVALANG (irMap->ssaTab->mirModule.IsJavaModule())
 
 const int kPropTreeLevel = 15; // tree height threshold to increase to
+
+// following cannot be assumed no-alias even though they are final
+static const std::set<std::string> kStaticConstructorBlackList{ std::string(NameMangler::kJavaLang) + "System_3B" + NameMangler::kClinitSuffix };
 
 namespace maple {
 
@@ -255,7 +259,6 @@ void Prop::PropUpdateMustDefList(MeStmt *mestmt) {
   MapleVector<MustDefMeNode> *mustdefList = mestmt->GetMustDefList();
   if (!mustdefList->empty()) {
     MeExpr *melhs = mustdefList->front().lhs;
-    CHECK_FATAL(melhs->meOp == kMeOpVar, "NYI");
     PropUpdateDef(static_cast<VarMeExpr *>(melhs));
   }
 }
@@ -314,6 +317,11 @@ bool Prop::IvarIsFinalField(const IvarMeExpr *ivarmeexpr) {
   if (!propagate_final_iload_ref) {
     return false;
   }
+  if (InConstructorFunc() && GetFunc() && GetFunc()->mirFunc) {
+    if (kStaticConstructorBlackList.find(GetFunc()->mirFunc->GetName()) != kStaticConstructorBlackList.end()) {
+      return false;
+    }
+  }
   if (ivarmeexpr->fieldID == 0) {
     return false;
   }
@@ -333,6 +341,7 @@ bool Prop::Propagatable(MeExpr *x, BB *frombb, bool atParm) {
   switch (meOp) {
     case kMeOpAddrof:
     case kMeOpAddroffunc:
+    case kMeOpAddroflabel:
     case kMeOpConst:
     case kMeOpConststr:
     case kMeOpConststr16:
@@ -465,13 +474,39 @@ MeExpr *Prop::CheckTruncation(MeExpr *lhs, MeExpr *rhs) {
     }
     // insert OP_zext or OP_sext
     Opcode extOp = IsSignedInteger(lhsTy->primType) ? OP_sext : OP_zext;
-    OpMeExpr *opexpr = static_cast<OpMeExpr *>(irMap->CreateMeExprUnary(extOp, lhsTy->primType, rhs));
-    opexpr->bitsSize = bitfieldTy->fieldSize;
-    return opexpr;
+    PrimType newPrimType = PTY_u32;
+    if (bitfieldTy->fieldSize <= 32) {
+      if (IsSignedInteger(lhsTy->primType)) {
+        newPrimType = PTY_i32;
+      }
+    } else {
+      if (IsSignedInteger(lhsTy->primType)) {
+        newPrimType = PTY_i64;
+      } else {
+        newPrimType = PTY_u64;
+      }
+    }
+    OpMeExpr opmeexpr(-1, extOp, newPrimType, 1);
+    opmeexpr.bitsSize = bitfieldTy->fieldSize;
+    opmeexpr.SetOpnd(rhs, 0);
+    return irMap->HashMeExpr(&opmeexpr);
   }
   if (IsPrimitiveInteger(lhsTy->primType) &&
+      lhsTy->primType != PTY_ptr  && lhsTy->primType != PTY_ref &&
       GetPrimTypeSize(lhsTy->primType) < rhs->primType) {
-    return irMap->CreateMeExprTypeCvt(lhsTy->primType, rhs->primType, rhs);
+    if (GetPrimTypeSize(lhsTy->primType) >= 4) {
+      return irMap->CreateMeExprTypeCvt(lhsTy->primType, rhs->primType, rhs);
+    } else {
+      Opcode extOp = IsSignedInteger(lhsTy->primType) ? OP_sext : OP_zext;
+      PrimType newPrimType = PTY_u32;
+      if (IsSignedInteger(lhsTy->primType)) {
+        newPrimType = PTY_i32;
+      }
+      OpMeExpr opmeexpr(-1, extOp, newPrimType, 1);
+      opmeexpr.bitsSize = GetPrimTypeSize(lhsTy->primType) * 8;
+      opmeexpr.SetOpnd(rhs, 0);
+      return irMap->HashMeExpr(&opmeexpr);
+    }
   }
   return rhs;
 }
@@ -633,6 +668,7 @@ MeExpr *Prop::PropMeExpr(MeExpr *meexpr, bool &isproped, bool atParm) {
     }
     case kMeOpAddrof:
     case kMeOpAddroffunc:
+    case kMeOpAddroflabel:
     case kMeOpGcmalloc:
     case kMeOpConst:
     case kMeOpConststr:
@@ -708,6 +744,7 @@ void Prop::TraversalMeStmt(MeStmt *mestmt) {
       break;
     }
     case OP_eval:
+    case OP_igoto:
     case OP_free: {
       UnaryMeStmt *umestmt = static_cast<UnaryMeStmt *>(mestmt);
       umestmt->opnd = PropMeExpr(umestmt->opnd, subproped, false);

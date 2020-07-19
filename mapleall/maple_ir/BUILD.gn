@@ -1,16 +1,16 @@
 #
-# Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+# Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
 #
-# OpenArkCompiler is licensed under the Mulan PSL v1.
-# You can use this software according to the terms and conditions of the Mulan PSL v1.
-# You may obtain a copy of Mulan PSL v1 at:
+# Licensed under the Mulan Permissive Software License v2.
+# You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+# You may obtain a copy of MulanPSL - 2.0 at:
 #
-#     http://license.coscl.org.cn/MulanPSL
+#     https://opensource.org/licenses/MulanPSL-2.0
 #
 # THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
 # EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
 # FIT FOR A PARTICULAR PURPOSE.
-# See the Mulan PSL v1 for more details.
+# See the MulanPSL - 2.0 for more details.
 #
 
 configs = [
@@ -27,19 +27,17 @@ include_directories = [
     "${MAPLEALL_ROOT}/mpl2mpl/include",
     "${MAPLEALL_ROOT}/maple_util/include",
     "${MAPLEALL_ROOT}/mempool/include",
-    "${MAPLEALL_ROOT}/huawei_secure_c/include",
+    "${MAPLE_ROOT}/huawei_secure_c/include",
     "${MAPLEALL_ROOT}/maplevm/include",
     "${MAPLEALL_ROOT}/maple_ipa/include",
     "${MAPLEALL_ROOT}/maple_me/include",
     "${MAPLEALL_ROOT}/maple_phase/include",
     "${MAPLEALL_ROOT}/maple_driver/include",
-    "${MAPLEALL_ROOT}/../third-party/md5/include",
 ]
 
 static_library("libmplir"){
     sources = [
        "src/constant_fold.cpp",
-       "src/debug_info.cpp",
        "src/global_tables.cpp",
        "src/intrinsics.cpp",
        "src/lexer.cpp",
@@ -86,7 +84,7 @@ executable("irbuild"){
         ":libmplir",
         "${MAPLEALL_ROOT}/mempool:libmempool",
         "${MAPLEALL_ROOT}/maple_util:libmplutil",
-        "${MAPLEALL_ROOT}/huawei_secure_c:libHWSecureC",
+        "${MAPLE_ROOT}/huawei_secure_c:libHWSecureC",
     ]
 }
 
@@ -102,7 +100,7 @@ executable("mmpl2cmpl"){
         ":libmplir",
         "${MAPLEALL_ROOT}/mempool:libmempool",
         "${MAPLEALL_ROOT}/maple_util:libmplutil",
-        "${MAPLEALL_ROOT}/huawei_secure_c:libHWSecureC",
+        "${MAPLE_ROOT}/huawei_secure_c:libHWSecureC",
     ]
 }
 
@@ -118,22 +116,7 @@ executable("cmpl2mmpl"){
         ":libmplir",
         "${MAPLEALL_ROOT}/mempool:libmempool",
         "${MAPLEALL_ROOT}/maple_util:libmplutil",
-        "${MAPLEALL_ROOT}/huawei_secure_c:libHWSecureC",
-    ]
-}
-
-executable("mpldbg"){
-    sources = [
-        "src/mpl_dbg.cpp"
-    ]
-
-    include_dirs = include_directories
-
-    deps = [
-        ":libmplir",
-        "${MAPLEALL_ROOT}/mempool:libmempool",
-        "${MAPLEALL_ROOT}/maple_util:libmplutil",
-        "${MAPLEALL_ROOT}/huawei_secure_c:libHWSecureC",
+        "${MAPLE_ROOT}/huawei_secure_c:libHWSecureC",
     ]
 }
 
@@ -148,6 +131,6 @@ executable("mplverf"){
         ":libmplir",
         "${MAPLEALL_ROOT}/mempool:libmempool",
         "${MAPLEALL_ROOT}/maple_util:libmplutil",
-        "${MAPLEALL_ROOT}/huawei_secure_c:libHWSecureC",
+        "${MAPLE_ROOT}/huawei_secure_c:libHWSecureC",
     ]
 }

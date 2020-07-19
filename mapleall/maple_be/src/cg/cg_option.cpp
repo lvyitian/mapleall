@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #include <iostream>
@@ -74,6 +74,7 @@ bool CGOptions::doLocalRefSpill = false;
 bool CGOptions::doLvarPathOpt = false;
 bool CGOptions::checkarraystore = false;
 bool CGOptions::doCalleeToSpill = false;
+bool CGOptions::doStructFpInInt = true;
 bool CGOptions::dumpOLog = false;
 bool CGOptions::doPrePeephole = false;
 bool CGOptions::doPeephole = false;
@@ -169,6 +170,7 @@ enum OptionIndex {
   kLocalrefSpill,
   kLocalrefvarPathOpt,
   kOptcallee,
+  kStructFpInInt,
   kPie,
   PIC,
   VERBOSE,
@@ -344,6 +346,9 @@ const Descriptor kUsage[] = {
   { kOptcallee, OTI_ENABLED, "", "lsra-optcallee", kBuildTypeAll, kArgCheckPolicyNone,
     "  --lsra-optcallee                           Spill callee if only one def to use\n" },
   { kOptcallee, OTI_DISABLED, "", "no-lsra-optcallee", kBuildTypeAll, kArgCheckPolicyNone, "  --no-lsra-optcallee\n" },
+  { kStructFpInInt, OTI_ENABLED, "", "allow-struct-parm-in-fp", kBuildTypeAll, kArgCheckPolicyNone,
+    "  --allow-struct-parm-in-fp                   Pass struct in int regs instead of fp regs\n" },
+  { kStructFpInInt, OTI_DISABLED, "", "no-allow-struct-parm-in-fp", kBuildTypeAll, kArgCheckPolicyNone, "  --no-allow-struct-parm-in-fp" },
   { kPie, OTI_ENABLED, "", "pie", kBuildTypeAll, kArgCheckPolicyNone,
     "  --pie                               Generate position-independent executable" },
   { kPie, OTI_DISABLED, "", "no-pie", kBuildTypeAll, kArgCheckPolicyNone, "  --no-pie\n" },
@@ -775,6 +780,9 @@ bool CGOptions::ParseOptions(int argc, char **argv, string &fileName) {
       case kOptcallee:
         doCalleeToSpill = (opt.Type() == OTI_ENABLED);
         break;
+      case kStructFpInInt:
+        doStructFpInInt = (opt.Type() == OTI_ENABLED);
+        break;
       case kDumpOlog:
         dumpOLog = (opt.Type() == OTI_ENABLED);
         break;
@@ -893,15 +901,6 @@ bool CGOptions::ParseOptions(int argc, char **argv, string &fileName) {
     SetOption(options_, kDebugFriendly);
   } else {
     ClearOption(options_, kDebugFriendly);
-  }
-
-  // override some options when dwarf is generated
-  if (WithDwarf()) {
-    doEbo = false;
-    doCfgo = false;
-    doIco = false;
-    generate_gdb_friendly_code = true;
-    SetOption(options_, kDebugFriendly);
   }
 
   if (result) {

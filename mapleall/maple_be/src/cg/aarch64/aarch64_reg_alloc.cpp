@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #include "aarch64_reg_alloc.h"
@@ -81,6 +81,7 @@ Operand *AArch64RegAllocator::AllocSrcOpnd(Operand *opnd, OpndProp *prop, Insn *
     }
 
     regno_t regNo = DoRegisterSpill(regopnd, insn, false, bb);
+    CHECK_FATAL(regNo, "Cannot spill with O0 regalloc");
     return aarch64Cgfunc->GetOrCreatePhysicalRegisterOperand(
       (AArch64reg_t)regNo, regopnd->GetSize(), regopnd->GetRegisterType(), 0, vctType);
   } else if (opnd->IsMemoryAccessOperand()) {
@@ -126,7 +127,12 @@ Operand *AArch64RegAllocator::AllocDestOpnd(Operand *opnd, Insn *insn, uint32 in
     if (!regopnd->IsVirtualRegister()) {
       AArch64reg_t rn = (AArch64reg_t)regopnd->GetRegisterNumber();
       avail_reg_set_[rn] = true;
-      ReleaseReg(opndprop->regprop_.regtype_, rn);
+      auto it = regLiveness.find(regopnd);
+      if (it != regLiveness.end()) {
+        if (it->second <= insn->id) {
+          ReleaseReg(opndprop->regprop_.regtype_, rn);
+        }
+      }
       return opnd;
     }
     AArch64CGFunc *aarch64Cgfunc = static_cast<AArch64CGFunc *>(cgfunc_);
@@ -137,7 +143,12 @@ Operand *AArch64RegAllocator::AllocDestOpnd(Operand *opnd, Insn *insn, uint32 in
     if (opndprop->IsPhysicalRegister()) {  // physical register
       AArch64reg_t physicalReg = opndprop->regprop_.physical_reg_;
       CG_ASSERT(live_reg_.find(physicalReg) == live_reg_.end(), "physical register spill NYI");
-      ReleaseReg(opndprop->regprop_.regtype_, physicalReg);
+      auto it = regLiveness.find(regopnd);
+      if (it != regLiveness.end()) {
+        if (it->second <= insn->id) {
+          ReleaseReg(opndprop->regprop_.regtype_, physicalReg);
+        }
+      }
       return aarch64Cgfunc->GetOrCreatePhysicalRegisterOperand(physicalReg, regopnd->GetSize(),
                                                               regopnd->GetRegisterType(), 0, vctType);
     }
@@ -146,7 +157,12 @@ Operand *AArch64RegAllocator::AllocDestOpnd(Operand *opnd, Insn *insn, uint32 in
     if (regMapIt != reg_map_.end()) {
       AArch64reg_t reg = regMapIt->second;
       if (!insn->IsCondDef()) {
-        ReleaseReg(regty, reg);
+        auto it = regLiveness.find(regopnd);
+        if (it != regLiveness.end()) {
+          if (it->second <= insn->id) {
+            ReleaseReg(regty, reg);
+          }
+        }
       }
     } else {
       // AllocatePhysicalRegister insert a mapping from vreg no to phy reg no into reg_map_
@@ -157,7 +173,12 @@ Operand *AArch64RegAllocator::AllocDestOpnd(Operand *opnd, Insn *insn, uint32 in
           StorePseudoRegister(regopnd, regMapIt->second, insn, bb);
         }
         if (!insn->IsCondDef()) {
-          ReleaseReg(regopnd->GetRegisterType(), regMapIt->second);
+          auto it = regLiveness.find(regopnd);
+          if (it != regLiveness.end()) {
+            if (it->second <= insn->id) {
+              ReleaseReg(regopnd->GetRegisterType(), regMapIt->second);
+            }
+          }
         }
       } else {
         // For register spill.
@@ -377,7 +398,6 @@ static void InsertPRegStoreInstruction(Insn *insn, BB *bb) {
   switch (bb->GetKind()) {
     case BB::kBBIf: {
       Insn *cmpInsn = bb->lastinsn->prev;
-      // CG_ASSERT(  );
       bb->InsertInsnBefore(cmpInsn, insn);
       break;
     }
@@ -425,9 +445,26 @@ bool DefaultO0RegAllocator::AllocateRegisters() {
     if (bb->IsEmpty()) {
       continue;
     }
+    regLiveness.clear();
 
     bool isIntrinsicBb = bb->GetKind() == BB::kBBIntrinsic;
 
+    uint32 id = 1;
+    FOR_BB_INSNS_REV(insn, bb) {
+      insn->id = id;
+      id++;
+      const AArch64MD *md = &AArch64CG::kMd[static_cast<AArch64Insn *>(insn)->mop_];
+      for (int i = 0; i < Insn::kMaxOperandNum; i++) {
+        Operand *opnd = insn->opnds[i];
+        AArch64OpndProp *aarch64Opndprop = static_cast<AArch64OpndProp *>(md->operand_[i]);
+        if (!opnd || !aarch64Opndprop->IsRegDef()) {
+          continue;
+        }
+        if (opnd->IsRegister()) {
+          regLiveness[opnd] = insn->id;
+        }
+      }
+    }
     FOR_BB_INSNS_REV(insn, bb) {
       if (!insn->IsMachineInstruction()) {
         continue;
@@ -458,7 +495,12 @@ bool DefaultO0RegAllocator::AllocateRegisters() {
             AArch64reg_t a64reg = (AArch64reg_t)(regopnd->IsVirtualRegister() ? reg_map_[regno] : regno);
             atomic_store_result_reg = a64reg;
           } else if (!insn->IsCondDef()) {
-            ReleaseReg(regopnd, md->operand_[i]);
+            auto it = regLiveness.find(regopnd);
+            if (it != regLiveness.end()) {
+              if (it->second <= insn->id) {
+                ReleaseReg(regopnd, md->operand_[i]);
+              }
+            }
           }
 
           insn->opnds[i] = a64cgfunc->GetOrCreatePhysicalRegisterOperand(
@@ -629,6 +671,7 @@ void O1RegAllocator::CollectPRegUses(Opcode c, StmtNode *s, BB *bb) {
     case OP_comment:
     case OP_javacatch:
     case OP_javatry:
+    case OP_cppcatch:
     case OP_cpptry:
     case OP_catch:
     case OP_try:
@@ -995,7 +1038,6 @@ void LSRALinearScanRegAllocator::PrintLiveRanges() {
   LogInfo::MapleLogger() << "#max_vreg_num " << max_vreg_num << "\n";
   LogInfo::MapleLogger() << "reset\nset terminal png\n";
   LogInfo::MapleLogger() << "set xrange [1:" << max_insn_num << "]\n";
-  // LogInfo::MapleLogger() << "set yrange [" << min_vreg_num-1 << ":" << max_vreg_num+1 << "]\n";
   LogInfo::MapleLogger() << "set grid\nset style data linespoints\n";
   LogInfo::MapleLogger() << "set datafile missing '0'\n";
   std::vector<std::vector<uint32>> graph;
@@ -1079,8 +1121,6 @@ void LSRALinearScanRegAllocator::PrintLiveRanges() {
       }
     }
 #undef CHECK_FOR_REG
-    //    LogInfo::MapleLogger()<<"set object circle at "<<li->first_def<<","<< li->regno << " size 0.1 fillcolor rgb \"red\"\n";
-    //    LogInfo::MapleLogger()<<"set object circle at "<<li->last_use <<","<< li->regno << " size 0.1 fillcolor rgb \"black\"\n";
   }
   LogInfo::MapleLogger() << "set yrange [" << minY - 1 << ":" << maxY + 1 << "]\n";
 
@@ -1380,7 +1420,6 @@ bool LSRALinearScanRegAllocator::AllPredBBVisited(BB *bb) {
       }
     }
     if ((isBackEdge == false) && (visited_bbs[predBb->id] == false)) {
-      // LogInfo::MapleLogger() << "\t\tbb " << bb->id << " not visited pred bb " << pred_bb->id << "\n";
       allPredVisited = false;
       break;
     }
@@ -1396,7 +1435,6 @@ bool LSRALinearScanRegAllocator::AllPredBBVisited(BB *bb) {
       }
     }
     if ((isBackEdge == false) && (visited_bbs[predBb->id] == false)) {
-      // LogInfo::MapleLogger() << "\t\tbb " << bb->id << " not visited eh_pred bb " << pred_bb->id << "\n";
       allPredVisited = false;
       break;
     }
@@ -1417,7 +1455,6 @@ BB *LSRALinearScanRegAllocator::MarkStraightLineBBInBFS(BB *bb) {
       }
       if (sbb->preds.size() == 1 && sbb->eh_preds.size() == 0) {
         sorted_bbs.push_back(sbb);
-        // LogInfo::MapleLogger() <<"\tSorted sbb " << sbb->id << "\n";
         visited_bbs[sbb->id] = true;
         bb = sbb;
       } else {
@@ -1477,7 +1514,6 @@ void LSRALinearScanRegAllocator::BFS(BB *curbb) {
   do {
     BB *bb = worklist.front();
     sorted_bbs.push_back(bb);
-    // LogInfo::MapleLogger() <<"\tSorted bb " << bb->id << "\n";
     CG_ASSERT(bb->id < cgfunc_->NumBBs(), "LinearScanRegAllocator::BFS visited_bbs overflow");
     visited_bbs[bb->id] = true;
     worklist.pop();
@@ -1521,10 +1557,8 @@ void LSRALinearScanRegAllocator::ComputeBlockOrder() {
         continue;
       }
       if (visited_bbs[bb->id] == false) {
-        // LogInfo::MapleLogger() << "Consider bb " << bb->id << "\n";
         changed = true;
         if (AllPredBBVisited(bb) == true) {
-          // LogInfo::MapleLogger() << "\tBFS " << bb->id << "\n";
           BFS(bb);
         }
       }
@@ -2077,7 +2111,6 @@ void LSRALinearScanRegAllocator::ComputeLiveInterval()
             MIRSymbol *funcst = target->GetFunctionSymbol();
             CG_ASSERT(funcst->sKind == kStFunc, "");
             if (funcst->GetName() == "exit") {
-              // LogInfo::MapleLogger() << "skip exit func " <<insn->id << endl;
               skipCall = true;
             } else if ((localrefvar_max_stack_loc == 0) && (funcst->GetName() == GetIntrinsicFuncName(INTRN_MCCInitializeLocalStackRef))) {
               // Detecting local ref var init size and start location.
@@ -2124,6 +2157,8 @@ void LSRALinearScanRegAllocator::ComputeLiveInterval()
           Operand *base = memopnd->GetBaseRegister();
           Operand *offset = memopnd->GetIndexRegister();
           isdef = false;
+          // ldr(156) (opnd0:  reg:V34 class: [F]) (opnd1: Mem:literal:
+          // .LB_Ljava_2Fnio_2FByteBuffer_3B_7CgetDouble_7C_28_29D2)
           if (base != nullptr) {
             SetupLiveInterval(base, insn, isdef, numUses);
           }
@@ -2162,7 +2197,6 @@ void LSRALinearScanRegAllocator::ComputeLiveInterval()
     for (auto it = bb->liveout_regno.begin(); it != bb->liveout_regno.end(); it++) {
       regno_t regno = static_cast<regno_t>(*it);
       if ((regno >= R0 && regno <= R7) || (regno >= V0 && regno <= V7)) {
-        // LogInfo::MapleLogger() << cgfunc_->func->GetName() << std::endl;
         LiveInterval *li = nullptr;
         if (regno >= R0 && regno <= R7) {
           if (int_param_queue[regno - R0].size() == 0) {
@@ -2232,7 +2266,6 @@ void LSRALinearScanRegAllocator::ComputeLiveInterval()
   if (LSRA_DUMP) {
     PrintLiveIntervals();
   }
-  // LogInfo::MapleLogger() <<  "Total " << insn_num << " insns in " << cgfunc_->GetName() << " \n";
   return;
 }
 
@@ -2695,13 +2728,10 @@ void LSRALinearScanRegAllocator::InsertCallerSave(Insn *insn, Operand *opnd, boo
     if (regtype == kRegTyInt) {
       mask = int_bb_def_mask;
       regbase = R0;
-      // printf("InsertCallerSave int 0x%x\n", mask);
     } else {
       mask = fp_bb_def_mask;
       regbase = V0;
-      // printf("InsertCallerSave fp 0x%x\n", mask);
     }
-    // LogInfo::MapleLogger() << "assigned_reg " << rli->assigned_reg << "\n";
     if (mask & (1 << (rli->assigned_reg - regbase))) {
       if (LSRA_DUMP) {
         LogInfo::MapleLogger() << "InsertCallerSave " << rli->assigned_reg << " skipping due to local def\n";
@@ -2720,12 +2750,10 @@ void LSRALinearScanRegAllocator::InsertCallerSave(Insn *insn, Operand *opnd, boo
   if (regtype == kRegTyInt) {
     stype = (regsize <= 32) ? PTY_i32 : PTY_i64;
     int_bb_def_mask |= (1 << (rli->assigned_reg - R0));
-    // printf("int_bb_def_mask set %d 0x%x\n", rli->assigned_reg-R0, int_bb_def_mask);
   } else {
     CG_ASSERT(regsize != 128, "NYI");
     stype = (regsize <= 32) ? PTY_f32 : PTY_f64;
     fp_bb_def_mask |= (1 << (rli->assigned_reg - V0));
-    // printf("fp_bb_def_mask set %d 0x%x\n", rli->assigned_reg-V0, fp_bb_def_mask);
   }
 
   if (use_localvar_spill == false && UseSimdForSpill(insn, opnd, isDef, 0)) {
@@ -2930,7 +2958,6 @@ bool LSRALinearScanRegAllocator::UseSimdForSpill(Insn *insn, Operand *opnd, bool
 
   // See if a simd has already been allocated for spill
   uint32 regno = regOpnd->GetRegisterNumber();
-  // LogInfo::MapleLogger() << "UseSimdForSpill regno " << regno << "\n";
   LiveInterval *li = LI_[regno];
 
   /* If it is a catch bb or cleanup bb, then do not use simd
@@ -2984,7 +3011,6 @@ bool LSRALinearScanRegAllocator::UseSimdForSpill(Insn *insn, Operand *opnd, bool
     regsize = regOpnd->GetSize();
     if (CGOptions::lsraSimdMode == 0 || regsize == 64) {
       if (simd_spill_regs.empty()) {
-        // LogInfo::MapleLogger() << "\tsimd regs not available\n";
         return false;
       }
       SIMD_DEBUG_MACRO;
@@ -3013,7 +3039,6 @@ bool LSRALinearScanRegAllocator::UseSimdForSpill(Insn *insn, Operand *opnd, bool
       if (useSlot0) {
         // look for 32bit from slot 0
         if (simd_spill_0.empty()) {
-          // LogInfo::MapleLogger() << "\tsimd regs not available\n";
           return false;
         }
         SIMD_DEBUG_MACRO;
@@ -3024,7 +3049,6 @@ bool LSRALinearScanRegAllocator::UseSimdForSpill(Insn *insn, Operand *opnd, bool
         slot = kRegSlot0;
       } else {
         if (simd_spill_1.empty()) {
-          // LogInfo::MapleLogger() << "\tsimd regs not available\n";
           return false;
         }
         SIMD_DEBUG_MACRO;
@@ -3255,7 +3279,6 @@ void LSRALinearScanRegAllocator::SpillOperand(Insn *insn, Operand *opnd, bool is
     return;
   } else {
     // Here, reverse of isDef, change either opn1 or opn2 to the spreg.
-    // CG_ASSERT((li->stk_slot != -1)&&"SpillOperand: should have been spilled");
     if (li->stk_slot == -1) {
       LogInfo::MapleLogger() << "WARNING: " << regno << " assigned " << li->assigned_reg << " restore without spill in bb "
            << insn->bb->id << " : " << cgfunc_->GetName() << "\n";
@@ -4034,7 +4057,6 @@ void LSRALinearScanRegAllocator::FinalizeRegisters() {
       should_opt_fp_callee = true;
     }
   }
-  // PrintRegSet(simd_spill_regs,"Available simd");
   for (uint32_t bbIdx = 0; bbIdx < sorted_bbs.size(); bbIdx++) {
     BB *bb = sorted_bbs[bbIdx];
     int_bb_def_mask = 0;
@@ -4233,7 +4255,6 @@ void LSRALinearScanRegAllocator::SimdSpillToFcmpOpt() {
           break;
         }
         Operand *mvOpnd1 = previnsn->GetOperand(1);
-        // AArch64RegOperand *mv_regopnd1 = static_cast<AArch64RegOperand*>(mv_opnd1);
         uint8 regsize;
         if (mvOpnd1->GetSize() <= 32) {
           break;
@@ -4292,7 +4313,6 @@ bool LSRALinearScanRegAllocator::AllocateRegisters() {
     MIRModule &mirModule = cgfunc_->mirModule;
     DotGenerator::GenerateDot("RA", cgfunc_, &mirModule);
     DotGenerator::GenerateDot("RAe", cgfunc_, &mirModule, true);
-    //DotGenerator::GenerateDot("RAe", cgfunc_, &mirModule, true, 111); //  Generate info for R111
   }
 
   if (CGOptions::doPreLsraOpt) {

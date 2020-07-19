@@ -1,22 +1,23 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #ifndef MPL2MPL_INCLUDE_CLASSHIERARCHY_H
 #define MPL2MPL_INCLUDE_CLASSHIERARCHY_H
 #include "mir_function.h"
 #include "module_phase.h"
+#include "name_mangler.h"
 
 namespace maple {
 class KlassHierarchy;
@@ -35,7 +36,7 @@ static constexpr uint32 kClassIsExceptionKlass = 0x0200;
 static constexpr uint32 kClassIsanonymousclass = 0x0400;
 static constexpr uint32 kClassIscoldclass = 0x0800;
 static constexpr uint32 kClassHasNativeMethod = 0x1000;
-static constexpr char kJavaLangNoMethodStr[] = "Ljava_2Flang_2FNoSuchMethodException_3B";
+static const std::string kJavaLangNoMethodStr = std::string(NameMangler::kJavaLang) + "NoSuchMethodException_3B";
 
 
 #define CLASS_REFERENCE \
@@ -341,7 +342,7 @@ class KlassHierarchy : public AnalysisResult {
   // Get a vector of child class and implemented class
   void GetChildKlasses(const Klass *klass, std::vector<Klass *> &childKlasses) const;
   void ExceptionFlagProp(Klass *klass);
-  Klass *AddClassFlag(const char *name, uint32 flag);
+  Klass *AddClassFlag(const std::string name, uint32 flag);
 
  public:
   static bool traceFlag;

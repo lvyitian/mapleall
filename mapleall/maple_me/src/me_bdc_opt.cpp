@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 // do array boundary check elimination
@@ -294,7 +294,7 @@ bool MeBDC::OperandGE0(MeExpr *opnd, std::set<MePhiNode *> &phiset) {
 
 // this function check the pattern of induction variable
 // is like i = i + C or i = i - C
-bool MeBDC::IndexIsInductionVar(LoopDesc *meloop, VarMeExpr *lhs, MeExpr *&rhs, bool isfromupper) {
+bool MeBDC::IndexIsInductionVar(LoopDesc *meloop, ScalarMeExpr *lhs, MeExpr *&rhs, bool isfromupper) {
   while (rhs->meOp == kMeOpVar) {
     VarMeExpr *varrhs = static_cast<VarMeExpr *>(rhs);
     if (varrhs->defBy != kDefByStmt) {
@@ -365,7 +365,7 @@ bool MeBDC::AnalyzeStep(LoopDesc *meloop, const std::set<MeStmt *> &defvec, bool
   for (std::set<MeStmt *>::iterator it = defvec.begin(); it != defvec.end(); it++) {
     DassignMeStmt *defmestmt = static_cast<DassignMeStmt *>(*it);
     MeExpr *rhs = defmestmt->rhs;
-    VarMeExpr *lhs = defmestmt->GetVarLhs();
+    ScalarMeExpr *lhs = defmestmt->GetVarLhs();
     if (!IndexIsInductionVar(meloop, lhs, rhs, isfromupper)) {
       return false;
     }

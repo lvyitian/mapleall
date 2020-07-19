@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #ifndef MAPLEBE_INCLUDE_CG_ARMCGFUNC_H_
@@ -247,16 +247,6 @@ class ArmCGFunc : public CGFunc {
 
   // CFI directives related stuffs
   Operand *CreateCfiRegOperand(uint32 reg, uint8 size) override {
-    /*
-       DWARF for ARM Architecture (ARM IHI 0040B)
-       infocenter.arm.com/help/topic/com.arm.doc.ihi0040b/IHI0040B_aadwarf.pdf
-       $ 3.1 Table 1
-       (0-15 -> R0-R15)
-
-       Having RCC=0 (see armisa.h) means
-       each register gets assigned an id number one greater than
-       its physical number
-     */
     return memPool->New<cfi::RegOperand>(reg - 1, size);
   }
 

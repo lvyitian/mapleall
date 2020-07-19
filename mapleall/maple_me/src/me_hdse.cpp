@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #include "me_hdse.h"
@@ -150,7 +150,7 @@ void MeHDSE::UpdateStmt(BB *bb) {
         LogInfo::MapleLogger() << "========== hssa dse deletes this stmt: ";
         mestmt->Dump(irMap);
       }
-      if (mestmt->IsCondBr() || mestmt->op == OP_switch) {
+      if (mestmt->IsCondBr() || mestmt->op == OP_switch || mestmt->op == OP_igoto) {
         // update CFG
         while (bb->succ.size() != 1) {
           BB *succbb = bb->succ.back();
@@ -197,6 +197,17 @@ void MeHDSE::UpdateStmt(BB *bb) {
     }
     mestmt = nextstmt;
   }
+  // update verstUseCOunts for uses in phi operands
+  for (std::pair<OStIdx, MePhiNode *> phipair : bb->mePhiList) {
+    if (phipair.second->isLive) {
+      for (ScalarMeExpr *phiOpnd : phipair.second->opnds) {
+        VarMeExpr *varx = dynamic_cast<VarMeExpr *>(phiOpnd);
+        if (varx) {
+          verstUseCounts[varx->vstIdx]++;
+        }
+      }
+    }
+  }
 }
 
 void MeHDSE::BackwardSubstitution() {
@@ -239,6 +250,7 @@ void MeDohDSE::MakeEmptyTrysUnreachable(MeFunction *func) {
     BB *trybb = bbVec[i];
     if (trybb != nullptr && trybb->isTry && trybb->meStmtList.first != nullptr &&
         (trybb->meStmtList.first->op == OP_javatry || trybb->meStmtList.first->op == OP_try || trybb->meStmtList.first->op == OP_cpptry) &&
+        trybb->GetTheOnlyMeStmt() == trybb->meStmtList.first &&
         trybb->mePhiList.empty() && i + 1 < bbVec.size() &&
         bbVec[i + 1] != nullptr && bbVec[i + 1]->isTryEnd && bbVec[i + 1]->IsMeStmtEmpty()) {
       // we found a try BB followed by an empty endtry BB

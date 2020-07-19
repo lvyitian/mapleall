@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #ifndef MAPLEBE_INCLUDE_CG_CGBB_H
@@ -146,6 +146,7 @@ class BB {
     kBBFallthru,  // default
     kBBIf,        // conditional branch
     kBBGoto,      // unconditional branch
+    kBBIgoto,
     kBBCall,
     kBBReturn,
     kBBIntrinsic,  // BB created by inlining intrinsics; shares a lot with BB_if
@@ -219,6 +220,7 @@ class BB {
   // are some overlap here.
   bool is_cleanup;  // true if the bb is cleanup bb. otherwise, false.
   bool isProEpilog;  // Temporary tag for modifying prolog/epilog bb
+  bool labelTaken;
 
   /*This is for data flow analysis */
   std::map<DataAnalysisInfo, DataInsnInfo, DataAnalysisInfoCmp> gen;
@@ -244,7 +246,7 @@ class BB {
 
   // Different meaning for each data flow analysis.
   // For storeloadopt, it indicates if bb is visited.
-  // For cgfunc.cpp, it temporarily marks for catch bb discovery.
+  // For cg_func.cpp, it temporarily marks for catch bb discovery.
   // For live analysis, it indicates if bb is visited.
   long internal_flag3;
 
@@ -284,6 +286,7 @@ class BB {
       is_catch(false),
       is_cleanup(false),
       isProEpilog(false),
+      labelTaken(false),
       internal_flag1(0),
       internal_flag2(0),
       internal_flag3(0),

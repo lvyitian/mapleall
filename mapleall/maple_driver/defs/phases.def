@@ -1,64 +1,70 @@
 /*
- * Copyright (c) [2019] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2019-2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 // Phase arguments are: name, condition. By default, all phases are required, so the condition value is 'true'.
 // You can use condition to control these phases and your custom phases. E.g. ADD_PHASE("custom_phase", option1 == value1 [more conditions...])
-ADD_PHASE("clone", Options::O2)
-ADD_PHASE("classhierarchy", true)
-ADD_PHASE("ipodevirtulize", true)
-ADD_PHASE("callgraph", true)
-ADD_PHASE("inline", MeOption::optLevel >= 2 && Options::inlineLev != 3)
-ADD_PHASE("greedyinline", MeOption::optLevel >= 2 && Options::inlineLev == 3)
-ADD_PHASE("vtableanalysis", true)
-ADD_PHASE("reflectionanalysis", true)
-ADD_PHASE("gencheckcast", true)
-ADD_PHASE("JavaLowering", true)
-ADD_PHASE("AnalyzeCtor", true)
-ADD_PHASE("DeCouple", Options::buildApp)
+if (HasThisPhase(kMpl2mpl)) {
+ADD_MODPREPHASE("clone", Options::O2)
+ADD_MODPREPHASE("classhierarchy", true)
+ADD_MODPREPHASE("ipodevirtulize", true)
+ADD_MODPREPHASE("callgraph", true)
+ADD_MODPREPHASE("Simplify", Options::O2)
+ADD_MODPREPHASE("inline", MeOption::optLevel >= 2 && Options::inlineLev != 3)
+ADD_MODPREPHASE("greedyinline", MeOption::optLevel >= 2 && Options::inlineLev == 3)
+ADD_MODPREPHASE("vtableanalysis", true)
+ADD_MODPREPHASE("reflectionanalysis", true)
+ADD_MODPREPHASE("gencheckcast", true)
+ADD_MODPREPHASE("JavaLowering", true)
+ADD_MODPREPHASE("AnalyzeCtor", true)
+ADD_MODPREPHASE("DeCouple", Options::buildApp)
+}
 // mephase begin
-ADD_PHASE("loopcanon", MeOption::optLevel >= 2)
-ADD_PHASE("splitcriticaledge", MeOption::optLevel >= 2)
-ADD_PHASE("ssatab", theModule->IsJavaModule() || MeOption::optLevel >= 1)
-ADD_PHASE("aliasclass", theModule->IsJavaModule() || MeOption::optLevel >= 1)
-ADD_PHASE("ssa", theModule->IsJavaModule() || MeOption::optLevel >= 1)
-ADD_PHASE("dse", MeOption::optLevel >= 1)
-ADD_PHASE("fsaa", MeOption::optLevel >= 1)
-ADD_PHASE("irmapbuild", MeOption::optLevel >= 1 || theModule->IsJavaModule())
-ADD_PHASE("bdcopt", MeOption::optLevel >= 1 && theModule->IsJavaModule())
-ADD_PHASE("syncselect", MeOption::optLevel >= 1 && theModule->IsJavaModule())
-ADD_PHASE("ssadevirt", MeOption::optLevel >= 1 && theModule->IsJavaModule())
-ADD_PHASE("ea", MeOption::optLevel >= 1 && theModule->IsJavaModule())
-ADD_PHASE("hprop", MeOption::optLevel >= 1)
-ADD_PHASE("symrename", MeOption::optLevel >= 1)
-ADD_PHASE("hdse", MeOption::optLevel >= 1)
-ADD_PHASE("may2dassign", MeOption::optLevel >= 1 && theModule->IsJavaModule())
-ADD_PHASE("condbasednpc", MeOption::optLevel >= 1 && theModule->IsJavaModule())
-ADD_PHASE("cfgopt", MeOption::optLevel >= 2 && theModule->IsJavaModule())
-ADD_PHASE("epre", MeOption::optLevel >= 2)
-ADD_PHASE("stmtpre", MeOption::optLevel >= 2 && theModule->IsJavaModule())
-ADD_PHASE("analyzerc", theModule->IsJavaModule())
-ADD_PHASE("rclowering", theModule->IsJavaModule())
-ADD_PHASE("rename2preg", MeOption::optLevel >= 1)
-ADD_PHASE("lpre", MeOption::optLevel >= 2)
-ADD_PHASE("emit", true)
+if (HasThisPhase(kMplMe)) {
+ADD_MEPHASE("loopcanon", MeOption::optLevel >= 2)
+ADD_MEPHASE("splitcriticaledge", MeOption::optLevel >= 2)
+ADD_MEPHASE("ssatab", theModule->IsJavaModule() || MeOption::optLevel >= 1)
+ADD_MEPHASE("aliasclass", theModule->IsJavaModule() || MeOption::optLevel >= 1)
+ADD_MEPHASE("ssa", theModule->IsJavaModule() || MeOption::optLevel >= 1)
+ADD_MEPHASE("dse", MeOption::optLevel >= 1)
+ADD_MEPHASE("fsaa", MeOption::optLevel >= 1)
+ADD_MEPHASE("irmapbuild", MeOption::optLevel >= 1 || theModule->IsJavaModule())
+ADD_MEPHASE("bdcopt", MeOption::optLevel >= 1 && theModule->IsJavaModule())
+ADD_MEPHASE("syncselect", MeOption::optLevel >= 1 && theModule->IsJavaModule())
+ADD_MEPHASE("ssadevirt", MeOption::optLevel >= 1 && theModule->IsJavaModule())
+ADD_MEPHASE("hprop", MeOption::optLevel >= 1)
+ADD_MEPHASE("symrename", MeOption::optLevel >= 1)
+ADD_MEPHASE("hdse", MeOption::optLevel >= 1)
+ADD_MEPHASE("may2dassign", MeOption::optLevel >= 1 && theModule->IsJavaModule())
+ADD_MEPHASE("condbasednpc", MeOption::optLevel >= 1 && theModule->IsJavaModule())
+ADD_MEPHASE("cfgopt", MeOption::optLevel >= 2 && theModule->IsJavaModule())
+ADD_MEPHASE("epre", MeOption::optLevel >= 2)
+ADD_MEPHASE("stmtpre", MeOption::optLevel >= 2 && theModule->IsJavaModule())
+ADD_MEPHASE("analyzerc", theModule->IsJavaModule())
+ADD_MEPHASE("rclowering", theModule->IsJavaModule())
+ADD_MEPHASE("rename2preg", MeOption::optLevel >= 1)
+ADD_MEPHASE("lpre", MeOption::optLevel >= 2)
+ADD_MEPHASE("emit", true)
+}
 // mephase end
-ADD_PHASE("GenNativeStubFunc", true)
-ADD_PHASE("clinit", true)
-ADD_PHASE("VtableImpl", true)
-ADD_PHASE("CodeReLayout", Options::O2)
-ADD_PHASE("javaehlower", true)
-ADD_PHASE("deferralBarrier", Options::deferralBarrier)
-ADD_PHASE("barrierinsertion", Options::barrier && !Options::deferralBarrier)
-ADD_PHASE("ScalarReplacement", Options::O2)
-ADD_PHASE("MUIDReplacement", Options::mapleLinker)
+if (HasThisPhase(kMpl2mpl)) {
+ADD_MODPOSTPHASE("GenNativeStubFunc", true)
+ADD_MODPOSTPHASE("clinit", true)
+ADD_MODPOSTPHASE("VtableImpl", true)
+ADD_MODPOSTPHASE("CodeReLayout", Options::O2)
+ADD_MODPOSTPHASE("javaehlower", true)
+ADD_MODPOSTPHASE("deferralBarrier", Options::deferralBarrier)
+ADD_MODPOSTPHASE("barrierinsertion", Options::barrier && !Options::deferralBarrier)
+ADD_MODPOSTPHASE("ScalarReplacement", Options::O2)
+ADD_MODPOSTPHASE("MUIDReplacement", Options::mapleLinker)
+}

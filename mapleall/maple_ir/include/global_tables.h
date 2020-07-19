@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #ifndef MAPLE_IR_INCLUDE_GLOBAL_TABLES_H
@@ -23,7 +23,6 @@
 #include "types_def.h"
 #include "prim_types.h"
 #include "mir_module.h"
-#include "name_mangler.h"
 #include "mir_type.h"
 
 namespace maple {
@@ -89,6 +88,7 @@ class TypeTable {
  public:
   std::vector<MIRType *> typeTable;
   static MIRType *voidPtrType;
+  TyIdx lastDefaultTyIdx;
 
   TypeTable();
   ~TypeTable();
@@ -379,8 +379,8 @@ class FPConstTable {
   FPConstTable &operator=(const FPConstTable &p) = default;
   FPConstTable();
   ~FPConstTable();
-  MIRFloatConst *GetOrCreateFloatConst(float);     // get the const from floatConstTable or create a new one
-  MIRDoubleConst *GetOrCreateDoubleConst(double);  // get the const from doubleConstTable or create a new one
+  MIRFloatConst *GetOrCreateFloatConst(float, uint32 fieldID = 0);     // get the const from floatConstTable or create a new one
+  MIRDoubleConst *GetOrCreateDoubleConst(double, uint32 fieldID = 0);  // get the const from doubleConstTable or create a new one
 };
 
 // STypeNameTable is only used to store class and interface types.

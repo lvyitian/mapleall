@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #include "me_dominance.h"
@@ -745,7 +745,7 @@ PreStmtWorkCand *MeStmtPre::CreateStmtRealOcc(MeStmt *mestmt, int seqstmt) {
   MeExpr *meexpr = nullptr;
   if (mestmt->op == OP_dassign) {
     DassignMeStmt *dass = static_cast<DassignMeStmt *>(mestmt);
-    MapleStack<VarMeExpr *> *pstack = versionStackVec.at(dass->lhs->ost->index.idx);
+    MapleStack<ScalarMeExpr *> *pstack = versionStackVec.at(dass->lhs->ost->index.idx);
     meexpr = pstack->top();
   }
   MeRealOcc *newocc = ssapre_mp->New<MeRealOcc>(mestmt, seqstmt, meexpr);
@@ -770,7 +770,7 @@ void MeStmtPre::VersionStackChiListUpdate(const MapleMap<OStIdx, ChiMeNode *> &c
     if (!ost->IsSymbol() || ost->indirectLev != 0) {
       continue;
     }
-    MapleStack<VarMeExpr *> *pstack = versionStackVec.at(it->second->lhs->ost->index.idx);
+    MapleStack<ScalarMeExpr *> *pstack = versionStackVec.at(it->second->lhs->ost->index.idx);
     pstack->push(it->second->lhs);
   }
 }
@@ -811,7 +811,7 @@ void MeStmtPre::BuildWorkListBB(BB *bb) {
     if (!ost->IsSymbol() || ost->indirectLev != 0) {
       continue;
     }
-    MapleStack<VarMeExpr *> *pstack = versionStackVec.at(phimenode->lhs->ost->index.idx);
+    MapleStack<ScalarMeExpr *> *pstack = versionStackVec.at(phimenode->lhs->ost->index.idx);
     pstack->push(static_cast<VarMeExpr*>(phimenode->lhs));
   }
 
@@ -838,6 +838,7 @@ void MeStmtPre::BuildWorkListBB(BB *bb) {
       case OP_brtrue:
       case OP_brfalse:
       case OP_switch:
+      case OP_igoto:
         break;
 
       case OP_membaracquire:
@@ -928,7 +929,7 @@ void MeStmtPre::BuildWorkListBB(BB *bb) {
             (dassmestmt->rhs->op == OP_regread &&
              static_cast<RegMeExpr *>(dassmestmt->rhs)->regIdx == -kSregThrownval)) {
           // update version stacks
-          MapleStack<VarMeExpr *> *pstack = versionStackVec.at(dassmestmt->lhs->ost->index.idx);
+          MapleStack<ScalarMeExpr *> *pstack = versionStackVec.at(dassmestmt->lhs->ost->index.idx);
           pstack->push(dassmestmt->GetVarLhs());
           VersionStackChiListUpdate(dassmestmt->chiList);
           break;
@@ -946,7 +947,7 @@ void MeStmtPre::BuildWorkListBB(BB *bb) {
           RemoveUnecessaryDassign(dassmestmt);
         }
         // update version stacks
-        MapleStack<VarMeExpr *> *pstack = versionStackVec.at(dassmestmt->lhs->ost->index.idx);
+        MapleStack<ScalarMeExpr *> *pstack = versionStackVec.at(dassmestmt->lhs->ost->index.idx);
         pstack->push(dassmestmt->GetVarLhs());
         VersionStackChiListUpdate(dassmestmt->chiList);
         break;
@@ -1031,7 +1032,7 @@ void MeStmtPre::BuildWorkListBB(BB *bb) {
         MeExpr *melhs = mustdefList->front().lhs;
         if (melhs->meOp == kMeOpVar) {
           VarMeExpr *lhsVar = static_cast<VarMeExpr *>(melhs);
-          MapleStack<VarMeExpr *> *pstack = versionStackVec.at(lhsVar->ost->index.idx);
+          MapleStack<ScalarMeExpr *> *pstack = versionStackVec.at(lhsVar->ost->index.idx);
           pstack->push(lhsVar);
         }
       }
@@ -1050,7 +1051,7 @@ void MeStmtPre::BuildWorkListBB(BB *bb) {
 
   // pop the stacks back to their levels on entry
   for (uint32 i = 1; i < versionStackVec.size(); i++) {
-    MapleStack<VarMeExpr *> *pstack = versionStackVec[i];
+    MapleStack<ScalarMeExpr *> *pstack = versionStackVec[i];
     if (pstack == nullptr) {
       continue;
     }
@@ -1069,7 +1070,7 @@ void MeStmtPre::BuildWorkList() {
     if (!ost->IsSymbol() || ost->indirectLev != 0) {
       continue;
     }
-    MapleStack<VarMeExpr *> *versStack = ssapre_mp->New<MapleStack<VarMeExpr *>>(ssapre_allocator.Adapter());
+    MapleStack<ScalarMeExpr *> *versStack = ssapre_mp->New<MapleStack<ScalarMeExpr *>>(ssapre_allocator.Adapter());
     versStack->push(
       static_cast<VarMeExpr *>(irMap->GetOrCreateZeroVersionVarMeExpr(ost)));
     versionStackVec[ost->index.idx] = versStack;

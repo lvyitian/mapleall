@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 // This file contains methods to emit Maple IR nodes from MeExpr/MeStmt
@@ -97,6 +97,13 @@ BaseNode *AddroffuncMeExpr::EmitExpr(SSATab *ssaTab) {
   return offuncnode;
 }
 
+BaseNode *AddroflabelMeExpr::EmitExpr(SSATab *ssaTab) {
+  AddroflabelNode *aolNode = ssaTab->mirModule.CurFunction()->codeMemPool->New<AddroflabelNode>();
+  aolNode->primType = PTY_ptr;
+  aolNode->offset = labelIdx;
+  return aolNode;
+}
+
 BaseNode *GcmallocMeExpr::EmitExpr(SSATab *ssaTab) {
   GCMallocNode *gcmnode = ssaTab->mirModule.CurFunction()->codeMemPool->New<GCMallocNode>(op, primType, tyIdx);
   return gcmnode;
@@ -122,8 +129,16 @@ BaseNode *OpMeExpr::EmitExpr(SSATab *ssaTab) {
     case OP_shl:
     case OP_sub: {
       BinaryNode *bnode = ssaTab->mirModule.CurFunction()->codeMemPool->New<BinaryNode>(op, primType);
-      bnode->bOpnd[0] = opnds[0]->EmitExpr(ssaTab);
-      bnode->bOpnd[1] = opnds[1]->EmitExpr(ssaTab);
+      BaseNode *opnd0 = opnds[0]->EmitExpr(ssaTab);
+      if (opnd0->primType == PTY_agg) {
+        opnd0->primType = primType;
+      }
+      bnode->bOpnd[0] = opnd0;
+      BaseNode *opnd1 = opnds[1]->EmitExpr(ssaTab);
+      if (opnd1->primType == PTY_agg) {
+        opnd1->primType = primType;
+      }
+      bnode->bOpnd[1] = opnd1;
       return bnode;
     }
     case OP_eq:
@@ -136,8 +151,16 @@ BaseNode *OpMeExpr::EmitExpr(SSATab *ssaTab) {
     case OP_cmpg:
     case OP_cmp: {
       CompareNode *cmpnode = ssaTab->mirModule.CurFunction()->codeMemPool->New<CompareNode>(op, primType);
-      cmpnode->bOpnd[0] = opnds[0]->EmitExpr(ssaTab);
-      cmpnode->bOpnd[1] = opnds[1]->EmitExpr(ssaTab);
+      BaseNode *opnd0 = opnds[0]->EmitExpr(ssaTab);
+      if (opnd0->primType == PTY_agg) {
+        opnd0->primType = opndType;
+      }
+      cmpnode->bOpnd[0] = opnd0;
+      BaseNode *opnd1 = opnds[1]->EmitExpr(ssaTab);
+      if (opnd1->primType == PTY_agg) {
+        opnd1->primType = opndType;
+      }
+      cmpnode->bOpnd[1] = opnd1;
       cmpnode->opndType = opndType;
       return cmpnode;
     }

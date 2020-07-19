@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #include "me_delegate_rc.h"
@@ -360,7 +360,7 @@ RegMeExpr *DelegateRC::RHSTempDelegated(MeExpr *rhs, MeStmt *usestmt) {
       return nullptr;
     }
 
-    VarMeExpr *thelhs = defStmt->GetVarLhs();
+    VarMeExpr *thelhs = static_cast<VarMeExpr *>(defStmt->GetVarLhs());
     MeExpr *rhsexpr = defStmt->GetRhs();
     bool defstmtNeedIncref = defStmt->NeedIncref();
     CHECK_FATAL((defStmt->op == OP_dassign || defStmt->op == OP_maydassign),
@@ -417,7 +417,7 @@ void DelegateRC::DelegateRCTemp(MeStmt *stmt) {
       if (!stmt->NeedIncref()) {
         break;
       }
-      VarMeExpr *lhsVar = stmt->GetVarLhs();
+      ScalarMeExpr *lhsVar = stmt->GetVarLhs();
       CHECK_FATAL(lhsVar != nullptr, "null ptr check");
       if (!lhsVar->ost->GetMIRSymbol()->stIdx.IsGlobal()) {
         break;
@@ -525,7 +525,7 @@ bool DelegateRC::CanOmitRC4LHSVar(MeStmt *stmt, bool &onlyWithDecref) {
   switch (stmt->op) {
     case OP_dassign:
     case OP_maydassign: {
-      VarMeExpr *thelhs = stmt->GetVarLhs();
+      VarMeExpr *thelhs = static_cast<VarMeExpr *>(stmt->GetVarLhs());
       MeExpr *therhs = stmt->GetRhs();
       CHECK_FATAL(thelhs != nullptr && therhs != nullptr, "null ptr check");
       if (thelhs->primType != PTY_ref || thelhs->noDelegateRC) {
@@ -603,7 +603,7 @@ void DelegateRC::DelegateHandleNoRCStmt(MeStmt *stmt, bool addDecref) {
   MapleVector<MustDefMeNode> *mustdefList = nullptr;
   // bool defstmt_need_incref;
   if (stmt->op == OP_dassign || stmt->op == OP_maydassign) {
-    thelhs = stmt->GetVarLhs();
+    thelhs = static_cast<VarMeExpr *>(stmt->GetVarLhs());
     rhsexpr = stmt->GetRhs();
   } else if (kOpcodeInfo.IsCallAssigned(stmt->op)) {
     if (!addDecref) {
@@ -818,7 +818,7 @@ AnalysisResult *MeDoDelegateRC::Run(MeFunction *func, MeFuncResultMgr *m) {
       }
       // for live_localrefvars
       if (stmt->op == OP_dassign || stmt->op == OP_maydassign) {
-        VarMeExpr *lhs = stmt->GetVarLhs();
+        ScalarMeExpr *lhs = stmt->GetVarLhs();
         CHECK_FATAL(lhs != nullptr, "null ptr check");
         OriginalSt *ost = lhs->ost;
         if (ost->isLocal && !ost->isFormal && !ost->ignoreRC && lhs->primType == PTY_ref) {

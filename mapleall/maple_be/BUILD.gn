@@ -1,16 +1,16 @@
 #
-# Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+# Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
 #
-# OpenArkCompiler is licensed under the Mulan PSL v1.
-# You can use this software according to the terms and conditions of the Mulan PSL v1.
-# You may obtain a copy of Mulan PSL v1 at:
+# Licensed under the Mulan Permissive Software License v2.
+# You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+# You may obtain a copy of MulanPSL - 2.0 at:
 #
-#     http://license.coscl.org.cn/MulanPSL
+#     https://opensource.org/licenses/MulanPSL-2.0
 #
 # THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
 # EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
 # FIT FOR A PARTICULAR PURPOSE.
-# See the Mulan PSL v1 for more details.
+# See the MulanPSL - 2.0 for more details.
 #
 
 if(TARGET == ""){
@@ -29,7 +29,7 @@ cflags_cc -= [
         "-DRC_NO_MMAP",
     ]
 
-if(USE_CLANG == 1){
+if(JAVA == 1){
     cflags_cc -= [
         "-DMIR_JAVA=1",
     ]
@@ -86,10 +86,9 @@ include_directories = [
     "${MAPLEALL_ROOT}/mempool/include",
     "${MAPLEALL_ROOT}/maple_ipa/include",
     "${MAPLEALL_ROOT}/maple_phase/include",
-    "${MAPLEALL_ROOT}/huawei_secure_c/include",
+    "${MAPLE_ROOT}/huawei_secure_c/include",
     "${MAPLE_RE_ROOT}/include",
     "${MAPLEALL_ROOT}/maple_driver/include",
-    "${MAPLEALL_ROOT}/../third-party/md5/include",
 ]
 
 source_set("libmplada55"){
@@ -154,7 +153,7 @@ static_library("libmplbe"){
     ]
     deps = []
 
-    if(USE_CLANG == 1){
+    if(JAVA == 1){
         sources += [
             "src/be/rt_support.cpp",
         ]
@@ -173,7 +172,7 @@ static_library("libmplbe"){
     output_dir = "${root_out_dir}/lib/${HOST_ARCH}"
 }
 
-action("aarch64isa_headers"){
+action("aarch64isa.headers"){
     script = "src/cg/script/gen_mopfor_gn.py"
     input = "src/cg/aarch64/aarch64_md.def"
     output = "${target_out_dir}/aarch64_isa.def"
@@ -244,7 +243,7 @@ source_set("libcgark"){
     }
 }
 
-action("armisa_headers"){
+action("armisa.headers"){
     script = "src/cg/script/gen_mopfor_gn.py"
     input = "src/cg/arm/arm_md.def"
     output = "${target_out_dir}/arm_isa.def"
@@ -279,9 +278,9 @@ if(TARGET == "arm"){
    }
 }
 
-action("x86isa_headers"){
+action("x86isa.headers"){
     script = "src/cg/script/gen_mopfor_gn.py"
-    input = "src/cg/x86/x86md.def"
+    input = "src/cg/x86/x86_md.def"
     output = "${target_out_dir}/x86_isa.def"
     output1 = "${MAPLEALL_ROOT}/maple_be/include/cg/x86/x86_isa.def"
     outputs = [
@@ -298,8 +297,8 @@ if(TARGET == "X86"){
         sources = [
             "src/cg/x86/x86_emit.cpp",
             "src/cg/x86/x86_cg.cpp",
-            "src/cg/x86/x86_cg_func.cpp",
-            "src/cg/x86/x86_mem_layout.cpp",
+            "src/cg/x86/x86cg_func.cpp",
+            "src/cg/x86/x86mem_layout.cpp",
             "src/cg/x86/x86_insn_slct.cpp",
             "src/cg/x86/x86_load_store.cpp",
             "src/cg/x86/x86_operand.cpp",
@@ -337,14 +336,12 @@ source_set("libcgcpu"){
 
 static_library("libcg"){
    sources = [
-       "src/cg/dbg.cpp",
        "src/cg/cg.cpp",
        "src/cg/cg_func.cpp",
        "src/cg/eh_func.cpp",
        "src/cg/emit.cpp",
        "src/cg/cg_option.cpp",
        "src/cg/cg_phase_manager.cpp",
-       "src/cg/emit_dbg.cpp",
        "src/cg/mem_layout.cpp",
        "src/cg/special_func.cpp",
     ]
@@ -368,7 +365,7 @@ static_library("libcg"){
         deps = [
             ":libcgcpu",
             ":libcgarm",
-            ":armisa_headers",
+            ":armisa.headers",
         ]
     }
 
@@ -395,7 +392,7 @@ executable("mplcg"){
         "${MAPLEALL_ROOT}/maple_phase:libmplphase",
         "${MAPLEALL_ROOT}/mempool:libmempool",
         "${MAPLEALL_ROOT}/maple_util:libmplutil",
-        "${MAPLEALL_ROOT}/huawei_secure_c:libHWSecureC",
+        "${MAPLE_ROOT}/huawei_secure_c:libHWSecureC",
     ]
 
     if(MACHINE == "cortex_a55"){
@@ -420,7 +417,7 @@ executable("mplbe"){
         "${MAPLEALL_ROOT}/maple_phase:libmplphase",
         "${MAPLEALL_ROOT}/mempool:libmempool",
         "${MAPLEALL_ROOT}/maple_util:libmplutil",
-        "${MAPLEALL_ROOT}/huawei_secure_c:libHWSecureC",
+        "${MAPLE_ROOT}/huawei_secure_c:libHWSecureC",
     ]
 
     include_dirs = include_directories
@@ -432,8 +429,8 @@ executable("mplbe"){
 
 executable("mplbe-c"){
     sources = [
-        "src/be/bedriver.cpp",
-        "src/cg/cgoption.cpp",
+        "src/be/be_driver.cpp",
+        "src/cg/cg_option.cpp",
     ]
 
     deps = [
@@ -443,7 +440,7 @@ executable("mplbe-c"){
         "${MAPLEALL_ROOT}/maple_phase:libmplphase",
         "${MAPLEALL_ROOT}/mempool:libmempool",
         "${MAPLEALL_ROOT}/maple_util:libmplutil",
-        "${MAPLEALL_ROOT}/huawei_secure_c:libHWSecureC",
+        "${MAPLE_ROOT}/huawei_secure_c:libHWSecureC",
     ]
 
     include_dirs = include_directories

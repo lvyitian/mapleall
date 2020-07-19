@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #include "mir_nodes.h"
@@ -240,9 +240,13 @@ void BaseNode::DumpBase(const MIRModule *mod, int32 indent) const {
 
 void CppCatchNode::Dump(const MIRModule *mod, int32 indent) const {
   PrintIndentation(indent);
-  LogInfo::MapleLogger() << kOpcodeInfo.GetName(op) << " { ";
-  GlobalTables::GetTypeTable().GetTypeFromTyIdx(exceptionTyIdx)->Dump(indent + 1);
-  LogInfo::MapleLogger() << " }" << std::endl;
+  LogInfo::MapleLogger() << kOpcodeInfo.GetName(op);
+  if (exceptionTyIdx.GetIdx() != 0) {
+    LogInfo::MapleLogger() << " { ";
+    GlobalTables::GetTypeTable().GetTypeFromTyIdx(exceptionTyIdx)->Dump(indent + 1);
+    LogInfo::MapleLogger() << " }";
+  }
+  LogInfo::MapleLogger() << std::endl;
 }
 
 void CatchNode::Dump(const MIRModule *mod, int32 indent) const {
@@ -770,7 +774,7 @@ void SwitchNode::Dump(const MIRModule *mod, int32 indent) const {
   for (CaseVector::const_iterator it = switchTable.begin(); it != switchTable.end(); it++) {
     LogInfo::MapleLogger() << std::endl;
     PrintIndentation(indent + 1);
-    LogInfo::MapleLogger() << std::hex << "0x" << (it)->first << std::dec;
+    LogInfo::MapleLogger() << (it)->first;
     LogInfo::MapleLogger() << ": goto @" << mod->CurFunction()->GetLabelName((it)->second);
   }
   LogInfo::MapleLogger() << " }" << std::endl;

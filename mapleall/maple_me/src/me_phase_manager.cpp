@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #include <iostream>
@@ -140,50 +140,68 @@ void MeFuncPhaseManager::AddPhases(const std::unordered_set<std::string> &skipPh
   };
 
   bool o2 = MeOption::optLevel == 2;
-  /* default phase sequence */
-  if (o2) {
-    addPhase("loopcanon");
-    addPhase("splitcriticaledge");
-  }
-  addPhase("ssatab");
-  addPhase("aliasclass");
-  addPhase("ssa");
-  addPhase("dse");
-  addPhase("fsaa");
-  if (JAVALANG) {
-    // addPhase("bdcopt");
-    // addPhase("syncselect");
-    // addPhase("ssadevirt");
-    // addPhase("ea");
-  }
-  addPhase("hprop");
-  addPhase("symrename");
-  addPhase("hdse");
-  if (JAVALANG) {
-    addPhase("may2dassign");
-    addPhase("condbasednpc");
-  }
-  if (o2) {
-    addPhase("cfgopt");
-  }
-  if (o2) {
-    addPhase("epre");
+  if (mePhaseType == kMePhaseMainopt) {
+    /* default phase sequence */
+    if (o2) {
+      addPhase("loopcanon");
+      addPhase("splitcriticaledge");
+    }
+    addPhase("ssatab");
+    addPhase("aliasclass");
+    addPhase("ssa");
+    addPhase("dse");
+    addPhase("fsaa");
     if (JAVALANG) {
-      addPhase("stmtpre");
+      // addPhase("bdcopt");
+      // addPhase("syncselect");
+      // addPhase("ssadevirt");
+      // addPhase("ea");
+    }
+    addPhase("hprop");
+    addPhase("symrename");
+    addPhase("hdse");
+    if (JAVALANG) {
+      addPhase("may2dassign");
+      addPhase("condbasednpc");
+    }
+    if (o2) {
+      addPhase("cfgopt");
+    }
+    if (o2) {
+      addPhase("epre");
+      if (JAVALANG) {
+        addPhase("stmtpre");
+      }
+    }
+    if (JAVALANG && !MeOption::noRC) {
+      addPhase("analyzerc");
+      if (MeOption::rcLowering) {
+        addPhase("rclowering");
+      }
+    }
+    addPhase("rename2preg");
+    if (o2) {
+      addPhase("lpre");
+      // addPhase("storepre");
+    }
+    addPhase("emit");
+  } else {
+    addPhase("ssatab");
+    addPhase("aliasclass");
+    addPhase("ssa");
+    addPhase("dse");
+    addPhase("irmapbuild");
+    addPhase("loopivcan");
+    addPhase("hprop");
+    addPhase("hdse");
+    addPhase("lnoemit");
+    addPhase("loopinfo");
+    if (JAVALANG) {
+      addPhase("lfobdce");
+    } else {
+      addPhase("autosimd");
     }
   }
-  if (JAVALANG && !MeOption::noRC) {
-    addPhase("analyzerc");
-    if (MeOption::rcLowering) {
-      addPhase("rclowering");
-    }
-  }
-  addPhase("rename2preg");
-  if (o2) {
-    addPhase("lpre");
-    // addPhase("storepre");
-  }
-  addPhase("emit");
 }
 
 // match sub string of function name
@@ -194,10 +212,15 @@ bool MeFuncPhaseManager::FuncFilter(const string &filter, const std::string &nam
   return false;
 }
 
-void MeFuncPhaseManager::Run(MIRFunction *mirFunc, uint64 rangenum, const string &meinput) {
+void MeFuncPhaseManager::RunMainOpt(MIRFunction *mirFunc, uint64 rangenum, const string &meinput) {
   if (!MeOption::quiet)
     LogInfo::MapleLogger() << ">>>>>>>>>>>>>>>>>>>>>>>>>>>>> Optimizing Function  < " << mirFunc->GetName()
          << " id=" << mirFunc->puIdxOrigin << " >---\n";
+  if (mirFunc->HasSetjmp()) {
+    if (!MeOption::quiet)
+      LogInfo::MapleLogger() << "Function  < " << mirFunc->GetName() << "not optimized because it has setjmp\n";
+    return;
+  }
   MemPool *funcmp = mempoolctrler.NewMemPool("mapleme per-function mempool");
   MemPool *versmp = mempoolctrler.NewMemPool("first verst mempool");
   MeFunction func(&module, mirFunc, funcmp, versmp, meinput, false, mePhaseType == kMePhaseLno);
@@ -307,6 +330,10 @@ void MeFuncPhaseManager::Run(MIRFunction *mirFunc, uint64 rangenum, const string
     GetAnalysisResultManager()->InvalidAllResults();
   }
   mempoolctrler.DeleteMemPool(funcmp);
+}
+
+void MeFuncPhaseManager::Run(MIRFunction *mirFunc, uint64 rangenum, const string &meinput) {
+  RunMainOpt(mirFunc, rangenum, meinput);
 }
 
 }  // namespace maple

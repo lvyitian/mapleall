@@ -1,18 +1,19 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
+// Based on cmplgen.cpp.
 #include "mir_builder.h"
 #include "ark_mir_emit.h"
 #include "cg_option.h"
@@ -20,12 +21,15 @@
 #include <climits>
 #include "securec.h"
 #include "special_func.h"
+#include "name_mangler.h"
 
 #include <algorithm>
 #include <iostream>
 #include <fstream>
 #include <string>
 #include <iomanip>
+
+#define CLANG (mmodule.IsCModule())
 
 using std::hex;
 
@@ -45,7 +49,8 @@ void MirGenerator::FlattenExpr(BaseNode *fexpr) {
   }
 }
 
-// These were hardcoded in libmaplert.so mrt_primitive_class.def and need special handling
+// These are the primitive types and 1,2,3 dimension array types predefined in libmaplert.so by mrt_primitive_class.def.
+// Changes to the DEFINE_PRIMITIVE_CLASSINFOS list in mrt_primitive_class.def must be applied to this list as well.
 std::set<std::string> PreDefClassInfo = {
   string(CLASSINFO_PREFIX_STR) + string(JARRAY_PREFIX_STR) + string(NameMangler::kJavaLangCharSequence),
   string(CLASSINFO_PREFIX_STR) + string(JARRAY_PREFIX_STR) + string(NameMangler::kJavaLangClassStr),
@@ -63,6 +68,7 @@ std::set<std::string> PreDefClassInfo = {
   string(PRIMITIVECLASSINFO_PREFIX_STR) + string(TO_STR(I)),
   string(PRIMITIVECLASSINFO_PREFIX_STR) + string(TO_STR(J)),
   string(PRIMITIVECLASSINFO_PREFIX_STR) + string(TO_STR(S)),
+  string(PRIMITIVECLASSINFO_PREFIX_STR) + string(TO_STR(V)),
   string(PRIMITIVECLASSINFO_PREFIX_STR) + string(TO_STR(Z)),
   string(PRIMITIVECLASSINFO_PREFIX_STR) + string(TO_STR(AB)),
   string(PRIMITIVECLASSINFO_PREFIX_STR) + string(TO_STR(AC)),
@@ -71,18 +77,30 @@ std::set<std::string> PreDefClassInfo = {
   string(PRIMITIVECLASSINFO_PREFIX_STR) + string(TO_STR(AI)),
   string(PRIMITIVECLASSINFO_PREFIX_STR) + string(TO_STR(AJ)),
   string(PRIMITIVECLASSINFO_PREFIX_STR) + string(TO_STR(AS)),
+  string(PRIMITIVECLASSINFO_PREFIX_STR) + string(TO_STR(AV)),
   string(PRIMITIVECLASSINFO_PREFIX_STR) + string(TO_STR(AZ)),
-  string(PRIMITIVECLASSINFO_PREFIX_STR) + string(TO_STR(AAAB)),
-  string(PRIMITIVECLASSINFO_PREFIX_STR) + string(TO_STR(AAAI)),
   string(PRIMITIVECLASSINFO_PREFIX_STR) + string(TO_STR(AAB)),
+  string(PRIMITIVECLASSINFO_PREFIX_STR) + string(TO_STR(AAC)),
   string(PRIMITIVECLASSINFO_PREFIX_STR) + string(TO_STR(AAD)),
+  string(PRIMITIVECLASSINFO_PREFIX_STR) + string(TO_STR(AAF)),
   string(PRIMITIVECLASSINFO_PREFIX_STR) + string(TO_STR(AAI)),
   string(PRIMITIVECLASSINFO_PREFIX_STR) + string(TO_STR(AAJ)),
   string(PRIMITIVECLASSINFO_PREFIX_STR) + string(TO_STR(AAS)),
+  string(PRIMITIVECLASSINFO_PREFIX_STR) + string(TO_STR(AAV)),
+  string(PRIMITIVECLASSINFO_PREFIX_STR) + string(TO_STR(AAZ)),
+  string(PRIMITIVECLASSINFO_PREFIX_STR) + string(TO_STR(AAAB)),
+  string(PRIMITIVECLASSINFO_PREFIX_STR) + string(TO_STR(AAAC)),
+  string(PRIMITIVECLASSINFO_PREFIX_STR) + string(TO_STR(AAAD)),
+  string(PRIMITIVECLASSINFO_PREFIX_STR) + string(TO_STR(AAAF)),
+  string(PRIMITIVECLASSINFO_PREFIX_STR) + string(TO_STR(AAAI)),
+  string(PRIMITIVECLASSINFO_PREFIX_STR) + string(TO_STR(AAAJ)),
+  string(PRIMITIVECLASSINFO_PREFIX_STR) + string(TO_STR(AAAS)),
+  string(PRIMITIVECLASSINFO_PREFIX_STR) + string(TO_STR(AAAV)),
+  string(PRIMITIVECLASSINFO_PREFIX_STR) + string(TO_STR(AAAZ)),
 };
 
 // Maple runtime calls which will be lowered from OP_call to OP_intrinsiccall.
-// TODO: Do lowering in mplcg belowering pass or earlier maplecomb phases.
+// TODO: Do lowering in mplcg belowering pass
 // TODO: add memcmpMpl to list when we have x86 replacement.
 // NOTE: IntrinsicList is moved to special_func.cpp
 
@@ -274,10 +292,11 @@ void MirGenerator::EmitExpr(BaseNode *fexpr) {
       break;
     case OP_iread: {
       // lower iread to ireadoff for interpreter
-      int32 offset = GetFieldOffset(((IreadNode *)fexpr)->tyIdx, ((IreadNode *)fexpr)->fieldID);
+      MIRType *type = nullptr;
+      int32 offset = GetFieldOffsetType(((IreadNode *)fexpr)->tyIdx, ((IreadNode *)fexpr)->fieldID, type);
       // Evaluate operands
       EmitExpr(static_cast<IreadNode *>(fexpr)->uOpnd);
-      mre_instr_t ireadoff(RE_ireadoff, fexpr->primType, fexpr->numOpnds);
+      mre_instr_t ireadoff(RE_ireadoff, expr.primType, fexpr->numOpnds);
       // generate 4 byte instr if offset fits in 16 bits else generate 8 byte instr
       if (offset <= 32767 && offset >= -32768) {
         ireadoff.param.offset = offset;
@@ -405,10 +424,6 @@ void MirGenerator::EmitStmt(StmtNode *fstmt) {
       break;
     case OP_icall: {
       FlattenExpr(fstmt);
-#if 0 // TODO: Check why ret_tyidx is always 0
-      MIRType *type = globaltable.GetTypeFromTyIdx(((IcallNode *)fstmt)->ret_tyidx);
-      stmt->ptyp = type->GetPrimType();
-#else
       // Workaround to init icall ptyp with type of return value in %%retval0
       stmt.primType = PTY_void;
       if (fstmt->GetNext() &&
@@ -417,7 +432,6 @@ void MirGenerator::EmitStmt(StmtNode *fstmt) {
           ((RegreadNode *)(((UnaryStmtNode *)fstmt->GetNext())->uOpnd))->regIdx == -kSregRetval0) {
         stmt.primType = ((UnaryStmtNode *)fstmt->GetNext())->uOpnd->primType;
       }
-#endif
       // TODO: check if ret_tyidx exists in IcallNode, its in mirnodes.h but not in MapleIR spec.
       // if ret_tyidx needs to be added to icall_stmt_t, enable fld copy in OP_icall and OP_icallassigned
       // and change icall and icallassigned node size in mmpgenl.cpp:GetOpNodeSize() from 4 to 8.
@@ -491,7 +505,7 @@ void MirGenerator::EmitStmt(StmtNode *fstmt) {
       for (int i = 0; i < numCases; i++) { // emit jump table
         MIRFunction *func = GetCurFunction();
         string label = "mirbin_label_"+to_string(func->puIdxOrigin)+"_"+to_string(rTable[i].second);
-        EmitString(".2byte "+label+"-. "+"\t// jmptbl["+to_string(rTable[i].first)+"]", 2);
+        EmitString(".4byte "+label+"-. "+"\t// jmptbl["+to_string(rTable[i].first)+"]", 2);
       }
       break;
     }
@@ -502,9 +516,24 @@ void MirGenerator::EmitStmt(StmtNode *fstmt) {
       FlattenExpr(fstmt);
       EmitAsmBaseNode(stmt);
       break;
-    case OP_label:
+    case OP_label: {
       EmitAsmLabel((static_cast<LabelNode *>(fstmt))->labelIdx, false);
+      if (curFunc.currentTry) {
+        // workround to handle issue with front end generating maple IR
+        // code that branches into the middle of try blocks from outside
+        // the try block.
+        mre_instr_t curTryStmt(curFunc.currentTry);
+        TryNode *t = static_cast<TryNode *>(curFunc.currentTry);
+        uint32 numCatches = t->offsets.size();
+        curTryStmt.param.numCases = numCatches;
+        curTryStmt.op = MapEHOpcode(curTryStmt.op);
+        EmitAsmBaseNode(curTryStmt);
+        for (int i=0; i < numCatches; i++) {
+          EmitAsmLabel(t->offsets[i], true);
+        }
+      }
       break;
+    }
     case OP_comment:
       EmitAsmComment(static_cast<CommentNode *>(fstmt));
       break;
@@ -556,11 +585,17 @@ void MirGenerator::EmitStmt(StmtNode *fstmt) {
     case OP_iassign: {
       // Lower iassign to iassignoff (can be either compact or regular instr) for interpreter
       IassignNode *iassign = (IassignNode *)fstmt;
-      int32 offset = GetFieldOffset(iassign->tyIdx, iassign->fieldID);
+      MIRType *type = nullptr;
+      int32 offset = GetFieldOffsetType(iassign->tyIdx, iassign->fieldID, type);
       // eval <addrexp> and <rhs>
       EmitExpr(iassign->addrExpr);
       EmitExpr(iassign->rhs);
-      mre_instr_t iassignoff(RE_iassignoff, iassign->rhs->primType, fstmt->numOpnds);
+      // the type of rhs of iassign should correspond with its element type, but not the rhs' type
+      if (GetPrimTypeSize(type->GetPrimType()) != GetPrimTypeSize(iassign->rhs->primType)) {
+        fprintf(stderr, "warning for the store, the dest type and src type size dosent' match\n");
+      }
+
+      mre_instr_t iassignoff(RE_iassignoff, type->GetPrimType(), fstmt->numOpnds);
       // generate 4 byte instr if offset fits in 16 bits else generate 8 byte instr
       if (offset <= 32767 && offset >= -32768) {
         iassignoff.param.offset = offset;
@@ -604,15 +639,38 @@ void MirGenerator::EmitStmt(StmtNode *fstmt) {
       }
       // for matching nested try/catch blocks
       javatry_stmts->push(t);
+      curFunc.currentTry = fstmt;
       break;
     }
     case OP_endtry:
       ASSERT(javatry_stmts->top() != nullptr, "");
       javatry_stmts->pop();
       EmitAsmBaseNode(stmt);
+      curFunc.currentTry = nullptr;
       break;
     default:
       MIR_FATAL("unknown statement opcode: [%d]:(%s)\n", fstmt->op, kOpcodeInfo.GetName(fstmt->op));
+  }
+}
+
+void MirGenerator::CheckYieldPointInsert(StmtNode *fstmt) {
+  switch(fstmt->op) {
+    case OP_label:
+      curFunc.funcLabels.insert((static_cast<LabelNode *>(fstmt))->labelIdx);
+      break;
+    case OP_brtrue:
+    case OP_brfalse:
+      if (curFunc.funcLabels.find(((CondGotoNode *)fstmt)->offset) != curFunc.funcLabels.end()) {
+        EmitYieldPoint();
+      }
+      break;
+    case OP_goto:
+      if (curFunc.funcLabels.find(((GotoNode *)fstmt)->offset) != curFunc.funcLabels.end()) {
+        EmitYieldPoint();
+      }
+      break;
+    default:
+      break;
   }
 }
 
@@ -621,6 +679,7 @@ void MirGenerator::EmitFuncDef(BlockNode *fblock) {
   StmtNode *fstmt = fblock->GetFirst();
   StmtNode *firstStmt = nullptr;
   while (fstmt) {
+    CheckYieldPointInsert(fstmt);
     EmitStmt(fstmt);
     fstmt = fstmt->GetNext();
   }
@@ -629,7 +688,7 @@ void MirGenerator::EmitFuncDef(BlockNode *fblock) {
   // void functions that ends with a JNI stub.
   // Temporary workaround here to insert one.
   fstmt = fblock->GetLast();
-  if (fstmt->op != OP_return) {
+  if (fstmt && fstmt->op != OP_return) {
     mre_instr_t retStmt(RE_return, PTY_void, 0);
     EmitAsmBaseNode(retStmt);
   }
@@ -717,13 +776,6 @@ int MirGenerator::GetLocalsInfo(MIRFunction *func) {
       continue;
     }
     ++localsCount;
-#if 0
-    printf("locals stIdx %d %s ", i, s->GetName().c_str());
-    if (s->GetTyIdx().idx != 0) {
-      printf(" ptype 0x%x size 0x%x\n", globaltable.type_table_[s->GetTyIdx().idx]->_primtype,
-        GetPrimTypeSize(globaltable.type_table_[s->GetTyIdx().idx]->_primtype));
-    }
-#endif
     curFunc.AddLocalVar(s);
   }
 
@@ -737,10 +789,6 @@ int MirGenerator::GetLocalsInfo(MIRFunction *func) {
     }
     curFunc.AddLocalPreg(preg->pregNo);
     ++localsCount;
-#if 0
-    printf("locals %d %%%d ", i, preg->pregNo);
-    printf("type 0x%x size 0x%x\n", preg->ptyp, GetPrimTypeSize(preg->ptyp));
-#endif
   }
   return localsCount;
 }
@@ -768,6 +816,8 @@ int MirGenerator::MaxEvalStack(MIRFunction *func) {
   int maxEvalStackSize = 0;
   ASSERT(func->body, "Function has no body");
   StmtNode *fstmt = func->body->GetFirst();
+  curFunc.callsCleanupLocalRefVars = false;
+
   while (fstmt) {
     int evalStackSize = 0;
     if (fstmt->NumOpnds()) {
@@ -780,6 +830,21 @@ int MirGenerator::MaxEvalStack(MIRFunction *func) {
       // lowering phase before emitting maplere image.
       evalStackSize = 1;
     }
+
+    if (fstmt->op == OP_intrinsiccall) { // collect localrefvars from parameters of the intrinsic call CLEANUP_LOCALREFVARS
+      IntrinsiccallNode* node = dynamic_cast<IntrinsiccallNode*>(fstmt);
+      if (node->intrinsic == INTRN_MPL_CLEANUP_LOCALREFVARS) {
+        for (size_t i=0; i<node->NumOpnds(); i++) {
+          ASSERT(node->Opnd(i)->op == OP_dread, "MPL_CLEANUP_LOCALREFVARS opnd should be OP_dread");
+          DreadNode *dread = (DreadNode *)node->Opnd(i);
+
+          MIRSymbol *s = GetCurFunction()->GetLocalOrGlobalSymbol(dread->stIdx);
+          curFunc.cleanupLocalRefVars.insert(s);
+        }
+        curFunc.callsCleanupLocalRefVars = true;
+      }
+    }
+
     if (evalStackSize > maxEvalStackSize) {
       maxEvalStackSize = evalStackSize;
     }
@@ -792,17 +857,83 @@ void MirGenerator::EmitAsmAutoVarsInfo(MIRFunction *func) {
   MapleVector<MIRPreg *> pregtable = func->pregTab->pregTable;
   MIRSymbolTable *st = func->symTab;
 
-  // %%retval0 and %%thrownval
-  os << "\t.byte " << hex << "0x" << GlobalTables::GetTypeTable().typeTable.at(func->funcType->retTyIdx.GetIdx())->GetPrimType() << "\t// %%retval\n";
-  os << "\t.byte " << hex << "0x" << PTY_unknown << "\t// %%thrownval\n";
+  // %%retval0 and %%thrownval; the 2nd byte is always 0x0, meaning these are not localrefvar
+  os << "\t.byte " << hex << "0x" << GlobalTables::GetTypeTable().typeTable.at(func->funcType->retTyIdx.GetIdx())->GetPrimType() << ", 0x0" << "\t// %%retval\n";
+  os << "\t.byte " << hex << "0x" << PTY_unknown << ", 0x0" << "\t// %%thrownval\n";
+
+  // local vars in func
+  for (int32 i = 0; i < st->GetSymbolTableSize(); i++) {
+    MIRSymbol *s = st->GetSymbolFromStIdx(i);
+    if (!s) {
+      continue;
+    }
+
+    if (s->IsDeleted()) {
+      continue;
+    }
+    if (s->storageClass != kScAuto) {
+      continue;
+    }
+    if (s->GetTyIdx().GetIdx() != 0) {
+      // cleanupFlag:
+      // 0: not a local refvar
+      // 1: function calls CLEANUP_LOCALREFVAR, but this var is not a parameter of the call.
+      //    (some calls of CLEANUP_LOCALREFVAR have 0 parameters)
+      // 2: function calls CLEANUP_LOCALREFVAR, and this var is a parameter of the call.
+      // 3: function does not call CLEANUP_LOCALREFVAR; this local refvar (most likely exception related)
+      //    should have cleanup.
+      int cleanupFlag = 0;
+      if (s->IsRefType()) {
+        if(curFunc.callsCleanupLocalRefVars) {
+          cleanupFlag = 1;
+          if(curFunc.cleanupLocalRefVars.find(s) != curFunc.cleanupLocalRefVars.end()) {
+            cleanupFlag = 2;
+          }
+        } else {
+          // function has no intrinsic call of CLEANUP_LOCALREFVARS
+          cleanupFlag = 3;
+        }
+      }
+
+      os << "\t" << ".byte " << hex
+         << "0x" << GlobalTables::GetTypeTable().typeTable[s->GetTyIdx().GetIdx()]->primType
+         << ", 0x" << cleanupFlag
+         << "\t// " << s->GetName() << "\n";
+    }
+  }
+
   // local sregs in func
   for (int32 i = 1; i < pregtable.size(); i++) {
     MIRPreg *preg = pregtable[i];
     if (!curFunc.FindFormalPreg(preg->pregNo)) {
       os << "\t.byte " << hex << "0x" << preg->primType
-         << dec << "\t// %" << preg->pregNo << "\n";
+         << ", 0x0" << dec << "\t// %" << preg->pregNo << "\n"; // the 2nd byte is 0x0, meaning preg is not localrefvar
     }
   }
+}
+
+static void FixNameInfo(std::string &str) {
+    size_t len = str.length();
+    if(len >= 16) {
+        str.resize(15);
+        len = 15;
+    }
+    while(len++ < 16) {
+        str += "\\0";
+    }
+}
+
+void MirGenerator::EmitAsmAutoVarsNameInfo(MIRFunction *func) {
+  MapleVector<MIRPreg *> pregtable = func->pregTab->pregTable;
+  MIRSymbolTable *st = func->symTab;
+
+  std::string name = "%%retval";
+  FixNameInfo(name);
+  os << hex << "\t.ascii \"" << name << "\"\n";
+  name = "%%thrownval";
+  FixNameInfo(name);
+  os << hex << "\t.ascii \"" << name << "\"\n";
+
   // local vars in func
   for (int32 i = 0; i < st->GetSymbolTableSize(); i++) {
     MIRSymbol *s = st->GetSymbolFromStIdx(i);
@@ -816,9 +947,18 @@ void MirGenerator::EmitAsmAutoVarsInfo(MIRFunction *func) {
       continue;
     }
     if (s->GetTyIdx().GetIdx() != 0) {
-      os << "\t" << ".byte " << hex
-         << "0x" << GlobalTables::GetTypeTable().typeTable[s->GetTyIdx().GetIdx()]->primType
-         << "\t// " << s->GetName() << "\n";
+      name = s->GetName();
+      FixNameInfo(name);
+      os << hex << "\t.ascii \"" << name << "\"\n";
+    }
+  }
+
+  for (int32 i = 1; i < pregtable.size(); i++) {
+    MIRPreg *preg = pregtable[i];
+    if (!curFunc.FindFormalPreg(preg->pregNo)) {
+      name = "%" + std::to_string(preg->pregNo);
+      FixNameInfo(name);
+      os << hex << "\t.ascii \"" << name << "\"\n";
     }
   }
 }
@@ -830,10 +970,19 @@ void MirGenerator::EmitAsmFormalArgInfo(MIRFunction *func) {
     os << hex << "\t.byte " << "0x" << ty->primType << "\t// ";
     if (arg->sKind == kStPreg) {
       os << dec << "%" << arg->value.preg->pregNo << "\n";
-    }
-    else {
+    } else {
       os << arg->GetName() << "\n";
     }
+  }
+}
+
+void MirGenerator::EmitAsmFormalArgNameInfo(MIRFunction *func) {
+  for (int i = 0; i< func->formalDefVec.size(); i++) {
+    MIRSymbol *arg = func->formalDefVec[i].formalSym;
+    MIRType *ty = GlobalTables::GetTypeTable().GetTypeFromTyIdx(func->formalDefVec[i].formalTyIdx);
+    std::string name = arg->sKind == kStPreg ? "%" + std::to_string(arg->value.preg->pregNo) :arg->GetName();
+    FixNameInfo(name);
+    os << hex << "\t.ascii \"" << name << "\"\n";
   }
 }
 
@@ -848,17 +997,13 @@ void MirGenerator::EmitAsmFuncInfo(MIRFunction *func) {
   curFunc.numFormalArgs = GetFormalsInfo(func);
   curFunc.numAutoVars = GetLocalsInfo(func) + 2; // incl. %%retval0 and %%thrownval
   curFunc.evalStackDepth = MaxEvalStack(func);
-  if (func->IsWeak()) {
-    curFunc.SetWeakAttr();
-  }
-  if (GlobalTables::GetStrTable().GetStringFromStrIdx(func->GetBaseFuncNameStridx()) == "finalize") {
-    curFunc.SetFinalizeAttr();
-  }
+
+  if (func->IsWeak()) curFunc.SetWeakAttr();
+  if (func->IsStatic()) curFunc.SetStaticAttr();
+  if (func->IsConstructor()) curFunc.SetConstructorAttr();
+  if (GlobalTables::GetStrTable().GetStringFromStrIdx(func->GetBaseFuncNameStridx()) == "finalize") curFunc.SetFinalizeAttr();
+
   // insert interpreter shim and signature
-#if 0
-    os << "\t" << "movq  " << infoLabel <<"(%rip), %r11\n";
-    os << "\t" << "jmp __engine_shim@PLT\n";
-#endif
   os << "\t.ascii \"MPLI\"\n";
   os << infoLabel << ":\n";
   os << "\t" << ".long " << codeLabel << " - .\n";
@@ -872,6 +1017,15 @@ void MirGenerator::EmitAsmFuncInfo(MIRFunction *func) {
     os << "\t" << "// PrimType of automatic variables\n";
   }
   EmitAsmAutoVarsInfo(func);
+
+  if (curFunc.numFormalArgs) {
+    os << "\t" << "// Name of formal arguments\n";
+  }
+  EmitAsmFormalArgNameInfo(func);
+  if (curFunc.numAutoVars) {
+    os << "\t" << "// Name of automatic variables\n";
+  }
+  EmitAsmAutoVarsNameInfo(func);
 
   os << "\t.p2align 1\n";
   os << codeLabel << ":\n";
@@ -950,12 +1104,6 @@ void MirGenerator::EmitAsmCall(CallNode *fstmt) {
   PrimType pType = PTY_void;
 
   // Find call return type
-#if 0
-  // TODO: check why values returned is always PTY_void
-  MIRType *type = globaltable.GetTypeFromTyIdx(callFunc->returnTyidx);
-  pType = type->GetPrimType();
-#endif
-  // Workaround for above - set call ret type to type of %%retval0 if there is return val
   if (fstmt->GetNext() &&
       (fstmt->GetNext()->op == OP_regassign || fstmt->GetNext()->op == OP_dassign) &&
       ((UnaryStmtNode *)fstmt->GetNext())->uOpnd->op == OP_regread &&
@@ -970,7 +1118,7 @@ void MirGenerator::EmitAsmCall(CallNode *fstmt) {
     EmitAsmBaseNode(node);
     return;
   }
-  // TODO: move lowerings to mplcg belowering or earlier maplecomb phases
+  // TODO: move lowerings to mplcg belowering
   mre_instr_t node(RE_addroffunc);
   string tmpName;
   if (funcName.compare(0, 18, "MCC_CallSlowNative") == 0) {
@@ -978,7 +1126,11 @@ void MirGenerator::EmitAsmCall(CallNode *fstmt) {
   } else {
     tmpName = funcName;
   }
-  MIRIntrinsicID intrn = LowerToIntrinsic(tmpName);
+  MIRIntrinsicID intrn = INTRN_UNDEFINED;
+  if (!CLANG) {
+    // no intrinsics if C
+    intrn = LowerToIntrinsic(tmpName);
+  }
   if (intrn == INTRN_UNDEFINED) {
     // not in intrinsic list - lower call to addroffunc + icall
     node.primType = PTY_a64;
@@ -1001,13 +1153,28 @@ void MirGenerator::EmitAsmCall(CallNode *fstmt) {
   }
 }
 
-uint32 MirGenerator::GetFieldOffset(TyIdx tyidx, FieldID fieldID) {
+// TODO: merge with the one in aarch64loadstore.cpp
+static MIRType *GetPointedToType(MIRPtrType *pointerty) {
+  MIRType *atype = GlobalTables::GetTypeTable().GetTypeFromTyIdx(pointerty->pointedTyIdx);
+  if (atype->GetKind() == kTypeArray) {
+    MIRArrayType *arraytype = static_cast<MIRArrayType *>(atype);
+    return GlobalTables::GetTypeTable().GetTypeFromTyIdx(arraytype->eTyIdx);
+  }
+  if (atype->GetKind() == kTypeFArray || atype->GetKind() == kTypeJArray) {
+    MIRFarrayType *farraytype = static_cast<MIRFarrayType *>(atype);
+    return GlobalTables::GetTypeTable().GetTypeFromTyIdx(farraytype->elemTyIdx);
+  }
+  return atype;
+}
+
+
+// get the offset as well as type from the tyidx
+uint32 MirGenerator::GetFieldOffsetType(TyIdx tyidx, FieldID fieldID, MIRType *&actType) {
   int32 offset = 0;
   MIRType *type = GlobalTables::GetTypeTable().GetTypeFromTyIdx(tyidx);
   MIRPtrType *pointerty = static_cast<MIRPtrType *>(type);
   ASSERT(pointerty, "expect a pointer type at iread node");
 
-  MIRType *pointedType = nullptr;
   if (fieldID != 0) {
      MIRType *pointedty = GlobalTables::GetTypeTable().GetTypeFromTyIdx(pointerty->pointedTyIdx);
      MIRStructType *structty = nullptr;
@@ -1019,13 +1186,13 @@ uint32 MirGenerator::GetFieldOffset(TyIdx tyidx, FieldID fieldID) {
     }
     ASSERT(structty != nullptr, "structty is null in MirGenerator::GetFieldOffset");
     FieldPair thepair = structty->TraverseToField(fieldID);
-    pointedType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(thepair.second.first);
+    type = GlobalTables::GetTypeTable().GetTypeFromTyIdx(thepair.second.first);
     offset = becommon.GetFieldOffset(structty, fieldID).first;
     // use pointedType->GetPrimType() as new type?
   } else {
-    // type = GetPointedToType(pointerty);
-    // use type->GetPrimType() as new primtype?
+    type = GetPointedToType(pointerty);
   }
+  actType = type;
   return offset;
 }
 
@@ -1054,10 +1221,14 @@ void MirGenerator::EmitAsmFuncAddr(std::string funcName) {
   EmitString(".quad " + funcName, 8);
 }
 
+void MirGenerator::EmitYieldPoint(void) {
+  mre_instr_t node(RE_checkpoint, PTY_void, 0);
+  EmitAsmBaseNode(node);
+}
+
 void MirGenerator::EmitAsmLabel(LabelIdx lbidx, bool genOffset) {
   MIRFunction *func = GetCurFunction();
 
-#if 1
   string label = "mirbin_label_"+to_string(func->puIdxOrigin)+"_"+to_string(lbidx);
   // TODO: fix issue - currently have to disable fpm->run in CG to avoid duplicate labels
   if (genOffset) {
@@ -1065,25 +1236,6 @@ void MirGenerator::EmitAsmLabel(LabelIdx lbidx, bool genOffset) {
   } else {
     os << label+":\n";
   }
-#else
-  string label = func->GetLabelName(lbidx);
-  // Many strangeness with labels if we generate labels into .s
-  // by the label's name in string table:
-  // - we get @ and | characters in name string that the assembler complains
-  // - duplicate name strings across different label idx in the same function
-  // - duplicate label idx in same function if all of CG's phases are run.
-  if (label.find("CLEANUP") != string::npos) {
-    return;
-  }
-  replace(label.begin(), label.end(), '@', '_');
-  replace(label.begin(), label.end(), '|', '_');
-  if (genOffset) {
-    os << "\t.long " << ". - "
-       << "mirbin_label_" << dec << func->puIdxOrigin << "_" << label << "\n";
-  } else {
-    os << "mirbin_label_" << dec << func->puIdxOrigin << "_" << label << ":\n";
-  }
-#endif
 }
 
 void MirGenerator::EmitAsmConststr(UStrIdx strIdx) {
@@ -1118,4 +1270,3 @@ RE_Opcode MirGenerator::MapEHOpcode(RE_Opcode op) {
   }
   return op;
 }
-

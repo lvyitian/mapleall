@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #include <iostream>
@@ -972,6 +972,8 @@ void DoDevirtual(Klass *klass, KlassHierarchy *klassh) {
             if (func->GetLocalOrGlobalSymbol(dreadNode->stIdx)->inferredTyidx != kInitTyIdx) {
               SetInferredType(inferredSymbols, leftSymbol,
                               func->GetLocalOrGlobalSymbol(dreadNode->stIdx)->inferredTyidx);
+            }else {
+              ResetInferredType(inferredSymbols, leftSymbol);
             }
           } else if (dassignNode->GetRhs()->op == OP_iread) {
             IreadNode *ireadNode = static_cast<IreadNode *>(dassignNode->GetRhs());
@@ -984,6 +986,8 @@ void DoDevirtual(Klass *klass, KlassHierarchy *klassh) {
               TyIdx tmpTyIdx = classtype->GetElemInferredTyidx(tmpID);
               if (tmpTyIdx != kInitTyIdx && tmpTyIdx != kNoneTyIdx) {
                 SetInferredType(inferredSymbols, leftSymbol, classtype->GetElemInferredTyidx(fieldID));
+              }else {
+                ResetInferredType(inferredSymbols, leftSymbol);
               }
             }
           } else {

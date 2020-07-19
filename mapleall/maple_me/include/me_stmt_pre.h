@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #ifndef MAPLE_ME_INCLUDE_ME_STMT_PRE_H
@@ -23,7 +23,7 @@ namespace maple {
 class MeStmtPre : public SSAEPre {
  protected:
   MeFunction *func;
-  MapleVector<MapleStack<VarMeExpr *> *> versionStackVec;  // top of stack gives last version during BuildWorkList()
+  MapleVector<MapleStack<ScalarMeExpr *> *> versionStackVec;  // top of stack gives last version during BuildWorkList()
   MapleMap<OStIdx, MapleSet<uint32> *> use_occur_map;  // give the set of BBs (in dfn) that contain uses of the symbol
  public:
   // a symbol is a candidate for ssaupdate if its ostidx key exists in the map;

@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #ifndef MAPLE_IR_INCLUDE_BIN_MPL_EXPORT_H
@@ -92,6 +92,7 @@ enum {
   kBinFormalWordsRefCounted = 63,
   kBinLocalWordsTypeTagged = 64,
   kBinLocalWordsRefCounter = 65,
+  kBinKindConstAddrofLabel = 66,
 };
 
 // this value is used to check wether a file is a binary mplt file
@@ -104,11 +105,11 @@ class BinaryMplExport {
   void Export(const std::string &fname, std::unordered_set<std::string> *dumpFuncSet);
   void WriteContentField4mplt(int fieldNum, uint64 *fieldStartP);
   void WriteContentField4nonmplt(int fieldNum, uint64 *fieldStartP);
+  void WriteContentField4nonJava(int fieldNum, uint64 *fieldStartP);
   void WriteStrField(uint64 contentIdx);
   void WriteHeaderField(uint64 contentIdx);
-  void WriteTypeField(uint64 contentIdx);
+  void WriteTypeField(uint64 contentIdx, bool useClassList = true);
   void Init();
-  void WriteTypeTabField(uint64 contentIdx);
   void WriteSymField(uint64 contentIdx);
   void WriteSymtabField(uint64 contentIdx);
   void WriteCgField(uint64 contentIdx, const CallGraph *cg, KlassHierarchy *kh);

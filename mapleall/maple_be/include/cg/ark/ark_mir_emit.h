@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 // The compact MIR implementation: translate full MIR (kMmpl) to
@@ -217,12 +217,16 @@ struct callreturn_vec_t {
 
 enum RE_FuncAttr {
   FuncAttrWeak     = 1 << 0,
-  FuncAttrFinalize = 1 << 1
+  FuncAttrFinalize = 1 << 1,
+  FuncAttrStatic   = 1 << 2,
+  FuncAttrConstructor = 1 << 3
 };
 
 class RE_Func {
  public:
   MIRFunction *func;
+  StmtNode *currentTry;
+  std::set<LabelIdx> funcLabels;
 
   // Formal args and auto vars of functions are referenced in maple ir
   // instructions as registers using regidx or var names using sym idx.
@@ -239,6 +243,8 @@ class RE_Func {
   std::map<MIRSymbol *, int> formalVars;// varsym to formals idx
   std::map<int, int> localPregs;        // local pregno to autos idx
   std::map<MIRSymbol *, int> localVars; // local var to autos idx;
+  std::set<MIRSymbol*> cleanupLocalRefVars;  // localrefvar that require cleanup
+  bool callsCleanupLocalRefVars;  // boolean indicating if function calls intrinsic CLEANUP_LOCALVARS
 
  public:
   void Init(MIRFunction *f) {
@@ -247,16 +253,24 @@ class RE_Func {
     numAutoVars = 2;  // 2 slots reserved for %%retval0 and %%throwval
     evalStackDepth = 0;
     funcAttrs = 0;
+    currentTry = nullptr;
     formalPregs.clear();
     formalVars.clear();
     localPregs.clear();
     localVars.clear();
+    funcLabels.clear();
   }
   void SetWeakAttr() {
     funcAttrs |= FuncAttrWeak;
   }
   void SetFinalizeAttr() {
     funcAttrs |= FuncAttrFinalize;
+  }
+  void SetStaticAttr() {
+    funcAttrs |= FuncAttrStatic;
+  }
+  void SetConstructorAttr() {
+    funcAttrs |= FuncAttrConstructor;
   }
   void AddFormalPreg(int pregno) {
     formalPregs[pregno] = 1+numFormalArgs++;
@@ -342,7 +356,9 @@ class MirGenerator : public CmplGenerator {
   void EmitAsmWord(uint32 word, string comment);
   void EmitAsmLong(uint64 quad);
   void EmitAsmFormalArgInfo(MIRFunction *func);
+  void EmitAsmFormalArgNameInfo(MIRFunction *func);
   void EmitAsmAutoVarsInfo(MIRFunction *func);
+  void EmitAsmAutoVarsNameInfo(MIRFunction *func);
   void EmitAsmIreadPCoff(AddrofNode *fexpr, const string &var);
   void EmitAsmAddroffPC(AddrofNode *fexpr, const string &var);
   void EmitAsmFuncAddr(string funcName);
@@ -350,10 +366,12 @@ class MirGenerator : public CmplGenerator {
   void EmitAsmConststr(UStrIdx);
   void EmitString(const std::string &str, int bytes);
   void EmitStringNoTab(const std::string &str, int bytes);
+  void EmitYieldPoint(void);
+  void CheckYieldPointInsert(StmtNode *fstmt);
   int GetFormalsInfo(MIRFunction *func);
   int GetLocalsInfo(MIRFunction *func);
   int MaxEvalStack(MIRFunction *func);
-  uint32 GetFieldOffset(TyIdx tyidx, FieldID fieldid);
+  uint32 GetFieldOffsetType(TyIdx tyidx, FieldID fieldid, MIRType *&);
   RE_Opcode MapEHOpcode(RE_Opcode op);
 
   int GetFuncOffset(void) {

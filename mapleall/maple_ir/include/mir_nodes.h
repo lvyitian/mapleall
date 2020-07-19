@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #ifndef MAPLE_IR_INCLUDE_MIR_NODES_H
@@ -1305,7 +1305,7 @@ class AddroffuncNode : public BaseNode {
 
 class AddroflabelNode : public BaseNode {
  public:
-  uint32 offset;
+  LabelIdx offset;
  public:
   AddroflabelNode() : BaseNode(OP_addroflabel), offset(0) {}
 
@@ -1767,7 +1767,7 @@ class MultiwayNode : public StmtNode {
   }
 };
 
-// eval, throw, free, decref, incref, decrefreset, assertnonnull
+// eval, throw, free, decref, incref, decrefreset, assertnonnull, igoto
 class UnaryStmtNode : public StmtNode {
  public:
   BaseNode *uOpnd;

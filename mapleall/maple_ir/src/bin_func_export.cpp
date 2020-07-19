@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 
@@ -178,9 +178,15 @@ void BinaryMplExport::OutputExpression(BaseNode *e) {
       OutputConst(constVal);
       return;
     }
+    case OP_conststr: {
+      UStrIdx strIdx = static_cast<ConststrNode *>(e)->strIdx;
+      OutputUsrStr(strIdx);
+      return;
+    }
     case OP_addroflabel: {
       AddroflabelNode *lNode = static_cast<AddroflabelNode *>(e);
       WriteNum(lNode->offset);
+      return;
     }
     case OP_addroffunc: {
       AddroffuncNode *addrNode = static_cast<AddroffuncNode *>(e);
@@ -266,6 +272,8 @@ void BinaryMplExport::OutputExpression(BaseNode *e) {
     case OP_band:
     case OP_bior:
     case OP_bxor:
+    case OP_cand:
+    case OP_cior:
     case OP_land:
     case OP_lior:
     case OP_add: {
@@ -474,6 +482,7 @@ void BinaryMplExport::OutputBlockNode(BlockNode *block) {
         break;
       }
       case OP_jscatch:
+      case OP_cppcatch:
       case OP_finally:
       case OP_endtry:
       case OP_cleanuptry:
@@ -490,7 +499,8 @@ void BinaryMplExport::OutputBlockNode(BlockNode *block) {
       case OP_decref:
       case OP_incref:
       case OP_decrefreset:
-      case OP_assertnonnull: {
+      case OP_assertnonnull:
+      case OP_igoto: {
         break;
       }
       case OP_label: {
@@ -567,6 +577,12 @@ void BinaryMplExport::OutputBlockNode(BlockNode *block) {
           OutputBlockNode(ifNode->elsePart);
         }
         OutputExpression(ifNode->uOpnd);
+        doneWithOpnds = true;
+        break;
+      }
+      case OP_block: {
+        BlockNode *blockNode = static_cast<BlockNode *>(s);
+        OutputBlockNode(blockNode);
         doneWithOpnds = true;
         break;
       }

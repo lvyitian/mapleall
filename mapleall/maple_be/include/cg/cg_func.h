@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #ifndef MAPLEBE_INCLUDE_CG_CGFUNC_H
@@ -23,7 +23,6 @@
 #include "cg_bb.h"
 #include "reg_alloc.h"
 #include "cfi.h"
-#include "dbg.h"
 #include "ebo.h"
 #include "live_analysis.h"
 #include "loop.h"
@@ -38,7 +37,6 @@
 /// MapleIR headers.
 #include "mir_parser.h"
 #include "mir_function.h"
-#include "debug_info.h"
 
 /// Maple MP header
 #include "mempool_allocator.h"
@@ -142,6 +140,7 @@ class CGFunc {
   uint32 first_non_preg_vreg_no;
   uint32 v_reg_count;                       // for assigning a number for each CG virtual register
   uint32 max_reg_count;                     // for the current virtual register number limit
+  size_t lsymSize;                          // size of the local symbol table imported
   MapleVector<VirtualRegNode> v_reg_table;  // table of CG's virtual registers indexed by v_reg no
   MapleMap<regno_t, VRegOperand *> vreg_operand_table;
   MapleMap<PregIdx, MemOperand *> preg_spill_mem_operands;
@@ -169,13 +168,11 @@ class CGFunc {
   bool isAggParamInReg;
   bool isAfterRegAlloc;
   bool needSplit;
+  bool hasTakenLabel;
+  bool hasAlloca;
   uint32_t frequency;
 
  protected:
-  // debugging info
-  DebugInfo *dbginfo;
-  MapleVector<DBGExprLoc *> dbg_callframe_locations;
-  int64 dbg_callframe_offset;
   ReachingDefinition *rd;
   SuperBBBuilder *sbb;
 
@@ -225,6 +222,7 @@ class CGFunc {
   }
 
   EHFunc *BuildEHFunc();
+  EHFunc *BuildCppEHFunc();
 
   inline bool HasNonescapedVar() const {
     return hasNonescapedVar;
@@ -292,6 +290,7 @@ class CGFunc {
   void HandleReturn(NaryStmtNode *ret);            // return
   void HandleLabel(LabelNode *lbl);                // Label
   void HandleGoto(GotoNode *gt);                   // Goto
+  void HandleIgoto(UnaryStmtNode *igt);            // Igoto
   void HandleRangegoto(RangegotoNode *);
   virtual void MergeReturn() = 0;
   void TraverseAndClearCatchMark(BB *bb);
@@ -301,6 +300,9 @@ class CGFunc {
   uint32 GetMaxRegNum() const {
     return max_reg_count;
   };
+  size_t GetLsymSize() const {
+    return lsymSize;
+  }
 #if !TARGARK
   void DumpCFG(void);
   void DumpCGIR(void);
@@ -314,6 +316,7 @@ class CGFunc {
   Operand *HandleRegread(BaseNode *parent, RegreadNode *expr);
   Operand *HandleAddrof(BaseNode *parent, AddrofNode *expr);
   Operand *HandleAddroffunc(BaseNode *parent, AddroffuncNode *expr);
+  Operand *HandleAddroflabel(BaseNode *parent, AddroflabelNode *expr);
   Operand *HandleIread(BaseNode *parent, IreadNode *expr);
   Operand *HandleConstval(BaseNode *expr);
   Operand *HandleConststr(BaseNode *expr);
@@ -331,6 +334,7 @@ class CGFunc {
   virtual void SelectIassign(IassignNode *stmt) = 0;
   virtual void SelectAggIassign(IassignNode *stmt, Operand *lhsaddropnd) = 0;
   virtual void SelectReturn(NaryStmtNode *stmt, Operand *opnd) = 0;
+  virtual Operand *SelectIgoto(Operand *opnd0) = 0;
   virtual void SelectCondGoto(CondGotoNode *stmt, Operand *opnd0, Operand *opnd1) = 0;
   virtual void SelectCondSpecial(CondGotoNode *stmt, BaseNode *opnd0) = 0;
   virtual void SelectGoto(GotoNode *stmt) = 0;
@@ -349,6 +353,7 @@ class CGFunc {
   virtual RegOperand *SelectRegread(BaseNode *parent, RegreadNode *expr) = 0;
   virtual Operand *SelectAddrof(AddrofNode *expr) = 0;
   virtual Operand *SelectAddroffunc(AddroffuncNode *expr) = 0;
+  virtual Operand *SelectAddroflabel(AddroflabelNode *expr) = 0;
   virtual Operand *SelectIread(BaseNode *parent, IreadNode *expr) = 0;
   virtual Operand *SelectIntconst(MIRIntConst *floatconst) = 0;
   virtual Operand *SelectVectorIntconst(MIRVectorIntConst *vintconst) = 0;
@@ -529,7 +534,7 @@ class CGFunc {
   virtual RegOperand *SelectCopy(Operand *src, PrimType stype, PrimType dtype) {
     return nullptr;
   };
-  virtual void SelectAArch64FPCmpQuiet(Operand *o0, Operand *o1, uint32 dsize) {
+  virtual void SelectFPCmpQuiet(Operand *o0, Operand *o1, uint32 dsize) {
     CG_ASSERT(0, "");
     return;
   };
@@ -554,7 +559,7 @@ class CGFunc {
     return;
   }
 
-  virtual Operand *GetTargetRetOperand(PrimType ptype) {
+  virtual Operand *GetTargetRetOperand(PrimType ptype, int32 sreg) {
     return nullptr;
   }
 
@@ -704,10 +709,6 @@ class CGFunc {
     return memPool->New<cfi::LabelOperand>(parent, idx);
   }
 #endif
-
-  Operand *CreateDbgImmOperand(int64 val) {
-    return memPool->New<mpldbg::ImmOperand>(val);
-  }
 
   inline uint32_t NumBBs() const {
     return bbcnt;
@@ -902,15 +903,6 @@ class CGFunc {
     return isAfterRegAlloc;
   }
 
-  // Debugging support
-  void SetDebugInfo(DebugInfo *di) {
-    dbginfo = di;
-  }
-
-  void AddDIESymbolLocation(const MIRSymbol *sym, SymbolAlloc *loc);
-
-  virtual void DBGFixCallFrameLocationOffsets(){};
-
   void TestSuperBBBuilder(MemPool *sbbMp);
   virtual RegType GetRegTyFromPrimTy(PrimType primType) {
     switch (primType) {
@@ -943,6 +935,14 @@ class CGFunc {
       return true;
     }
     return false;
+  }
+
+  bool HasTakenLabel() {
+    return hasTakenLabel;
+  }
+
+  void SetHasTakenLabel() {
+    hasTakenLabel = true;
   }
 
   // For struct parameter that is copied to stack, load the base address.

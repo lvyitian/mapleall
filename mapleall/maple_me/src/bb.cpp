@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #include "mempool_allocator.h"
@@ -37,6 +37,8 @@ std::string BB::StrAttribute() const {
       return "aftergosub";
     case kBBSwitch:
       return "switch";
+    case kBBIgoto:
+      return "igoto";
     case kBBInvalid:
       return "invalid";
     default:
@@ -369,7 +371,7 @@ void BB::InsertMeStmtLastBr(MeStmt *instmt) {
     MeStmt *brstmt = meStmtList.last;
     Opcode op = brstmt->op;
     if (brstmt->IsCondBr() || op == OP_goto || op == OP_switch || op == OP_throw || op == OP_return || op == OP_gosub ||
-        op == OP_retsub) {
+        op == OP_retsub || op == OP_igoto) {
       InsertMeStmtBefore(brstmt, instmt);
     } else {
       AddMeStmtLast(instmt);

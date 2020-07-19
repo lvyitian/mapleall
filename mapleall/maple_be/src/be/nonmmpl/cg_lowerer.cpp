@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #include "cg_lowerer.h"
@@ -24,6 +24,7 @@
 #include "aarch64_rt_support.h"
 #include "cg_option.h"
 #include "special_func.h"
+#include "name_mangler.h"
 
 namespace maplebe {
 
@@ -204,11 +205,12 @@ void CGLowerer::InsertPregForReturn(MIRFunction *mirFunc, vector<StmtNode *> &re
 
 //
 void CGLowerer::InsertExit(MIRFunction *mirFunc) const {
+  // Do merge later
   return;
 }
 
 MIRFunction *CGLowerer::RegisterFunctionVoidStarToVoid(builtin_func_id_t id, const char *name, const char *paramName) {
-  MIRFunction *f = mirbuilder->GetOrCreateFunction(name, GlobalTables::GetTypeTable().GetVoid()->GetTypeIndex() /*return type==void*/);
+  MIRFunction *f = mirbuilder->GetOrCreateFunction(name, GlobalTables::GetTypeTable().GetVoid()->GetTypeIndex());
   MIRSymbol *fsym = f->GetFuncSymbol();
   fsym->SetStorageClass(kScExtern);
   MIRType *argty = GlobalTables::GetTypeTable().GetPtr();
@@ -352,12 +354,10 @@ BaseNode *CGLowerer::JavaMergeToCvtType(PrimType dtyp, PrimType styp, BaseNode *
         src->primType = dtyp;
         return src;
       }
-#if 1
       // Force type cvt here because we currently do not run constant folding
       // or contanst propagation before CG. We may revisit this decision later.
     } else if (GetPrimTypeBitSize(styp) < GetPrimTypeBitSize(dtyp)) {
       return mirbuilder->CreateExprTypeCvt(OP_cvt, totype, fromtype, src);
-#endif
     } else if (IsConstvalZero(src)) {
       return mirbuilder->CreateIntConst(0, dtyp);
     } else {
@@ -781,7 +781,7 @@ BaseNode *CGLowerer::LowerJavaIntrinsicop(BaseNode *parent, IntrinsicopNode *int
 }
 
 BaseNode *CGLowerer::LowerJavaIntrinsicopwithtype(BaseNode *parent, IntrinsicopNode *intrinnode,
-                                                 IntrinDesc *desc /*, BlockNode* blk*/) {
+                                                 IntrinDesc *desc) {
   BaseNode *resNode = intrinnode;
   if (intrinnode->intrinsic == INTRN_JAVA_CONST_CLASS || intrinnode->intrinsic == INTRN_JAVA_INSTANCE_OF) {
     PUIdx bfunc = GetBuiltInToUse(intrinnode->intrinsic);
@@ -964,8 +964,20 @@ BaseNode *CGLowerer::LowerIntrinsicop(BaseNode *parent, IntrinsicopNode *intrinn
     return LowerJavascriptIntrinsicop(parent, intrinnode, intrindesc);
   } else if (intrindesc->IsJava()) {
     return LowerJavaIntrinsicop(parent, intrinnode, intrindesc);
+  } else if (intrnid == INTRN_C_constant_p) {
+    BaseNode *opnd = intrinnode->nOpnd[0];
+    return mirbuilder->CreateIntConst(opnd->op == OP_constval || opnd->op == OP_sizeoftype ||
+                  opnd->op == OP_conststr || opnd->op == OP_conststr16 ||
+                  opnd->op == OP_addrof || opnd->op == OP_addroffunc, PTY_i32);
   } else {
-    return BELowerer::LowerIntrinsicop(parent, intrinnode, newblk);
+    if (intrinFuncIds.find(intrindesc) == intrinFuncIds.end()) {
+      // add funcid into map
+      intrinFuncIds[intrindesc] = mirbuilder->GetOrCreateFunction(intrindesc->name, TyIdx(intrinnode->primType))->puIdx;
+    }
+    PregIdx pregIdx = mirModule.CurFunction()->pregTab->CreatePreg(intrinnode->primType);
+    StmtNode *callstmt = CreateStmtCallWithReturnValue(intrinnode, pregIdx, intrinFuncIds[intrindesc], nullptr);
+    newblk->AppendStatementsFromBlock(LowerCallAssignedStmt(callstmt));
+    return mirbuilder->CreateExprRegread(intrinnode->primType, pregIdx);
   }
 }
 
@@ -978,7 +990,7 @@ BaseNode *CGLowerer::LowerIntrinsicopwithtype(BaseNode *parent, IntrinsicopNode 
   if (intrindesc->IsJS()) {
     CHECK_FATAL(false, "NYI");
   } else if (intrindesc->IsJava()) {
-    return LowerJavaIntrinsicopwithtype(parent, intrinnode, intrindesc /*,blk*/);
+    return LowerJavaIntrinsicopwithtype(parent, intrinnode, intrindesc);
   } else {
     return BELowerer::LowerIntrinsicopwithtype(parent, intrinnode, blk);
   }
@@ -1163,6 +1175,7 @@ StmtNode *CGLowerer::LowerIntrinsiccall(IntrinsiccallNode *intrincall, BlockNode
 
       return intrincall;
     }
+    case INTRN_C_va_start:
     case INTRN_MPL_CLEANUP_LOCALREFVARS:
     case INTRN_MPL_CLINIT_CHECK: {
       return intrincall;
@@ -1600,6 +1613,7 @@ void CGLowerer::LowerJarrayMalloc(StmtNode *stmt, const JarrayMallocNode *node, 
 bool CGLowerer::IsIntrinsicCallHandledAtLowerLevel(MIRIntrinsicID intrinsic) {
   switch (intrinsic) {
     case INTRN_MPL_ATOMIC_EXCHANGE_PTR:
+    case INTRN_C_va_start:
       return true;
     default:
       return false;

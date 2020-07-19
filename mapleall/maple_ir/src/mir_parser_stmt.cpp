@@ -1,22 +1,21 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #include "mir_parser.h"
 #include "mir_function.h"
 #include "opcode_info.h"
-#include "debug_info.h"
 
 using namespace std;
 namespace maple {
@@ -121,12 +120,6 @@ bool MIRParser::ParseStmtRegassign(StmtNode *&stmt) {
     } else if (preg->primType == PTY_dynany) {
       if (!IsPrimitiveDynType(expr->primType)) {
         Error("inconsistent preg primitive dynamic type at ");
-        return false;
-      }
-    } else if (preg->primType != expr->primType) {
-      if ((preg->primType == PTY_ref && expr->primType == PTY_ptr) || (preg->primType == PTY_ptr && expr->primType == PTY_ref)) {
-      } else if (!IsNoCvtNeeded(preg->primType, expr->primType)) {
-        Error("inconsistent preg primitive type or need a cvt ");
         return false;
       }
     }
@@ -571,11 +564,6 @@ bool MIRParser::ParseStmtLabel(StmtNode *&stmt) {
   definedLabels[labidx] = true;
   LabelNode *labnode = mod.CurFuncCodeMemPool()->New<LabelNode>();
   labnode->labelIdx = labidx;
-
-  // add dbginfo
-  if (mod.withDbgInfo) {
-    (void)mod.dbgInfo->GetOrCreateLabelDie(labidx);
-  }
 
   stmt = labnode;
   lexer.NextToken();
@@ -1062,6 +1050,10 @@ bool MIRParser::ParseStmtCall(StmtNode *&stmt) {
     }
   }
   callstmt->puIdx = pidx;
+  MIRFunction *callee = GlobalTables::GetFunctionTable().funcTable[pidx];
+  if (callee->GetName() == "setjmp") {
+    mod.CurFunction()->SetHasSetjmp();
+  }
 
   MapleVector<BaseNode *> opndsvec(mod.CurFuncCodeMemPoolAllocator()->Adapter());
   if (!ParseExprNaryOperand(opndsvec)) {
@@ -1418,12 +1410,11 @@ bool MIRParser::ParseStmtCppCatch(StmtNode *&stmt) {
   lexer.NextToken();
   TyIdx tyIdx(0);
   if (!ParseType(tyIdx)) {
-    Error("expect type parsing cppcatch statement");
+    Error("expect type parsing cpp catch statement");
     return false;
   }
   catchnode->exceptionTyIdx = tyIdx;
-
-  catchnode->numOpnds = 0;
+  ASSERT(lexer.GetTokenKind() == TK_rbrace, "expect right brace in catch but get ");
 
   stmt = catchnode;
   lexer.NextToken();
@@ -1479,6 +1470,10 @@ bool MIRParser::ParseUnaryStmtIncRef(StmtNode* &stmt) {
 
 bool MIRParser::ParseUnaryStmtDecRefReset(StmtNode* &stmt) {
   return ParseUnaryStmt(OP_decrefreset, stmt);
+}
+
+bool MIRParser::ParseUnaryStmtIGoto(StmtNode* &stmt) {
+  return ParseUnaryStmt(OP_igoto, stmt);
 }
 
 bool MIRParser::ParseUnaryStmtEval(StmtNode* &stmt) {
@@ -1608,15 +1603,6 @@ bool MIRParser::ParseNaryStmt(StmtNode *&stmt, Opcode op) {
         return false;
       }
       stmtreturn->nOpnd.push_back(expr);
-    } else {
-      MIRType *inttype = GlobalTables::GetTypeTable().GetTypeFromTyIdx((TyIdx)PTY_i32);
-      // default 2 for __sync_enter_fast()
-      MIRIntConst *intconst = mod.memPool->New<MIRIntConst>(2, inttype);
-      ConstvalNode *exprconst = mod.memPool->New<ConstvalNode>();
-      exprconst->primType = PTY_i32;
-      exprconst->constVal = intconst;
-      stmtreturn->nOpnd.push_back(exprconst);
-      stmtreturn->numOpnds = stmtreturn->nOpnd.size();
     }
   }
 
@@ -1996,6 +1982,7 @@ std::map<TokenKind, MIRParser::FuncPtrParseStmt> MIRParser::InitFuncPtrMapForPar
   funcPtrMap[TK_decref] = &MIRParser::ParseUnaryStmtDecRef;
   funcPtrMap[TK_incref] = &MIRParser::ParseUnaryStmtIncRef;
   funcPtrMap[TK_decrefreset] = &MIRParser::ParseUnaryStmtDecRefReset;
+  funcPtrMap[TK_igoto] = &MIRParser::ParseUnaryStmtIGoto;
   funcPtrMap[TK_jscatch] = &MIRParser::ParseStmtMarker;
   funcPtrMap[TK_finally] = &MIRParser::ParseStmtMarker;
   funcPtrMap[TK_cleanuptry] = &MIRParser::ParseStmtMarker;

@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #include "me_may_to_dassign.h"
@@ -35,7 +35,7 @@ bool May2Dassign::Doit() {
       MaydassignMeStmt *mass = static_cast<MaydassignMeStmt *>(stmt);
       // chiList for Maydassign has only 1 element
       CHECK_FATAL(mass->chiList.size() > 0, "chiList is empty in Doit");
-      VarMeExpr *thelhs = mass->chiList.begin()->second->lhs;
+      VarMeExpr *thelhs = static_cast<VarMeExpr *>(mass->chiList.begin()->second->lhs);
       DassignMeStmt *dass = static_cast<DassignMeStmt *>(irMap->CreateAssignMeStmt(thelhs, mass->rhs, bb));
       dass->needDecref = mass->needDecref;
       dass->needIncref = mass->needIncref;

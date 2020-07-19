@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #ifndef MAPLE_ME_INCLUDE_IRMAP_H
@@ -96,9 +96,12 @@ class IRMap : public AnalysisResult {
   RegMeExpr *CreateRegMeExpr(PrimType primType);
   RegMeExpr *CreateRegMeExpr(MIRType *mirType);
   RegMeExpr *CreateRegMeExpr(MeExpr *meexpr) {
-    MIRType *mirType = meexpr->GetType(ssaTab);
-    if (mirType == nullptr) {
+    if (meexpr->primType != PTY_ref) {
       return CreateRegMeExpr(meexpr->primType);
+    }
+    MIRType *mirType = meexpr->GetType(ssaTab);
+    if (mirType == nullptr || mirType->primType == PTY_agg) {
+      return CreateRegMeExpr(PTY_ref);
     }
     return CreateRegMeExpr(mirType);
   }

@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2019] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2019-2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 #ifndef MAPLE_DRIVER_INCLUDE_DRIVER_RUNNER_H
 #define MAPLE_DRIVER_INCLUDE_DRIVER_RUNNER_H
@@ -74,11 +74,8 @@ class DriverRunner final {
   bool IsFramework() const;
   ErrorCode ParseInput(const std::string &outputFile, const std::string &oriBasename) const;
   std::string GetPostfix() const;
-  void InitPhases(InterleavedManager &mgr, const std::vector<std::string> &phases) const;
-  void AddPhases(InterleavedManager &mgr, const std::vector<std::string> &phases,
-                 const PhaseManager &phaseManager) const;
-  void AddPhase(std::vector<std::string> &phases, const std::string phase, const PhaseManager &phaseManager) const;
-  void ProcessMpl2mplAndMeAndMplCgPhases(const std::string &interimOutputFile, const std::string &outputFile, const std::string &origBaseName, bool runMplCg) const;
+  bool HasThisPhase(std::string phaseName) const;
+  void ProcessMpl2mplAndMeAndMplCgPhases(const std::string &interimOutputFile, const std::string &outputFile, const std::string &origBaseName) const;
   MIRModule *theModule;
   std::vector<std::string> exeNames;
   Options *mpl2mplOptions = nullptr;

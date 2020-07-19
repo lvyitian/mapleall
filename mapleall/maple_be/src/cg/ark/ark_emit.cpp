@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #include "emit.h"
@@ -185,26 +185,6 @@ void ArkCGFunc::Emit() {
 
   emitter.Emit("\t.p2align 2\n");
   MIRSymbol *funcSt = GlobalTables::GetGsymTable().GetSymbolFromStIdx(func->stIdx.Idx());
-
-  // manually Replace function to optimized assembly language
-  // To Do
-  if (CGOptions::replaceasm && funcSt->GetName().compare(string(NameMangler::kJavaLangStringStr) + string(NameMangler::kHashCodeStr)) == 0) {
-    std::string optFile = "maple/mrt/codetricks/asm/hashCode.s";
-    struct stat buffer;
-    if (stat(optFile.c_str(), &buffer) == 0) {
-      std::ifstream hashCodeFd(optFile);
-      if (!hashCodeFd.is_open()) {
-        ERR(kLncErr, " %s open failed!", optFile.c_str());
-        cout << "wrong" << endl;
-      } else {
-        std::string contend;
-        while (getline(hashCodeFd, contend)) {
-          emitter.Emit(contend + "\n");
-        }
-      }
-    }
-    return;
-  }
 
   if (funcSt->GetFunction()->GetAttr(FUNCATTR_weak)) {
     emitter.Emit("\t.weak\t").Emit(funcSt->GetName()).Emit("\n");

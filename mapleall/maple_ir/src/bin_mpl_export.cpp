@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #include "bin_mpl_export.h"
@@ -42,6 +42,7 @@ void OutputConstAddrof(MIRConst *constVal, BinaryMplExport *mplExport) {
   MIRAddrofConst *addrof = static_cast<MIRAddrofConst*>(constVal);
   mplExport->OutputSymbol(mplExport->GetMIRModule().CurFunction()->GetLocalOrGlobalSymbol(addrof->GetSymbolIndex()));
   mplExport->WriteNum(addrof->GetFieldID());
+  mplExport->WriteNum(addrof->GetOffset());
 }
 
 void OutputConstAddrofFunc(MIRConst *constVal, BinaryMplExport *mplExport) {
@@ -52,7 +53,11 @@ void OutputConstAddrofFunc(MIRConst *constVal, BinaryMplExport *mplExport) {
 }
 
 void OutputConstLbl(MIRConst *constVal, BinaryMplExport *mplExport) {
-  CHECK_FATAL(false, "NYI");
+  mplExport->WriteNum(kBinKindConstAddrofLabel);
+  mplExport->OutputConstBase(constVal);
+  MIRLblConst *lblConst = static_cast<MIRLblConst *>(constVal);
+  mplExport->WriteNum(lblConst->value);  // LabelIdx
+  // not needed to output puIdx
 }
 
 void OutputConstStr(MIRConst *constVal, BinaryMplExport *mplExport) {
@@ -77,12 +82,14 @@ void OutputConstStr16(MIRConst *constVal, BinaryMplExport *mplExport) {
 
 void OutputConstFloat(MIRConst *constVal, BinaryMplExport *mplExport) {
   mplExport->WriteNum(kBinKindConstFloat);
+  mplExport->OutputConstBase(constVal);
   MIRFloatConst *fconst = static_cast<MIRFloatConst*>(constVal);
   mplExport->WriteNum(fconst->GetIntValue());
 }
 
 void OutputConstDouble(MIRConst *constVal, BinaryMplExport *mplExport) {
   mplExport->WriteNum(kBinKindConstDouble);
+  mplExport->OutputConstBase(constVal);
   MIRDoubleConst *dconst = static_cast<MIRDoubleConst*>(constVal);
   mplExport->WriteNum(dconst->GetIntValue());
 }
@@ -137,6 +144,7 @@ void OutputTypePointer(MIRType *ty, BinaryMplExport *mplExport, bool canUseTypen
   mplExport->WriteNum(kBinKindTypePointer);
   mplExport->OutputTypeBase(type);
   mplExport->OutputType(type->pointedTyIdx, canUseTypename);
+  mplExport->OutputTypeAttrs(type->typeAttrs);
 }
 
 void OutputTypeByName(MIRType *ty, BinaryMplExport *mplExport, bool canUseTypename) {
@@ -348,10 +356,10 @@ void BinaryMplExport::WriteNum(int64 x) {
 }
 
 void BinaryMplExport::WriteAsciiStr(const std::string &str) {
+  WriteNum(str.size());
   for (size_t i = 0; i < str.size(); i++) {
     Write(static_cast<uint8>(str[i]));
   }
-  Write(0);
 }
 
 void BinaryMplExport::DumpBuf(const std::string &name) {
@@ -569,7 +577,7 @@ void BinaryMplExport::Init() {
   uStrMark[UStrIdx(0)] = 0;
   symMark[nullptr] = 0;
   funcMark[nullptr] = 0;
-  for (int32 pti = 0; pti <= static_cast<int32>(PTY_agg); pti++) {
+  for (int32 pti = static_cast<int32>(PTY_begin); pti < static_cast<int32>(PTY_end); pti++) {
     typMark[GlobalTables::GetTypeTable().typeTable[pti]] = pti;
   }
 }
@@ -781,7 +789,7 @@ void BinaryMplExport::WriteHeaderField(uint64 contentIdx) {
   return;
 }
 
-void BinaryMplExport::WriteTypeField(uint64 contentIdx) {
+void BinaryMplExport::WriteTypeField(uint64 contentIdx, bool useClassList) {
   Fixup(contentIdx, buf.size());
   WriteNum(kBinTypeStart);
   size_t totalSizeIdx = buf.size();
@@ -789,45 +797,30 @@ void BinaryMplExport::WriteTypeField(uint64 contentIdx) {
   size_t outtypeSizeIdx = buf.size();
   ExpandFourBuffSize();  /// size of OutputType
   int32 size = 0;
-  for (uint32 tyIdx : GetMIRModule().classList) {
-    TyIdx curTyidx(tyIdx);
-    MIRType *type = GlobalTables::GetTypeTable().GetTypeFromTyIdx(curTyidx);
-    CHECK_FATAL(type != nullptr, "Pointer type is nullptr, cannot get type, check it!");
-    if (type->typeKind == kTypeClass || type->typeKind == kTypeInterface) {
-      MIRStructType *structtype = static_cast<MIRStructType *>(type);
-      // skip imported class/interface and incomplete types
-      if (!structtype->isImported && !structtype->IsIncomplete()) {
-        OutputType(curTyidx, false);
-        size++;
+  if (useClassList) {
+    for (uint32 tyIdx : GetMIRModule().classList) {
+      TyIdx curTyidx(tyIdx);
+      MIRType *type = GlobalTables::GetTypeTable().GetTypeFromTyIdx(curTyidx);
+      CHECK_FATAL(type != nullptr, "Pointer type is nullptr, cannot get type, check it!");
+      if (type->typeKind == kTypeClass || type->typeKind == kTypeInterface) {
+        MIRStructType *structtype = static_cast<MIRStructType *>(type);
+        // skip imported class/interface and incomplete types
+        if (!structtype->isImported && !structtype->IsIncomplete()) {
+          OutputType(curTyidx, false);
+          size++;
+        }
       }
+    }
+  } else {
+    uint32 idx = GlobalTables::GetTypeTable().lastDefaultTyIdx.GetIdx();
+    for (idx = idx + 1; idx < GlobalTables::GetTypeTable().typeTable.size(); idx++) {
+      OutputType(TyIdx(idx), false);
+      size++;
     }
   }
   Fixup(totalSizeIdx, buf.size() - totalSizeIdx);
   Fixup(outtypeSizeIdx, size);
   WriteNum(~kBinTypeStart);
-}
-
-void BinaryMplExport::WriteTypeTabField(uint64 contentIdx) {
-  Fixup(contentIdx, buf.size());
-  WriteNum(kBinTypeTabStart);
-  uint64 totalSizeIdx = buf.size();
-  ExpandFourBuffSize();  /// total size of this field to ~BIN_TYPE_START
-  uint64 outtableSizeIdx = buf.size();
-  ExpandFourBuffSize();  /// size of OutputType
-  int32 size = 0;
-  ///   std::unordered_map<MIRType *, int64> typMark;
-  for (auto it = typMark.begin(); it != typMark.end(); it++) {
-    if ((*it).first == nullptr) {
-      continue;
-    }
-    OutputStr((*it).first->nameStrIdx);
-    WriteNum((*it).second);
-    size++;
-  }
-  Fixup(totalSizeIdx, buf.size() - totalSizeIdx);
-  Fixup(outtableSizeIdx, size);
-  WriteNum(~kBinTypeTabStart);
-  return;
 }
 
 void BinaryMplExport::WriteSymField(uint64 contentIdx) {
@@ -1012,22 +1005,28 @@ void BinaryMplExport::WriteContentField4mplt(int fieldNum, uint64 *fieldStartP) 
 }
 
 void BinaryMplExport::Export(const string &fname, std::unordered_set<std::string> *dumpFuncSet) {
-  uint64 fieldStartPoint[3];
+  uint64 fieldStartPoint[5];
   if (!not2mplt) {
     WriteInt(kMpltMagicNumber);
     WriteContentField4mplt(3, fieldStartPoint);
     WriteStrField(fieldStartPoint[0]);
     WriteTypeField(fieldStartPoint[1]);
-#if 0
-    WriteCgField(fieldStartPoint[2], nullptr, nullptr);
-#endif
     importFileName = fname;
   } else {
     WriteInt(kMpltMagicNumber+0x10);
-    WriteContentField4nonmplt(3, fieldStartPoint);
-    WriteHeaderField(fieldStartPoint[0]);
-    WriteSymField(fieldStartPoint[1]);
-    WriteFunctionBodyField(fieldStartPoint[2], dumpFuncSet);
+    if (mod.IsJavaModule()) {
+      WriteContentField4nonmplt(3, fieldStartPoint);
+      WriteHeaderField(fieldStartPoint[0]);
+      WriteSymField(fieldStartPoint[1]);
+      WriteFunctionBodyField(fieldStartPoint[2], dumpFuncSet);
+    } else {
+      WriteContentField4nonJava(5, fieldStartPoint);
+      WriteHeaderField(fieldStartPoint[0]);
+      WriteStrField(fieldStartPoint[1]);
+      WriteTypeField(fieldStartPoint[2], false/*useClassList*/);
+      WriteSymField(fieldStartPoint[3]);
+      WriteFunctionBodyField(fieldStartPoint[4], dumpFuncSet);
+    }
   }
   WriteNum(kBinFinish);
   DumpBuf(fname);
@@ -1051,6 +1050,38 @@ void BinaryMplExport::WriteContentField4nonmplt(int fieldNum, uint64 *fieldStart
 
   WriteNum(kBinFunctionBodyStart);
   fieldStartP[2] = buf.size();
+  ExpandFourBuffSize();
+
+  Fixup(totalSizeIdx, buf.size() - totalSizeIdx);
+  WriteNum(~kBinContentStart);
+}
+
+void BinaryMplExport::WriteContentField4nonJava(int fieldNum, uint64 *fieldStartP) {
+  CHECK_FATAL(fieldStartP != nullptr, "fieldStartP is null.");
+  WriteNum(kBinContentStart);
+  size_t totalSizeIdx = buf.size();
+  ExpandFourBuffSize();         /// total size of this field to ~BIN_SYM_START
+
+  WriteInt(fieldNum);  /// size of Content item
+
+  WriteNum(kBinHeaderStart);
+  fieldStartP[0] = buf.size();
+  ExpandFourBuffSize();
+
+  WriteNum(kBinStrStart);
+  fieldStartP[1] = buf.size();
+  ExpandFourBuffSize();
+
+  WriteNum(kBinTypeStart);
+  fieldStartP[2] = buf.size();
+  ExpandFourBuffSize();
+
+  WriteNum(kBinSymStart);
+  fieldStartP[3] = buf.size();
+  ExpandFourBuffSize();
+
+  WriteNum(kBinFunctionBodyStart);
+  fieldStartP[4] = buf.size();
   ExpandFourBuffSize();
 
   Fixup(totalSizeIdx, buf.size() - totalSizeIdx);
@@ -1088,11 +1119,11 @@ void BinaryMplExport::OutputTypeAttrs(const TypeAttrs &ta) {
 }
 
 void BinaryMplExport::OutputType(const TyIdx &tyIdx, bool canUseTypename) {
-  MIRType *ty = GlobalTables::GetTypeTable().GetTypeFromTyIdx(tyIdx);
-  if (tyIdx == 0) {
+  if (tyIdx.GetIdx() == 0) {
     WriteNum(0);
     return;
   }
+  MIRType *ty = GlobalTables::GetTypeTable().GetTypeFromTyIdx(tyIdx);
   CHECK(ty != nullptr, "if get's nulltype, should have been returned!");
   auto it = typMark.find(ty);
   if (it != typMark.end()) {
@@ -1108,48 +1139,12 @@ void BinaryMplExport::OutputType(const TyIdx &tyIdx, bool canUseTypename) {
     return;
   }
 
-#if 1
   auto func = CreateProductFunction<OutputTypeFactory>(ty->typeKind);
   if (func != nullptr) {
     func(ty, this, canUseTypename);
   } else {
     CHECK_FATAL(false, "Type's kind not yet implemented: %d", ty->GetKind());
   }
-#else
-  if (ty->typeKind == kTypeScalar) {
-    OutputTypeScalar(ty, this, canUseTypename);
-  } else if (ty->typeKind == kTypePointer) {
-    OutputTypePointer(ty, this, canUseTypename);
-  } else if (ty->typeKind == kTypeByName) {
-    OutputTypeByName(ty, this, canUseTypename);
-  } else if (ty->typeKind == kTypeFArray) {
-    OutputTypeFArray(ty, this, canUseTypename);
-  } else if (ty->typeKind == kTypeJArray) {
-    OutputTypeJArray(ty, this, canUseTypename);
-  } else if (ty->typeKind == kTypeArray) {
-    OutputTypeArray(ty, this, canUseTypename);
-  } else if (ty->typeKind == kTypeFunction) {
-    OutputTypeFunction(ty, this, canUseTypename);
-  } else if (ty->typeKind == kTypeParam) {
-    OutputTypeParam(ty, this, canUseTypename);
-  } else if (ty->typeKind == kTypeInstantVector) {
-    OutputTypeInstantVector(ty, this, canUseTypename);
-  } else if (ty->typeKind == kTypeGenericInstant) {
-    OutputTypeGenericInstant(ty, this, canUseTypename);
-  } else if (ty->typeKind == kTypeBitField) {
-    OutputTypeBitField(ty, this, canUseTypename);
-  } else if (ty->typeKind == kTypeStruct || ty->typeKind == kTypeStructIncomplete || ty->typeKind == kTypeUnion) {
-    OutputTypeStruct(ty, this, canUseTypename);
-  } else if (ty->typeKind == kTypeClass || ty->typeKind == kTypeClassIncomplete) {
-    OutputTypeClass(ty, this, canUseTypename);
-  } else if (ty->typeKind == kTypeInterface || ty->typeKind == kTypeInterfaceIncomplete) {
-    OutputTypeInterface(ty, this, canUseTypename);
-  } else if (ty->typeKind == kTypeConstString) {
-    CHECK_FATAL(false, "Type's kind not yet implemented: %d", ty->typeKind);
-  } else {
-    CHECK_FATAL(false, "Type's kind not yet implemented: %d", ty->typeKind);
-  }
-#endif
 }
 
 void DoUpdateMplt::UpdateCgField(BinaryMplt *binMplt, const CallGraph *cg, KlassHierarchy *kh) {
@@ -1217,9 +1212,6 @@ AnalysisResult *DoUpdateMplt::Run(MIRModule *module, ModuleResultMgr *m) {
   BinaryMplt *binMplt = module->binMplt;
   CHECK_FATAL(binMplt, "Expecting a valid binMplt");
   UpdateManualIpa();
-#if 0
-  UpdateCgField(binMplt, cg, kh);
-#endif
   delete module->binMplt;
   module->binMplt = nullptr;
   return nullptr;

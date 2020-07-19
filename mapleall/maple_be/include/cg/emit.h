@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #ifndef MAPLEBE_INCLUDE_CG_EMIT_H
@@ -25,7 +25,6 @@
 /// Maple IR headers
 #include "mir_module.h"
 #include "mir_const.h"
-#include "debug_info.h"
 
 #include "mempool_allocator.h"
 
@@ -39,12 +38,6 @@
 #if TARGARK
 class MirGenerator;
 #endif
-
-namespace maple {
-
-class DebugInfo;
-
-}
 
 namespace maplebe {
 
@@ -75,6 +68,9 @@ class Emitter {
   MirGenerator *mirg_;
 #endif
 
+  uint16 arraySize;
+  bool   isFlexibleArray;
+
  public:
   const Asminfo *asminfo_;
   std::ofstream out;
@@ -82,17 +78,20 @@ class Emitter {
 
  private:
   MOperator curr_mop;
-  MapleMap<DBGDie *, LabelIdx> labdie2labidx_table;
+
+  vector<UStrIdx> stringPtr;
 
  public:
   Emitter(CG *cg, const std::string &asmFileName)
       : cg_(cg),
-        curr_mop(UINT_MAX),
-        labdie2labidx_table(std::less<DBGDie *>(), cg->mirModule->memPoolAllocator.Adapter()) {
+        arraySize(0),
+        isFlexibleArray(false),
+        curr_mop(UINT_MAX) {
     out.open(asmFileName.c_str(), std::ios::trunc);
     MIRModule &mirModule = *cg_->mirModule;
     asminfo_ = mirModule.memPool->New<Asminfo>(0, mirModule.memPool);
     memPool = mirModule.memPool;
+    stringPtr.resize(GlobalTables::GetUStrTable().StringTableSize());
   }
 
   ~Emitter() {}
@@ -117,8 +116,10 @@ class Emitter {
   void EmitNullConstant(uint32 size);
   void EmitCombineBfldValue(StructEmitInfo *semitinfo);
   void EmitBitFieldConstant(StructEmitInfo *semitinfo, MIRConst *ct, const MIRType *nety, uint32 fieldoffset);
-  void EmitScalarConstant(MIRConst *ct, bool newline, bool flag32);
-  void EmitStrConstant(MIRStrConst *ct);
+  uint32 EmitPadForNextField(MIRConst *ct, uint32 byteUsed, uint32 align);
+  void EmitAggConst(MIRConst *ct, bool newline, bool flag32);
+  void EmitScalarConstant(MIRConst *ct, bool newline, bool flag32, bool isIndirect);
+  void EmitStrConstant(MIRStrConst *ct, bool isAscci = false, bool isIndirect = false);
   void EmitStr16Constant(MIRStr16Const *ct);
   void EmitConstantTable(MIRSymbol *st, MIRConst *ct, const std::map<GStrIdx, MIRType *> &stridx2type);
   void EmitClassinfoSequential(MIRSymbol *st, const std::map<GStrIdx, MIRType *> &stridx2type,
@@ -127,6 +128,7 @@ class Emitter {
   void EmitLiterals(std::vector<std::pair<MIRSymbol *, bool>> &literals,
                     const std::map<GStrIdx, MIRType *> &stridx2type);
   void EmitFuncLayoutInfo(const MIRSymbol *layout);
+  void EmitStringPointers();
   void EmitGlobalVars(std::vector<std::pair<MIRSymbol *, bool>> &globalvars);
   void EmitGlobalVar(MIRSymbol *globalvar);
   void EmitStaticFields(std::vector<MIRSymbol *> &fields);
@@ -141,8 +143,10 @@ class Emitter {
   void MarkVtabOrItabEndFlag(std::vector<MIRSymbol *> &symV, std::vector<MIRSymbol *> &hotSymV);
   void EmitArrayConstant(MIRConst *ct);
   void EmitStructConstant(MIRConst *ct);
+  void EmitLocalVariable(CGFunc *func);
   void EmitGlobalVariable();
   void EmitMplPersonalityV0();
+  void EmitGxxPersonalityV0();
   void EmitGlobalRootList(const MIRSymbol *st);
   void EmitMuidTable(const std::vector<MIRSymbol *> &ve, const std::map<GStrIdx, MIRType *> &stridx2type,
                      const std::string &sectionName);
@@ -182,31 +186,7 @@ class Emitter {
   void EmitDecUnsigned(uint64 num);
   void EmitHexUnsigned(uint64 num);
 
-  // debug info
-  void FillInClassByteSize(DBGDie *die, DBGDieAttr *byteSizeAttr, DBGAbbrevEntry *diae);
-  void SetupDBGInfo(DebugInfo *);
-  void ApplyInPrefixOrder(DBGDie *die, const std::function<void(DBGDie *)> &func);
-
-  void AddLabelDieToLabelIdxMapping(DBGDie *, LabelIdx);
-  LabelIdx GetLabelIdxForLabelDie(DBGDie *);
-  void EmitDIHeader();
   void EmitCFISectionNames(const char *const names[]);
-  void EmitDIFooter();
-  void EmitDIHeaderFileInfo();
-  void EmitDIDebugInfoSection(DebugInfo *);
-  void EmitDIDebugAbbrevSection(DebugInfo *);
-  void EmitDIDebugARangesSection();
-  void EmitDIDebugRangesSection();
-  void EmitDIDebugLineSection();
-  void EmitDIDebugStrSection();
-
-  void EmitDIFormSpecification(const DBGDieAttr *attr) {
-    EmitDIFormSpecification(attr->dwform_);
-  }
-
-  void EmitDIFormSpecification(unsigned int dwform);
-
-  void EmitDIAttrValue(DBGDie *die, DBGDieAttr *attr, dw_at attrName, dw_tag tagName, DebugInfo *di);
 
   // GC header for primordial objects
   void EmitGCHeader();

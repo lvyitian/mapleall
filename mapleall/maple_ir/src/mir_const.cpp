@@ -1,22 +1,23 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #include "mir_const.h"
 #include "mir_nodes.h"
 #include "mir_function.h"
 #include "printing.h"
+#include "name_mangler.h"
 
 #if MIR_FEATURE_FULL
 #include <iostream>
@@ -74,6 +75,9 @@ void MIRAddrofConst::Dump() const {
   if (fldID > 0) {
     LogInfo::MapleLogger() << fldID;
   }
+  if (offset != 0) {
+    LogInfo::MapleLogger() << " (" << offset << ")";
+  }
 }
 
 bool MIRAddrofConst::operator==(MIRConst &rhs) const {
@@ -106,6 +110,13 @@ bool MIRAddroffuncConst::operator==(MIRConst &rhs) const {
     return false;
   }
   return (type == rhs.type && puIdx == rhsAf->puIdx);
+}
+
+void MIRLblConst::Dump() const {
+  MIRConst::Dump();
+  LogInfo::MapleLogger() << "addroflabel " << GetPrimTypeName(PTY_ptr);
+  MIRFunction *func = GlobalTables::GetFunctionTable().funcTable.at(puIdx);
+  LogInfo::MapleLogger() << " @" << func->GetLabelName(value);
 }
 
 bool MIRLblConst::operator==(MIRConst &rhs) const {
@@ -213,8 +224,8 @@ void MIRAggConst::Dump() const {
   LogInfo::MapleLogger() << "]";
 }
 
-MIRStrConst::MIRStrConst(const std::string &str, MIRType *type)
-    : MIRConst(type), value(GlobalTables::GetUStrTable().GetOrCreateStrIdxFromName(str)) {
+MIRStrConst::MIRStrConst(const std::string &str, MIRType *type, uint32 fieldID)
+    : MIRConst(type, fieldID), value(GlobalTables::GetUStrTable().GetOrCreateStrIdxFromName(str)) {
   kind = kConstStrConst;
 }
 
@@ -236,8 +247,8 @@ bool MIRStrConst::operator==(MIRConst &rhs) const {
   return (type == rhs.type && value == rhsCs->value);
 }
 
-MIRStr16Const::MIRStr16Const(const std::u16string &str, MIRType *type)
-    : MIRConst(type), value(GlobalTables::GetU16StrTable().GetOrCreateStrIdxFromName(str)) {
+MIRStr16Const::MIRStr16Const(const std::u16string &str, MIRType *type, uint32 fieldID)
+    : MIRConst(type, fieldID), value(GlobalTables::GetU16StrTable().GetOrCreateStrIdxFromName(str)) {
   kind = kConstStr16Const;
 }
 

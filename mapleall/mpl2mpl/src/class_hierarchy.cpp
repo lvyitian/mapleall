@@ -1,22 +1,23 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #include <iostream>
 #include <fstream>
 #include "class_hierarchy.h"
 #include "option.h"
+#include "name_mangler.h"
 namespace maple {
 /*
  *                   Class Hierarchy Anlysis
@@ -558,7 +559,7 @@ void KlassHierarchy::AddKlassRelationAndMethods() {
       MIRFunction *method = funcSym->GetFunction();
       klass->AddMethod(method);
 
-      // <clinit> name is classname + "_7C_3Cclinit_3E_7C_28_29V"
+      // <clinit> name is classname + kClinitSuffix
       if (method->GetName().compare(klass->GetKlassName() + NameMangler::kClinitSuffix) == 0) {
         klass->SetClinit(method);
       }
@@ -569,8 +570,8 @@ void KlassHierarchy::AddKlassRelationAndMethods() {
   if (GetKlassFromLiteral(NameMangler::kThrowClassStr)) {
     ASSERT(GetKlassFromLiteral(NameMangler::kThrowClassStr)->IsExceptionKlass(), "must be exception class");
   }
-  if (GetKlassFromLiteral(kJavaLangNoMethodStr)) {
-    ASSERT(GetKlassFromLiteral(kJavaLangNoMethodStr)->IsExceptionKlass(),
+  if (GetKlassFromLiteral(kJavaLangNoMethodStr.c_str())) {
+    ASSERT(GetKlassFromLiteral(kJavaLangNoMethodStr.c_str())->IsExceptionKlass(),
             "must be exception class");
   }
 }
@@ -698,8 +699,8 @@ void KlassHierarchy::CountVirtualMethods() {
   }
 }
 
-Klass *KlassHierarchy::AddClassFlag(const char *name, uint32 flag) {
-  Klass *refKlass = GetKlassFromLiteral(name);
+Klass *KlassHierarchy::AddClassFlag(const std::string name, uint32 flag) {
+  Klass *refKlass = GetKlassFromLiteral(name.c_str());
   if (refKlass) {
     refKlass->SetFlag(flag);
   }
@@ -711,12 +712,12 @@ Klass *KlassHierarchy::AddClassFlag(const char *name, uint32 flag) {
 // from super klass (except java.lang.Object).
 // Mark klasses those or superclasses are references.
 void KlassHierarchy::MarkClassFlags() {
-  Klass *cleanerKlass = AddClassFlag("Lsun_2Fmisc_2FCleaner_3B", kClassCleaner);
-  AddClassFlag("Ljava_2Flang_2Fref_2FSoftReference_3B", kClassSoftreference);
-  AddClassFlag("Ljava_2Flang_2Fref_2FWeakReference_3B", kClassWeakreference);
-  AddClassFlag("Ljava_2Flang_2Fref_2FPhantomReference_3B", kClassPhantomreference);
-  AddClassFlag("Ljava_2Flang_2Fref_2FFinalizerReference_3B", kClassFinalizereference);
-  AddClassFlag("Ljava_2Flang_2Fref_2FFinalizerReference_24Sentinel_3B", kClassFinalizerreferenceSentinel);
+  Klass *cleanerKlass = AddClassFlag(std::string("Lsun_2Fmisc_2FCleaner") + NameMangler::kClassMethodSplitterStr, kClassCleaner);
+  AddClassFlag(NameMangler::kJavaLang + std::string("ref_2FSoftReference") + NameMangler::kClassMethodSplitterStr, kClassSoftreference);
+  AddClassFlag(NameMangler::kJavaLang + std::string("ref_2FWeakReference") + NameMangler::kClassMethodSplitterStr, kClassWeakreference);
+  AddClassFlag(NameMangler::kJavaLang + std::string("ref_2FPhantomReference") + NameMangler::kClassMethodSplitterStr, kClassPhantomreference);
+  AddClassFlag(NameMangler::kJavaLang + std::string("ref_2FFinalizerReference") + NameMangler::kClassMethodSplitterStr, kClassFinalizereference);
+  AddClassFlag(NameMangler::kJavaLang + std::string("ref_2FFinalizerReference_24Sentinel") + NameMangler::kClassMethodSplitterStr, kClassFinalizerreferenceSentinel);
 
   Klass *klassObject = GetKlassFromLiteral(NameMangler::kJavaLangObjectStr);
   GStrIdx finalize = GlobalTables::GetStrTable().GetOrCreateStrIdxFromName("finalize_7C_28_29V");

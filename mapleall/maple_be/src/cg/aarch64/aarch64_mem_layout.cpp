@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #include "aarch64_mem_layout.h"
@@ -23,6 +23,8 @@
 namespace maplebe {
 
 using namespace maple;
+
+#define CLANG  (be.mirModule.IsCModule())
 
 /*
    Returns stack space required for a call
@@ -47,7 +49,7 @@ uint32 AArch64MemLayout::ComputeStackSpaceRequirementForCall(StmtNode *stmt, int
   }
 
   int32 structCopySize = 0;
-  for (; i < stmt->NumOpnds(); ++i) {
+  for (uint32 anum = 0; i < stmt->NumOpnds(); ++i, ++anum) {
     base_node_t *opnd = stmt->Opnd(i);
     MIRType *ty = nullptr;
     if (opnd->primType != PTY_agg) {
@@ -87,7 +89,7 @@ uint32 AArch64MemLayout::ComputeStackSpaceRequirementForCall(StmtNode *stmt, int
       }
     }
     PLocInfo ploc;
-    structCopySize += parmlocator.LocateNextParm(ty, ploc);
+    structCopySize += parmlocator.LocateNextParm(ty, ploc, anum == 0);
     if (ploc.reg0 != 0) {
       continue;  // passed in register, so no effect on actual area
     }
@@ -103,52 +105,100 @@ void AArch64MemLayout::LayoutStackFrame(int32 &structCopySize, int32 &maxParmSta
   PLocInfo ploc;
   bool nostackpara = false;
 
+  // Count named args passed in registers
+  if (CLANG && func->GetAttr(FUNCATTR_varargs)) {
+    uint32 nintregs = 0;
+    uint32 nfpregs = 0;
+    ParmLocator vparmlocator(be);
+    PLocInfo vploc;
+    for (uint32 i = 0; i < func->formalDefVec.size(); i++) {
+      if (i == 0) {
+        auto funcIt = be.funcReturnType.find(func);
+        if (funcIt != be.funcReturnType.end() && be.type_size_table[funcIt->second.GetIdx()] <= 16) {
+          continue;
+        }
+      }
+      MIRType *ty = GlobalTables::GetTypeTable().GetTypeFromTyIdx(func->formalDefVec[i].formalTyIdx);
+      uint32_t ptyIdx = ty->tyIdx.GetIdx();
+      vparmlocator.LocateNextParm(ty, vploc);
+      if (vploc.reg0 != kRinvalid) {
+        if (vploc.reg0 >= R0 && vploc.reg0 <= R7) {
+          nintregs++;
+        } else if (vploc.reg0 >= V0 && vploc.reg0 <= V7) {
+          nfpregs++;
+        }
+      }
+      if (vploc.reg1 != kRinvalid) {
+        if (vploc.reg1 >= R0 && vploc.reg1 <= R7) {
+          nintregs++;
+        } else if (vploc.reg1 >= V0 && vploc.reg1 <= V7) {
+          nfpregs++;
+        }
+      }
+      if (vploc.reg2 != kRinvalid) {
+        if (vploc.reg2 >= R0 && vploc.reg2 <= R7) {
+          nintregs++;
+        } else if (vploc.reg2 >= V0 && vploc.reg2 <= V7) {
+          nfpregs++;
+        }
+      }
+      if (vploc.reg3 != kRinvalid) {
+        if (vploc.reg3 >= R0 && vploc.reg3 <= R7) {
+          nintregs++;
+        } else if (vploc.reg3 >= V0 && vploc.reg3 <= V7) {
+          nfpregs++;
+        }
+      }
+    }
+    seg_GRSavearea.size = (8 - nintregs) * SIZEOFPTR;
+    seg_VRSavearea.size = (8 - nfpregs) * SIZEOFPTR * 2;
+  }
   std::vector<MIRSymbol *> retDelays;
   for (uint32 i = 0; i < func->formalDefVec.size(); i++) {
     sym = func->formalDefVec[i].formalSym;
     nostackpara = false;
     MIRType *ty = GlobalTables::GetTypeTable().GetTypeFromTyIdx(func->formalDefVec[i].formalTyIdx);
     uint32_t ptyIdx = ty->tyIdx.GetIdx();
-    parmlocator.LocateNextParm(ty, ploc);
+    parmlocator.LocateNextParm(ty, ploc, i == 0);
     uint32 stindex = sym->GetStIndex();
     AArch64SymbolAlloc *symloc = mem_allocator->GetMemPool()->New<AArch64SymbolAlloc>();
     sym_alloc_table[stindex] = symloc;
     CG_ASSERT(symloc, "sym loc should have been defined");
+    uint32 align = be.type_align_table[ptyIdx];
+    uint32 msize = be.type_size_table[ptyIdx];
+    if (be.type_size_table[ptyIdx] > 16) {
+      align = 8;  // size > 16 is passed on stack, the formal is just a pointer
+      msize = SIZEOFPTR;
+    }
     if (ploc.reg0 != kRinvalid) {  // register
 
       if (false && sym->IsRefType()) {
-        symloc->SetRegisters(ploc.reg0, ploc.reg1);
+        symloc->SetRegisters(ploc.reg0, ploc.reg1, ploc.reg2, ploc.reg3);
         symloc->mem_segment = &seg_reflocals;
-        seg_reflocals.size = RoundUp(seg_reflocals.size, be.type_align_table[ptyIdx]);
+        seg_reflocals.size = RoundUp(seg_reflocals.size, align);
         symloc->offset = seg_reflocals.size;
-        seg_reflocals.size += be.type_size_table[ptyIdx];
+        seg_reflocals.size += msize;
         seg_reflocals.size = RoundUp(seg_reflocals.size, SIZEOFPTR);
       } else {
-        symloc->SetRegisters(ploc.reg0, ploc.reg1);
+        symloc->SetRegisters(ploc.reg0, ploc.reg1, ploc.reg2, ploc.reg3);
         if (!sym->IsPreg()) {
           symloc->mem_segment = &seg__args_regpassed;
 
           // the type's alignment requirement may be smaller than a registser's byte size
-          seg__args_regpassed.size = RoundUp(seg__args_regpassed.size, be.type_align_table[ptyIdx]);
+          seg__args_regpassed.size = RoundUp(seg__args_regpassed.size, align);
           symloc->offset = seg__args_regpassed.size;
-          seg__args_regpassed.size += be.type_size_table[ptyIdx];
+          seg__args_regpassed.size += msize;
         } else {
           nostackpara = true;
         }
       }
     } else {  // stack
       symloc->mem_segment = &seg__args_stkpassed;
-      seg__args_stkpassed.size = RoundUp(seg__args_stkpassed.size, be.type_align_table[ptyIdx]);
+      seg__args_stkpassed.size = RoundUp(seg__args_stkpassed.size, align);
       symloc->offset = seg__args_stkpassed.size;
-      seg__args_stkpassed.size += be.type_size_table[ptyIdx];
+      seg__args_stkpassed.size += msize;
       // We need it as dictated by the AArch64 ABI $5.4.2 C12
       seg__args_stkpassed.size = RoundUp(seg__args_stkpassed.size, SIZEOFPTR);
-    }
-    if (cgfunc->cg->cgopt_.WithDwarf() && !nostackpara) {
-      // for O0
-      // LogInfo::MapleLogger() << "Add DIE for formal parameters" << endl
-      //     << "    and remember them" << endl;
-      cgfunc->AddDIESymbolLocation(sym, symloc);
     }
   }
 
@@ -167,6 +217,8 @@ void AArch64MemLayout::LayoutStackFrame(int32 &structCopySize, int32 &maxParmSta
     }
     uint32 stindex = sym->GetStIndex();
     TyIdx tyIdx = sym->GetTyIdx();
+    MIRType *ty =  GlobalTables::GetTypeTable().GetTypeFromTyIdx(tyIdx);
+    uint32 align = be.type_align_table[tyIdx.GetIdx()];
     AArch64SymbolAlloc *symloc = mem_allocator->GetMemPool()->New<AArch64SymbolAlloc>();
     sym_alloc_table[stindex] = symloc;
     CG_ASSERT(!symloc->IsRegister(), "");
@@ -178,18 +230,25 @@ void AArch64MemLayout::LayoutStackFrame(int32 &structCopySize, int32 &maxParmSta
         continue;
       }
       symloc->mem_segment = &seg_reflocals;
-      seg_reflocals.size = RoundUp(seg_reflocals.size, be.type_align_table[tyIdx.GetIdx()]);
+      if (ty->GetPrimType() == PTY_agg && align < 8) {
+        seg_reflocals.size = RoundUp(seg_reflocals.size, 8);
+      } else {
+        seg_reflocals.size = RoundUp(seg_reflocals.size, align);
+      }
       symloc->offset = seg_reflocals.size;
       seg_reflocals.size += be.type_size_table[tyIdx.GetIdx()];
 
     } else {
       symloc->mem_segment = &seg_locals;
-      seg_locals.size = RoundUp(seg_locals.size, be.type_align_table[tyIdx.GetIdx()]);
+      if (ty->GetPrimType() == PTY_agg && align < 8) {
+        seg_locals.size = RoundUp(seg_locals.size, 8);
+      } else {
+        seg_locals.size = RoundUp(seg_locals.size, align);
+      }
       if (func->stackallocVarMap.find(sym) != func->stackallocVarMap.end()) {
         symloc->offset = seg_locals.size;
         MapleMap<MIRSymbol *, uint32>::iterator it = func->stackallocVarMap.find(sym);
         seg_locals.size += it->second;
-        // LogInfo::MapleLogger()<<"symbol "<<sym->GetName()<<" offset "<<symloc->offset<<" size "<<it->second<<endl;
       } else {
         if (GlobalTables::GetTypeTable().GetTypeFromTyIdx(tyIdx)->typeKind == kTypeClass) {
           // If this is a non-escaped object allocated on stack, we need to
@@ -199,13 +258,6 @@ void AArch64MemLayout::LayoutStackFrame(int32 &structCopySize, int32 &maxParmSta
         symloc->offset = seg_locals.size;
         seg_locals.size += be.type_size_table[tyIdx.GetIdx()];
       }
-    }
-
-    if (cgfunc->cg->cgopt_.WithDwarf()) {
-      // for O0
-      // LogInfo::MapleLogger() << "Add DIE for formal parameters" << endl
-      //     << "    and remember them" << endl;
-      cgfunc->AddDIESymbolLocation(sym, symloc);
     }
   }
 
@@ -224,13 +276,6 @@ void AArch64MemLayout::LayoutStackFrame(int32 &structCopySize, int32 &maxParmSta
     seg_reflocals.size = RoundUp(seg_reflocals.size, be.type_align_table[tyIdx.GetIdx()]);
     symloc->offset = seg_reflocals.size;
     seg_reflocals.size += be.type_size_table[tyIdx.GetIdx()];
-
-    if (cgfunc->cg->cgopt_.WithDwarf()) {
-      // for O0
-      // LogInfo::MapleLogger() << "Add DIE for formal parameters" << endl
-      //     << "    and remember them" << endl;
-      cgfunc->AddDIESymbolLocation(sym, symloc);
-    }
   }
 
   seg__args_to_stkpass.size = FindLargestActualArea(structCopySize);
@@ -337,8 +382,19 @@ int32 AArch64MemLayout::GetadjustforRefloc() {
 }
 
 int32 AArch64MemLayout::StackFrameSize() {
-  int32 total = seg__args_regpassed.size + static_cast<AArch64CGFunc *>(cgfunc)->SizeOfCalleeSaved() +
-                GetSizeOfRefLocals() + locals().size + GetSizeOfSpillReg() + seg_lockobjslot.size;
+  int32 total = seg__args_regpassed.size +
+                static_cast<AArch64CGFunc *>(cgfunc)->SizeOfCalleeSaved() +
+                GetSizeOfRefLocals() +
+                locals().size +
+                GetSizeOfSpillReg() +
+                seg_lockobjslot.size;
+
+  if (GetSizeOfGRSavearea() > 0) {
+    total += RoundUp(GetSizeOfGRSavearea(), AARCH64_STACK_PTR_ALIGNMENT);
+  }
+  if (GetSizeOfVRSavearea() > 0) {
+    total += RoundUp(GetSizeOfVRSavearea(), AARCH64_STACK_PTR_ALIGNMENT);
+  }
 
   // if the function does not have VLA nor alloca,
   // we allocate space for arguments to stack-pass
@@ -382,6 +438,29 @@ int32 AArch64MemLayout::GetReflocbaseLoc() {
     return beforesize;
   }
   return beforesize + sizeofFplr;
+}
+
+int32 AArch64MemLayout::GetVRSaveareaBaseLoc() {
+  int32 total = RealStackFrameSize() -
+                RoundUp(GetSizeOfGRSavearea(), AARCH64_STACK_PTR_ALIGNMENT) -
+                RoundUp(GetSizeOfVRSavearea(), AARCH64_STACK_PTR_ALIGNMENT);
+
+  AArch64CGFunc *aarchCgfunc = static_cast<AArch64CGFunc *>(cgfunc);
+  if (aarchCgfunc->UseFP()) {
+    total -= SizeOfArgsToStackpass();
+  }
+  return total;
+}
+
+int32 AArch64MemLayout::GetGRSaveareaBaseLoc() {
+  int32 total = RealStackFrameSize() -
+                RoundUp(GetSizeOfGRSavearea(), AARCH64_STACK_PTR_ALIGNMENT);
+
+  AArch64CGFunc *aarchCgfunc = static_cast<AArch64CGFunc *>(cgfunc);
+  if (aarchCgfunc->UseFP()) {
+    total -= SizeOfArgsToStackpass();
+  }
+  return total;
 }
 
 }  // namespace maplebe

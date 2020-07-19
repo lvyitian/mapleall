@@ -1,0 +1,81 @@
+/*
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
+ *
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
+ *
+ *   https://opensource.org/licenses/MulanPSL-2.0
+ *
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
+ * FIT FOR A PARTICULAR PURPOSE.
+ * See the MulanPSL - 2.0 for more details.
+ */
+
+// DEF_MIR_INTRINSIC(STR, NAME, INTRN_CLASS, RETURN_TYPE, ARG0, ARG1, ARG2, ARG3, ARG4, ARG5)
+
+DEF_MIR_INTRINSIC(C_strcmp,\
+                  strcmp, INTRNNOSIDEEFFECT | INTRNISPURE, kArgTyI32, kArgTyPtr, kArgTyPtr)
+DEF_MIR_INTRINSIC(C_strncmp,\
+                  strncmp, INTRNNOSIDEEFFECT | INTRNISPURE, kArgTyI32, kArgTyPtr, kArgTyPtr, kArgTyU32)
+DEF_MIR_INTRINSIC(C_strcpy,\
+                  strcpy, 0, kArgTyVoid, kArgTyPtr, kArgTyPtr)
+DEF_MIR_INTRINSIC(C_strncpy,\
+                  strncpy, 0, kArgTyVoid, kArgTyPtr, kArgTyPtr, kArgTyU64)
+DEF_MIR_INTRINSIC(C_strlen,\
+                  strlen, INTRNNOSIDEEFFECT | INTRNISPURE, kArgTyU64, kArgTyPtr)
+DEF_MIR_INTRINSIC(C_memcmp,\
+                  memcmp, INTRNNOSIDEEFFECT | INTRNISPURE, kArgTyI32, kArgTyPtr, kArgTyPtr, kArgTyU64)
+DEF_MIR_INTRINSIC(C_memcpy,\
+                  memcpy, 0, kArgTyVoid, kArgTyPtr, kArgTyPtr, kArgTyU64)
+DEF_MIR_INTRINSIC(C_memmove,\
+                  memmove, 0, kArgTyVoid, kArgTyPtr, kArgTyPtr, kArgTyU64)
+DEF_MIR_INTRINSIC(C_memset,\
+                  memset, 0, kArgTyVoid, kArgTyPtr, kArgTyI32, kArgTyU64)
+DEF_MIR_INTRINSIC(C_acosf,\
+                  acosf, INTRNISPURE, kArgTyF32, kArgTyF32)
+DEF_MIR_INTRINSIC(C_asinf,\
+                  asinf, INTRNISPURE, kArgTyF32, kArgTyF32)
+DEF_MIR_INTRINSIC(C_atanf,\
+                  atanf, INTRNISPURE, kArgTyF32, kArgTyF32)
+DEF_MIR_INTRINSIC(C_cosf,\
+                  cosf, INTRNISPURE, kArgTyF32, kArgTyF32)
+DEF_MIR_INTRINSIC(C_coshf,\
+                  coshf, INTRNISPURE, kArgTyF32, kArgTyF32)
+DEF_MIR_INTRINSIC(C_expf,\
+                  expf, INTRNISPURE, kArgTyF32, kArgTyF32)
+DEF_MIR_INTRINSIC(C_logf,\
+                  logf, INTRNISPURE, kArgTyF32, kArgTyF32)
+DEF_MIR_INTRINSIC(C_log10f,\
+                  log10f, INTRNISPURE, kArgTyF32, kArgTyF32)
+DEF_MIR_INTRINSIC(C_sinf,\
+                  sinf, INTRNISPURE, kArgTyF32, kArgTyF32)
+DEF_MIR_INTRINSIC(C_sinhf,\
+                  sinhf, INTRNISPURE, kArgTyF32, kArgTyF32)
+DEF_MIR_INTRINSIC(C_acos,\
+                  acos, INTRNISPURE, kArgTyF64, kArgTyF64)
+DEF_MIR_INTRINSIC(C_asin,\
+                  asin, INTRNISPURE, kArgTyF64, kArgTyF64)
+DEF_MIR_INTRINSIC(C_atan,\
+                  atan, INTRNISPURE, kArgTyF64, kArgTyF64)
+DEF_MIR_INTRINSIC(C_cos,\
+                  cos, INTRNISPURE, kArgTyF64, kArgTyF64)
+DEF_MIR_INTRINSIC(C_cosh,\
+                  cosh, INTRNISPURE, kArgTyF64, kArgTyF64)
+DEF_MIR_INTRINSIC(C_exp,\
+                  exp, INTRNISPURE, kArgTyF64, kArgTyF64)
+DEF_MIR_INTRINSIC(C_log,\
+                  log, INTRNISPURE, kArgTyF64, kArgTyF64)
+DEF_MIR_INTRINSIC(C_log10,\
+                  log10, INTRNISPURE, kArgTyF64, kArgTyF64)
+DEF_MIR_INTRINSIC(C_sin,\
+                  sin, INTRNISPURE, kArgTyF64, kArgTyF64)
+DEF_MIR_INTRINSIC(C_sinh,\
+                  sinh, INTRNISPURE, kArgTyF64, kArgTyF64)
+DEF_MIR_INTRINSIC(C_ffs,\
+                  ffs, INTRNISPURE, kArgTyI32, kArgTyI32)
+DEF_MIR_INTRINSIC(C_va_start,\
+                  sinh, INTRNISPURE, kArgTyVoid, kArgTyPtr, kArgTyI32)
+DEF_MIR_INTRINSIC(C_constant_p,\
+                  sinh/*dummy*/, 0, kArgTyI32, kArgTyDynany)

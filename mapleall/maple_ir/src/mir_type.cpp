@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #include "mir_type.h"
@@ -134,6 +134,10 @@ bool IsNoCvtNeeded(PrimType toType, PrimType fromType) {
     case PTY_i8:
     case PTY_i16:
       return fromType == PTY_i32;
+    case PTY_u64:
+      return fromType == PTY_ptr;
+    case PTY_ptr:
+      return fromType == PTY_u64;
     default:
       return false;
   }
@@ -145,6 +149,9 @@ uint32 GetPrimTypeSize(PrimType pty) {
     case PTY_void:
     case PTY_agg:
       return 0;
+    case PTY_ptr:
+    case PTY_ref:
+      return POINTER_SIZE;
     case PTY_u1:
     case PTY_i8:
     case PTY_u8:
@@ -196,6 +203,9 @@ uint32 GetPrimTypeSize(PrimType pty) {
 // answer is n if size in byte is (1<<n) (0: 1B; 1: 2B, 2: 4B, 3: 8B, 4:16B)
 uint32 GetPrimTypeP2Size(PrimType pty) {
   switch (pty) {
+    case PTY_ptr:
+    case PTY_ref:
+      return POINTER_P2SIZE;
     case PTY_u1:
     case PTY_i8:
     case PTY_u8:
@@ -603,6 +613,7 @@ void MIRPtrType::Dump(int indent, bool dontUseName) const {
   } else {
     LogInfo::MapleLogger() << "<* ";
     pointedty->Dump(indent + 1);
+    typeAttrs.DumpAttributes();
     LogInfo::MapleLogger() << ">";
   }
 }
@@ -913,8 +924,33 @@ static void DumpInterfaces(std::vector<TyIdx> interfaces, int indent) {
   }
 }
 
+static constexpr uint64 RoundUpConst(uint64 offset, uint8 align) {
+  return (-align) & (offset + align - 1);
+}
+
+static inline uint64 RoundUp(uint64 offset, uint8 align) {
+  if (align == 0) {
+    return offset;
+  }
+  return RoundUpConst(offset, align);
+}
+
+static constexpr uint64 RoundDownConst(uint64 offset, uint8 align) {
+  return (-align) & offset;
+}
+
+static inline uint64 RoundDown(uint64 offset, uint8 align) {
+  if (align == 0) {
+    return offset;
+  }
+  return RoundDownConst(offset, align);
+}
+
 size_t MIRStructType::GetSize() const {
   if (typeKind == kTypeUnion) {
+    if (fields.size() == 0) {
+      return 0;
+    }
     size_t maxSize = GetElemType(0)->GetSize();
     for (size_t i = 1; i < fields.size(); ++i) {
       size_t size = GetElemType(i)->GetSize();
@@ -927,15 +963,57 @@ size_t MIRStructType::GetSize() const {
     }
     return maxSize;
   }
-  size_t size = 0;
+  // since there may be bitfields, perform a layout process for the fields
+  size_t byteOfst = 0;
+  size_t bitOfst = 0;
   for (size_t i = 0; i < fields.size(); ++i) {
-    size_t fieldSize = GetElemType(i)->GetSize();
-    if (fieldSize == 0) {
-      return 0;
+    MIRType *fieldType = GetElemType(i);
+    if (fieldType->typeKind != kTypeBitField) {
+      if (byteOfst * 8 < bitOfst) {
+        byteOfst = (bitOfst >> 3) + 1;
+      }
+      byteOfst = RoundUp(byteOfst, fieldType->GetAlign());
+      byteOfst += fieldType->GetSize();
+      bitOfst = byteOfst * 8;
+    } else {
+      MIRBitfieldType *bitfType = static_cast<MIRBitfieldType *>(fieldType);
+      if (bitfType->fieldSize == 0) {  // special case, for aligning purpose
+        bitOfst = RoundUp(bitOfst, GetPrimTypeBitSize(bitfType->primType));
+        byteOfst = bitOfst >> 3;
+      } else {
+        if (RoundDown(bitOfst + bitfType->fieldSize - 1, GetPrimTypeBitSize(bitfType->primType)) !=
+            RoundDown(bitOfst, GetPrimTypeBitSize(bitfType->primType))) {
+          bitOfst = RoundUp(bitOfst, GetPrimTypeBitSize(bitfType->primType));
+          byteOfst = bitOfst >> 3;
+        }
+        bitOfst += bitfType->fieldSize;
+        byteOfst = bitOfst >> 3;
+      }
     }
-    size += fieldSize;
   }
-  return size;
+  if (byteOfst * 8 < bitOfst) {
+    byteOfst = (bitOfst >> 3) + 1;
+  }
+  byteOfst = RoundUp(byteOfst, GetAlign());
+  return byteOfst;
+}
+
+uint8 MIRStructType::GetAlign() const {
+  if (fields.size() == 0) {
+    return 0;
+  }
+  uint8 maxAlign = GetElemType(0)->GetAlign();
+  for (size_t i = 1; i < fields.size(); ++i) {
+    MIRType *fieldType = GetElemType(i);
+    uint8 algn = fieldType->GetAlign();
+    if (fieldType->typeKind == kTypeBitField) {
+      algn = GetPrimTypeSize(fieldType->primType);
+    }
+    if (maxAlign < algn) {
+      maxAlign = algn;
+    }
+  }
+  return maxAlign;
 }
 
 void MIRStructType::DumpFieldsAndMethods(int indent, bool hasMethod) const {
@@ -1115,7 +1193,7 @@ bool MIRPtrType::Equalto(const MIRType &type) const {
     return false;
   }
   const auto &pType = static_cast<const MIRPtrType&>(type);
-  return pointedTyIdx == pType.pointedTyIdx;
+  return pointedTyIdx == pType.pointedTyIdx && typeAttrs == pType.typeAttrs;
 }
 
 bool MIRArrayType::Equalto(const MIRType &type) const {

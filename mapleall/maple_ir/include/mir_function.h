@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #ifndef MAPLE_IR_INCLUDE_MIR_FUNCTION_H
@@ -39,6 +39,7 @@ enum MIRFuncProp {
   kFuncPropInfoPrinted,  // to avoid printing frameSize/moduleid/funcSize info more than once per function since they
                          // can only be printed at the beginning of a block
   kFuncPropNeverReturn,  // the function when called never returns
+  kFuncPropHasSetjmp,    // the function contains call to setjmp
 };
 
 #define FUNCHASCALL (1U << kFuncPropHasCall)
@@ -46,6 +47,7 @@ enum MIRFuncProp {
 #define FUNCUSER (1U << kFuncPropUserFunc)
 #define FUNCINFOPRINTED (1U << kFuncPropInfoPrinted)
 #define FUNCNEVERRETURN (1U << kFuncPropNeverReturn)
+#define FUNCHASSETJMP (1U << kFuncPropHasSetjmp)
 
 // mapping src (java) variable to mpl variables to display debug info
 struct MIRAliasVars {
@@ -465,6 +467,14 @@ class MIRFunction : public mir_func_t {
 
   bool NeverReturns() const {
     return flag & FUNCNEVERRETURN;
+  }
+
+  void SetHasSetjmp() {
+    flag |= FUNCHASSETJMP;
+  }
+
+  bool HasSetjmp() const {
+    return flag & FUNCHASSETJMP;
   }
 
   void SetReturnStruct(MIRType *retType) {

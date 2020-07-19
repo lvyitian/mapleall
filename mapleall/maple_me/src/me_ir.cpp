@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #include "opcode_info.h"
@@ -19,6 +19,7 @@
 #include "printing.h"
 #include "me_ssa.h"
 #include "mir_function.h"
+#include "name_mangler.h"
 
 using namespace std;
 
@@ -38,11 +39,19 @@ bool MeExpr::IsTheSameWorkcand(MeExpr *meexpr) {
   if (GetPrimTypeSize(primType) != GetPrimTypeSize(meexpr->primType)) {
     return false;
   }
-  if (op == OP_cvt && primType != meexpr->primType) {
-    // exclude cvt for different return type
-    return false;
+  if (kOpcodeInfo.IsTypeCvt(op) || kOpcodeInfo.IsCompare(op)) {
+    if (primType != meexpr->primType ||
+        static_cast<OpMeExpr *>(this)->opndType != static_cast<OpMeExpr *>(meexpr)->opndType) {
+      return false;
+    }
   }
-  if (op == OP_resolveinterfacefunc || op == OP_resolvevirtualfunc)
+  if (op == OP_extractbits || op == OP_depositbits || op == OP_sext || op == OP_zext) {
+    if (static_cast<OpMeExpr *>(this)->bitsOffset != static_cast<OpMeExpr *>(meexpr)->bitsOffset ||
+        static_cast<OpMeExpr *>(this)->bitsSize != static_cast<OpMeExpr *>(meexpr)->bitsSize) {
+      return false;
+    }
+  }
+  if (op == OP_resolveinterfacefunc || op == OP_resolvevirtualfunc || op == OP_iaddrof)
     if (static_cast<OpMeExpr *>(this)->fieldID != static_cast<OpMeExpr *>(meexpr)->fieldID) {
       return false;
     }
@@ -370,6 +379,9 @@ bool IvarMeExpr::IsVolatile() {
     return true;
   }
   MIRPtrType *ty = static_cast<MIRPtrType *>(GlobalTables::GetTypeTable().GetTypeFromTyIdx(tyIdx));
+  if (ty->PointeeVolatile()) {
+    return true;
+  }
   MIRType *pointedty = GlobalTables::GetTypeTable().GetTypeFromTyIdx(ty->pointedTyIdx);
   if (fieldID == 0) {
     return pointedty->HasVolatileField();
@@ -561,6 +573,12 @@ void AddroffuncMeExpr::Dump(IRMap *irMap, int32 indent) {
   LogInfo::MapleLogger() << " mx" << exprID;
 }
 
+void AddroflabelMeExpr::Dump(IRMap *irMap, int32 indent) {
+  LogInfo::MapleLogger() << "ADDROFLABEL:";
+  LogInfo::MapleLogger() << " @" << irMap->mirModule->CurFunction()->GetLabelName(labelIdx);
+  LogInfo::MapleLogger() << " mx" << exprID;
+}
+
 void GcmallocMeExpr::Dump(IRMap *irMap, int32 indent) {
   LogInfo::MapleLogger() << kOpcodeInfo.GetName(op) << " " << GetPrimTypeName(primType);
   LogInfo::MapleLogger() << " ";
@@ -682,7 +700,7 @@ void NaryMeExpr::Dump(IRMap *irMap, int32 indent) {
 }
 
 MeExpr *DassignMeStmt::GetLhsRef(SSATab *ssaTab, bool excludelocalrefvar) {
-  VarMeExpr *l = GetVarLhs();
+  ScalarMeExpr *l = GetVarLhs();
   if (l->primType != PTY_ref)
     return nullptr;
   OriginalSt *ost = lhs->ost;
@@ -694,7 +712,7 @@ MeExpr *DassignMeStmt::GetLhsRef(SSATab *ssaTab, bool excludelocalrefvar) {
 }
 
 MeExpr *MaydassignMeStmt::GetLhsRef(SSATab *ssaTab, bool excludelocalrefvar) {
-  VarMeExpr *lhs = GetVarLhs();
+  ScalarMeExpr *lhs = GetVarLhs();
   if (lhs->primType != PTY_ref)
     return nullptr;
   OriginalSt *ost = lhs->ost;
@@ -837,13 +855,13 @@ void ChiMeNode::Dump(IRMap *irMap) {
   LogInfo::MapleLogger() << "mx" << merhs->exprID << "}";
 }
 
-void DumpMuList(IRMap *irMap, MapleMap<OStIdx, VarMeExpr *> &mulist, int32 indent) {
+void DumpMuList(IRMap *irMap, MapleMap<OStIdx, ScalarMeExpr *> &mulist, int32 indent) {
   if (mulist.empty()) {
     return;
   }
   int count = 0;
   LogInfo::MapleLogger() << "---- MULIST: { ";
-  for (MapleMap<OStIdx, VarMeExpr *>::iterator it = mulist.begin();;) {
+  for (MapleMap<OStIdx, ScalarMeExpr *>::iterator it = mulist.begin();;) {
     if (!DumpOptions::simpleDump) {
       (*it).second->Dump(irMap);
     } else {
@@ -1215,8 +1233,8 @@ bool MeExpr::PointsToSomethingThatNeedsIncref() {
   return false;
 }
 
-MapleMap<OStIdx, ChiMeNode *> *GenericGetChiListFromVarMeExprInner(VarMeExpr *expr,
-                                                                     std::unordered_set<VarMeExpr *> &visited) {
+MapleMap<OStIdx, ChiMeNode *> *GenericGetChiListFromVarMeExprInner(ScalarMeExpr *expr,
+                                                                     std::unordered_set<ScalarMeExpr *> &visited) {
   if (expr == nullptr || expr->defBy == kDefByNo || visited.find(expr) != visited.end()) {
     return nullptr;
   }
@@ -1226,7 +1244,7 @@ MapleMap<OStIdx, ChiMeNode *> *GenericGetChiListFromVarMeExprInner(VarMeExpr *ex
     MePhiNode *phime = expr->def.defPhi;
     for (ScalarMeExpr* it : phime->opnds) {
       MapleMap<OStIdx, ChiMeNode *> *chiList =
-        GenericGetChiListFromVarMeExprInner(static_cast<VarMeExpr*>(it), visited);
+        GenericGetChiListFromVarMeExprInner(it, visited);
       if (chiList != nullptr) {
         return chiList;
       }
@@ -1240,8 +1258,8 @@ MapleMap<OStIdx, ChiMeNode *> *GenericGetChiListFromVarMeExprInner(VarMeExpr *ex
   return nullptr;
 }
 
-MapleMap<OStIdx, ChiMeNode *> *GenericGetChiListFromVarMeExpr(VarMeExpr *expr) {
-  std::unordered_set<VarMeExpr *> visited;
+MapleMap<OStIdx, ChiMeNode *> *GenericGetChiListFromVarMeExpr(ScalarMeExpr *expr) {
+  std::unordered_set<ScalarMeExpr *> visited;
   return GenericGetChiListFromVarMeExprInner(expr, visited);
 }
 

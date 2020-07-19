@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #include "aarch64_reaching_definition.h"
@@ -72,6 +72,10 @@ void AArch64ReachingDefinition::InitStartGen() {
     }
 
     int32 symsize = cgfunc->becommon.type_size_table[ty->tyIdx.GetIdx()];
+    if (symsize > 8) {
+      // For C structure passing in one or two registers.
+      symsize = 8;
+    }
     RegType regtype = ploc.reg0 < V0 ? kRegTyInt : kRegTyFloat;
     uint8 srcBitsize = uint8((symsize < 4 ? 4 : symsize) * BITS_PER_BYTE);
 
@@ -96,6 +100,25 @@ void AArch64ReachingDefinition::InitStartGen() {
     Insn *pseudoInsn = cgfunc->cg->BuildInstruction<AArch64Insn>(mop, regopnd);
     bb->InsertInsnBegin(pseudoInsn);
     pseudoInsns.insert(pseudoInsn);
+
+    if (ploc.reg1) {
+      regopnd = aarchcgfunc->GetOrCreatePhysicalRegisterOperand(ploc.reg1, srcBitsize, regtype);
+      pseudoInsn = cgfunc->cg->BuildInstruction<AArch64Insn>(mop, regopnd);
+      bb->InsertInsnBegin(pseudoInsn);
+      pseudoInsns.insert(pseudoInsn);
+    }
+    if (ploc.reg2) {
+      regopnd = aarchcgfunc->GetOrCreatePhysicalRegisterOperand(ploc.reg2, srcBitsize, regtype);
+      pseudoInsn = cgfunc->cg->BuildInstruction<AArch64Insn>(mop, regopnd);
+      bb->InsertInsnBegin(pseudoInsn);
+      pseudoInsns.insert(pseudoInsn);
+    }
+    if (ploc.reg3) {
+      regopnd = aarchcgfunc->GetOrCreatePhysicalRegisterOperand(ploc.reg3, srcBitsize, regtype);
+      pseudoInsn = cgfunc->cg->BuildInstruction<AArch64Insn>(mop, regopnd);
+      bb->InsertInsnBegin(pseudoInsn);
+      pseudoInsns.insert(pseudoInsn);
+    }
 
     {
       /* Define memory address since store param may be transfered to stp and which with the short offset range.
@@ -530,9 +553,6 @@ void AArch64ReachingDefinition::GenerateUseDef(BB *bb, int mode) {
             for (auto s : itMap->second) {
               insn->defs[i]->insert(s);
             }
-          } else {
-            // if (insn->IsLoad() && IsFrameReg(static_cast<AArch64MemOperand *>(opnd)->GetBaseRegister() ) )
-            //  CG_ASSERT(false, "Should not exist non-define use.");
           }
 
           if (insn->IsLoad()) {
@@ -565,9 +585,6 @@ void AArch64ReachingDefinition::GenerateUseDef(BB *bb, int mode) {
                   for (auto s : itMap->second) {
                     insn->defs[i]->insert(s);
                   }
-                } else {
-                  // if (IsFrameReg(nextMemOpnd->GetBaseRegister() ) )
-                  //  CG_ASSERT(false, "Should not exist non-define use.");
                 }
                 break;
               }
@@ -590,9 +607,6 @@ void AArch64ReachingDefinition::GenerateUseDef(BB *bb, int mode) {
                   for (auto s : itMap->second) {
                     insn->defs[i]->insert(s);
                   }
-                } else {
-                  // if (IsFrameReg(nextMemOpnd->GetBaseRegister() ) )
-                  //  CG_ASSERT(false, "Should not exist non-define use.");
                 }
                 break;
               }
@@ -614,9 +628,6 @@ void AArch64ReachingDefinition::GenerateUseDef(BB *bb, int mode) {
               for (auto s : itMap->second) {
                 insn->defs[i + j]->insert(s);
               }
-            } else {
-              // if (insn->IsLoad() && IsFrameReg(static_cast<AArch64MemOperand *>(opnd)->GetBaseRegister() ) )
-              //  CG_ASSERT(false, "Should not exist non-define use.");
             }
             j++;
           }
@@ -721,7 +732,6 @@ void AArch64ReachingDefinition::GenerateUseDef(BB *bb, int mode) {
             }
           }
         } else if (opnd->IsConditionCode()) {
-          // Operand *rflag = cgfunc_->GetOrCreateRflag();
           // Can add RFlag mapping.
           if (mode & RD_REGANALYSIS) {
             DefineRegisterOnBBIn(bb, opnd, insn, i);

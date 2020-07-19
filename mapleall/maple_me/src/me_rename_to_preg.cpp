@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #include "me_rename_to_preg.h"
@@ -40,6 +40,9 @@ RegMeExpr *SSARename2Preg::RenameVar(VarMeExpr *varmeexpr) {
   if (ost->isFormal && varmeexpr->primType == PTY_ref) {
     return nullptr;
   }
+  if (ost->IsVolatile()) {
+    return nullptr;
+  }
   if (sym2reg_map.find(ost->index) != sym2reg_map.end()) {
     // replaced previously
     MapleUnorderedMap<int, RegMeExpr *>::iterator verit = vstidx2reg_map.find(varmeexpr->exprID);
@@ -60,7 +63,7 @@ RegMeExpr *SSARename2Preg::RenameVar(VarMeExpr *varmeexpr) {
     if (origOst->index.idx >= aliasclass->osym2Elem.size()) {
       return nullptr;
     }
-    if (!mirst->IsLocal()) {
+    if (!mirst->IsLocal() || mirst->storageClass == kScPstatic || mirst->storageClass == kScFstatic) {
       return nullptr;
     }
     if (origOst->addressTaken) {
@@ -166,6 +169,22 @@ void SSARename2Preg::Rename2PregLeafLHS(MeStmt *mestmt, VarMeExpr *varmeexpr) {
     CHECK_FATAL(desop == OP_dassign || desop == OP_maydassign, "NYI");
     MeExpr *oldrhs = (desop == OP_dassign) ? (static_cast<DassignMeStmt *>(mestmt)->rhs)
                                            : (static_cast<MaydassignMeStmt *>(mestmt)->rhs);
+    if (GetPrimTypeSize(oldrhs->primType) > GetPrimTypeSize(varreg->primType)) {
+      // insert integer truncation
+      if (GetPrimTypeSize(varreg->primType) >= 4) {
+        oldrhs = meirmap->CreateMeExprTypeCvt(varreg->primType, oldrhs->primType, oldrhs);
+      } else {
+        Opcode extOp = IsSignedInteger(varreg->primType) ? OP_sext : OP_zext;
+        PrimType newPrimType = PTY_u32;
+        if (IsSignedInteger(varreg->primType)) {
+          newPrimType = PTY_i32;
+        }
+        OpMeExpr opmeexpr(-1, extOp, newPrimType, 1);
+        opmeexpr.bitsSize = GetPrimTypeSize(varreg->primType) * 8;
+        opmeexpr.SetOpnd(oldrhs, 0);
+        oldrhs = meirmap->HashMeExpr(&opmeexpr);
+      }
+    }
     AssignMeStmt *regssmestmt = meirmap->New<AssignMeStmt>(OP_regassign, varreg, oldrhs);
     regssmestmt->CopyBase(mestmt);
     mestmt->bb->InsertMeStmtBefore(mestmt, regssmestmt);
@@ -220,7 +239,7 @@ void SSARename2Preg::Rename2PregStmt(MeStmt *stmt) {
     case OP_maydassign: {
       CHECK_FATAL(stmt->GetRhs() && stmt->GetVarLhs(), "null ptr check");
       Rename2PregExpr(stmt, stmt->GetRhs());
-      Rename2PregLeafLHS(stmt, stmt->GetVarLhs());
+      Rename2PregLeafLHS(stmt, static_cast<VarMeExpr *>(stmt->GetVarLhs()));
       break;
     }
     case OP_callassigned:
@@ -263,8 +282,10 @@ void SSARename2Preg::UpdateMirFunctionFormal() {
     if (!parm_used_vec[i]) {
       // in this case, the paramter is not used by any statement, promote it
       MIRType *mirType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(mirFunc->formalDefVec[i].formalTyIdx);
-      PregIdx16 regIdx = mirFunc->pregTab->CreatePreg(mirType->primType, mirType->primType == PTY_ref ? mirType : nullptr);
-      mirFunc->formalDefVec[i].formalSym = mirbuilder->CreatePregFormalSymbol(mirType->tyIdx, regIdx, mirFunc);
+      if (mirType->primType != PTY_agg) {
+        PregIdx16 regIdx = mirFunc->pregTab->CreatePreg(mirType->primType, mirType->primType == PTY_ref ? mirType : nullptr);
+        mirFunc->formalDefVec[i].formalSym = mirbuilder->CreatePregFormalSymbol(mirType->tyIdx, regIdx, mirFunc);
+      }
     } else {
       RegMeExpr *regformal = reg_formal_vec[i];
       if (regformal) {

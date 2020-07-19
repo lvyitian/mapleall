@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 
@@ -82,8 +82,21 @@ void HDSE::MarkExprNeeded(MeExpr *meexpr) {
         case kDefByPhi:
           MarkPhiNeeded(regread->def.defPhi);
           break;
+        case kDefByChi:
+          ASSERT(regread->ost->indirectLev > 0, "MarkExprNeeded: preg cannot be defined by chi");
+          MarkChiNodeNeeded(regread->def.defChi);
+          break;
+        case kDefByMustdef: {
+          MustDefMeNode *mustDef = regread->def.defMustDef;
+          if (mustDef->isLive) {
+            break;
+          }
+          mustDef->isLive = true;
+          MarkStmtNeeded(mustDef->base);
+          break;
+        }
         default:
-          ASSERT(false, "MarkExprNeeded unexpected defBy value");
+          ASSERT(false, "MarkExprNeeded: unexpected defBy value");
       }
       return;
     }
@@ -111,7 +124,7 @@ void HDSE::MarkExprNeeded(MeExpr *meexpr) {
     case kMeOpIvar: {
       IvarMeExpr *ivarmeexpr = static_cast<IvarMeExpr *>(meexpr);
       worklist.push_front(ivarmeexpr->base);
-      VarMeExpr *mu = ivarmeexpr->mu;
+      ScalarMeExpr *mu = ivarmeexpr->mu;
       if (mu != nullptr) {
         worklist.push_front(mu);
         if (mu->defBy != kDefByNo) {
@@ -127,7 +140,7 @@ void HDSE::MarkExprNeeded(MeExpr *meexpr) {
       return;
     }
     default:
-      ASSERT((meOp == kMeOpAddrof || meOp == kMeOpAddroffunc || meOp == kMeOpGcmalloc ||
+      ASSERT((meOp == kMeOpAddrof || meOp == kMeOpAddroffunc || meOp == kMeOpAddroflabel || meOp == kMeOpGcmalloc ||
               meOp == kMeOpConst || meOp == kMeOpConststr || meOp == kMeOpConststr16 || meOp == kMeOpSizeoftype),
               "MeOP NIY");
       return;
@@ -144,8 +157,8 @@ void HDSE::MarkPhiNeeded(MePhiNode *phime) {
   }
 }
 
-void HDSE::MarkMuListNeeded(MapleMap<OStIdx, VarMeExpr *> &mulist) {
-  for (MapleMap<OStIdx, VarMeExpr *>::iterator it = mulist.begin(); it != mulist.end(); it++) {
+void HDSE::MarkMuListNeeded(MapleMap<OStIdx, ScalarMeExpr *> &mulist) {
+  for (MapleMap<OStIdx, ScalarMeExpr *>::iterator it = mulist.begin(); it != mulist.end(); it++) {
     worklist.push_front(it->second);
   }
 }
@@ -169,7 +182,7 @@ void HDSE::MarkBBNeeded(BB *bb) {
   if (laststmt != nullptr) {
     // if bb's last stmt is a branch instruction, it is also needed
     Opcode op = laststmt->op;
-    if ((laststmt->IsCondBr() || op == OP_goto || op == OP_switch) && !laststmt->isLive) {
+    if ((laststmt->IsCondBr() || op == OP_goto || op == OP_switch || op == OP_igoto) && !laststmt->isLive) {
       laststmt->isLive = true;
       if (op != OP_goto) {
         UnaryMeStmt *unarystmt = static_cast<UnaryMeStmt *>(laststmt);
@@ -188,7 +201,7 @@ void HDSE::MarkBBNeeded(BB *bb) {
     }
     laststmt = cdBb->meStmtList.last;
     Opcode op = laststmt->op;
-    CHECK_FATAL((laststmt->IsCondBr() || op == OP_switch || op == OP_retsub || op == OP_throw || cdBb->InTryBlock() ||
+    CHECK_FATAL((laststmt->IsCondBr() || op == OP_switch || op == OP_igoto || op == OP_retsub || op == OP_throw || cdBb->InTryBlock() ||
             cdBb->WontExit()),
            "HDSE::MarkBBNeeded: control dependent on unexpected statement");
     if ((laststmt->IsCondBr() || op == OP_goto || op == OP_switch || op == OP_retsub || op == OP_throw) &&
@@ -283,6 +296,7 @@ bool HDSE::ExprNonDeletable(MeExpr *x) {
   switch (x->meOp) {
     case kMeOpAddrof:
     case kMeOpAddroffunc:
+    case kMeOpAddroflabel:
     case kMeOpGcmalloc:
     case kMeOpConst:
     case kMeOpConststr:
@@ -341,7 +355,7 @@ void HDSE::DseProcessBB(BB *bb) {
     switch (op) {
       case OP_dassign: {
         DassignMeStmt *dasgn = static_cast<DassignMeStmt *>(stmt);
-        VarMeExpr *varmeexpr = dasgn->GetVarLhs();
+        VarMeExpr *varmeexpr = static_cast<VarMeExpr *>(dasgn->GetVarLhs());
         if ((varmeexpr && varmeexpr->IsVolatile(ssaTab)) || ExprNonDeletable(dasgn->rhs) ||
             (dsekeepref && dasgn->Propagated()) || dasgn->wasMayDassign) {
           MarkStmtNeeded(stmt);
@@ -380,6 +394,7 @@ void HDSE::DseProcessBB(BB *bb) {
         break;
       }
       case OP_switch:
+      case OP_igoto:
       case OP_brtrue:
       case OP_brfalse: {
         UnaryMeStmt *unarystmt = static_cast<UnaryMeStmt *>(stmt);

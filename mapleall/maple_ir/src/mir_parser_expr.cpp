@@ -1,20 +1,21 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #include "mir_parser.h"
 #include "mir_function.h"
+#include "name_mangler.h"
 
 using namespace std;
 namespace maple {
@@ -223,7 +224,7 @@ bool MIRParser::ParseExprDread(BaseNode *&expr) {
     dexpr->fieldID = 0;
   }
 
-  if (!dexpr->CheckNode(&mod)) {
+  if (mod.srcLang == kSrcLangJava && !dexpr->CheckNode(&mod)) {
     Error("dread is not legal");
     return false;
   }
@@ -727,6 +728,7 @@ bool MIRParser::ParseExprAddroflabel(BaseNode *&expr) {
   }
   LabelIdx lblidx = mod.CurFunction()->GetOrCreateLablidxFromName(lexer.GetName());
   addroflabelnode->offset = lblidx;
+  mod.CurFunction()->labelTab->addrTakenLabels.insert(lblidx);
   lexer.NextToken();
   return true;
 }
@@ -1190,8 +1192,9 @@ bool MIRParser::ParseConstAddrLeafExpr(MIRConst *&cexpr, MIRType *type) {
   if (!ParseExpression(expr)) {
     return false;
   }
-  if (expr->op != OP_addrof && expr->op != OP_addroffunc && expr->op != OP_conststr && expr->op != OP_conststr16) {
+  if (expr->op != OP_addrof && expr->op != OP_addroffunc && expr->op != OP_addroflabel && expr->op != OP_conststr && expr->op != OP_conststr16) {
     Error("ParseConstAddrLeafExpr expects one of OP_addrof, OP_addroffunc, OP_conststr and OP_conststr16");
+    return false;
   }
   if (expr->op == OP_addrof) {
     AddrofNode *anode = static_cast<AddrofNode *>(expr);
@@ -1203,7 +1206,23 @@ bool MIRParser::ParseConstAddrLeafExpr(MIRConst *&cexpr, MIRType *type) {
     MIRPtrType ptrtype(ptyidx, (mod.IsJavaModule() ? PTY_ref : PTY_ptr));
     ptyidx = GlobalTables::GetTypeTable().GetOrCreateMIRType(&ptrtype);
     MIRType *exprty = GlobalTables::GetTypeTable().GetTypeFromTyIdx(ptyidx);
-    cexpr = mod.CurFuncCodeMemPool()->New<MIRAddrofConst>(anode->stIdx, anode->fieldID, exprty);
+    int32 ofst = 0;
+    if (lexer.GetTokenKind() == TK_lparen) {
+      lexer.NextToken();
+      if (lexer.GetTokenKind() != TK_intconst) {
+        Error("ParseConstAddrLeafExpr: wrong offset specification for addrof");
+        return false;
+      } else {
+        ofst = lexer.GetTheIntVal();
+      }
+      lexer.NextToken();
+      if (lexer.GetTokenKind() != TK_rparen) {
+        Error("ParseConstAddrLeafExpr expects closing paren after offset value for addrof");
+        return false;
+      }
+      lexer.NextToken();
+    }
+    cexpr = mod.CurFunction()->dataMemPool->New<MIRAddrofConst>(anode->stIdx, anode->fieldID, exprty, ofst);
   } else if (expr->op == OP_addroffunc) {
     AddroffuncNode *aof = static_cast<AddroffuncNode *>(expr);
     MIRFunction *f = GlobalTables::GetFunctionTable().GetFunctionFromPuidx(aof->puIdx);
@@ -1212,7 +1231,11 @@ bool MIRParser::ParseConstAddrLeafExpr(MIRConst *&cexpr, MIRType *type) {
     MIRPtrType ptrtype(ptyidx);
     ptyidx = GlobalTables::GetTypeTable().GetOrCreateMIRType(&ptrtype);
     MIRType *exprty = GlobalTables::GetTypeTable().GetTypeFromTyIdx(ptyidx);
-    cexpr = mod.CurFuncCodeMemPool()->New<MIRAddroffuncConst>(aof->puIdx, exprty);
+    cexpr = mod.CurFunction()->dataMemPool->New<MIRAddroffuncConst>(aof->puIdx, exprty);
+  } else if (expr->op == OP_addroflabel) {
+    AddroflabelNode *aol = static_cast<AddroflabelNode *>(expr);
+    MIRType *mirtype = GlobalTables::GetTypeTable().GetTypeFromTyIdx(TyIdx(PTY_ptr));
+    cexpr = mod.CurFunction()->dataMemPool->New<MIRLblConst>(aol->offset, mod.CurFunction()->puIdx, mirtype);
   } else if (expr->op == OP_conststr) {
     ConststrNode *cs = static_cast<ConststrNode *>(expr);
     UStrIdx strIdx = cs->strIdx;
@@ -1220,7 +1243,7 @@ bool MIRParser::ParseConstAddrLeafExpr(MIRConst *&cexpr, MIRType *type) {
     MIRPtrType ptrtype(ptyidx);
     ptyidx = GlobalTables::GetTypeTable().GetOrCreateMIRType(&ptrtype);
     MIRType *exprty = GlobalTables::GetTypeTable().GetTypeFromTyIdx(ptyidx);
-    cexpr = mod.CurFuncCodeMemPool()->New<MIRStrConst>(strIdx, exprty);
+    cexpr = mod.memPool->New<MIRStrConst>(strIdx, exprty);
   } else {
     Conststr16Node *cs = static_cast<Conststr16Node *>(expr);
     U16StrIdx strIdx = cs->strIdx;
@@ -1228,7 +1251,7 @@ bool MIRParser::ParseConstAddrLeafExpr(MIRConst *&cexpr, MIRType *type) {
     MIRPtrType ptrtype(ptyidx);
     ptyidx = GlobalTables::GetTypeTable().GetOrCreateMIRType(&ptrtype);
     MIRType *exprty = GlobalTables::GetTypeTable().GetTypeFromTyIdx(ptyidx);
-    cexpr = mod.CurFuncCodeMemPool()->New<MIRStr16Const>(strIdx, exprty);
+    cexpr = mod.memPool->New<MIRStr16Const>(strIdx, exprty);
   }
   return true;
 }

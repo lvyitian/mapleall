@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #include "bin_mpl_export.h"
@@ -19,7 +19,6 @@
 #include "name_mangler.h"
 #include "opcode_info.h"
 #include "mir_pragma.h"
-#include "debug_info.h"
 #include "mir_builder.h"
 
 #include <sstream>
@@ -206,9 +205,17 @@ BaseNode *BinaryMplImport::ImportExpression(MIRFunction *func) {
       constNode->primType = typ;
       return constNode;
     }
+    case OP_conststr: {
+      UStrIdx strIdx = ImportUsrStr();
+      ConststrNode *constNode = mod.CurFuncCodeMemPool()->New<ConststrNode>(typ, strIdx);
+      constNode->primType = typ;
+      return constNode;
+    }
     case OP_addroflabel: {
       AddroflabelNode *alabNode = mod.CurFuncCodeMemPool()->New<AddroflabelNode>();
       alabNode->offset = ReadNum();
+      alabNode->primType = typ;
+      func->labelTab->addrTakenLabels.insert(alabNode->offset);
       return alabNode;
     }
     case OP_addroffunc: {
@@ -322,6 +329,8 @@ BaseNode *BinaryMplImport::ImportExpression(MIRFunction *func) {
     case OP_band:
     case OP_bior:
     case OP_bxor:
+    case OP_cand:
+    case OP_cior:
     case OP_land:
     case OP_lior:
     case OP_add: {
@@ -399,7 +408,7 @@ BaseNode *BinaryMplImport::ImportExpression(MIRFunction *func) {
       return intrnNode;
     }
     default:
-      CHECK_FATAL(false, "Unhandled tag %d", tag);
+      CHECK_FATAL(false, "Unhandled op %d", tag);
       break;
   }
 }
@@ -419,6 +428,9 @@ void BinaryMplImport::ImportReturnValues(MIRFunction *func, CallReturnVector *re
     FieldID fid = ReadNum();
     PregIdx16 ridx = ReadNum();
     retv->push_back(std::make_pair(StIdx(kScopeLocal, idx), RegFieldPair(fid,ridx)));
+    if (idx == 0) {
+      continue;
+    }
     MIRSymbol *lsym = func->symTab->GetSymbolFromStIdx(idx, 0);
     if (lsym->GetName().find("L_STR") == 0) {
       MIRType *ty = GlobalTables::GetTypeTable().GetTypeFromTyIdx(lsym->tyIdx);
@@ -641,6 +653,7 @@ BlockNode *BinaryMplImport::ImportBlockNode(MIRFunction *func) {
         break;
       }
       case OP_jscatch:
+      case OP_cppcatch:
       case OP_finally:
       case OP_endtry:
       case OP_cleanuptry:
@@ -658,7 +671,8 @@ BlockNode *BinaryMplImport::ImportBlockNode(MIRFunction *func) {
       case OP_decref:
       case OP_incref:
       case OP_decrefreset:
-      case OP_assertnonnull: {
+      case OP_assertnonnull:
+      case OP_igoto: {
         UnaryStmtNode *s = mod.CurFuncCodeMemPool()->New<UnaryStmtNode>(op);
         s->uOpnd = ImportExpression(func);
         stmt = s;
@@ -690,7 +704,9 @@ BlockNode *BinaryMplImport::ImportBlockNode(MIRFunction *func) {
         s->defaultLabel = ReadNum();
         uint32 size = ReadNum();
         for (uint32 i = 0; i < size; i++) {
-          CasePair cpair = std::make_pair(ReadNum(), ReadNum());
+          int32 casetag = ReadNum();
+          LabelIdx lidx(ReadNum());
+          CasePair cpair = std::make_pair(casetag, lidx);
           s->switchTable.push_back(cpair);
         }
         s->switchOpnd = ImportExpression(func);
@@ -750,6 +766,10 @@ BlockNode *BinaryMplImport::ImportBlockNode(MIRFunction *func) {
         }
         s->uOpnd = ImportExpression(func);
         stmt = s;
+        break;
+      }
+      case OP_block: {
+        stmt = ImportBlockNode(func);
         break;
       }
       default:

@@ -1,18 +1,17 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2019-2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
-
 #ifndef MAPLE_UTIL_INCLUDE_STRING_UTILS_H
 #define MAPLE_UTIL_INCLUDE_STRING_UTILS_H
 #include <string>
@@ -30,7 +29,7 @@ class StringUtils {
       return;
     }
 
-    std::stringstream strStream(src);
+    std::stringstream strStream(src + delim);
     std::string item;
     while (std::getline(strStream, item, delim)) {
       container.emplace_back(item);
@@ -39,18 +38,18 @@ class StringUtils {
 
   static void Split(const std::string &src, std::unordered_set<std::string> &container, char delim);
 
-  const static std::string Trim(const std::string &s);
-  const static std::string Replace(const std::string &src, const std::string &target, const std::string &replacement);
-  const static std::string Append(const std::string &src, const std::string &target, const std::string &spliter);
-  const static std::string GetStrAfterLast(const std::string &src, const std::string &target,
-                                           const bool isReturnEmpty = false);
-  const static std::string GetStrBeforeLast(const std::string &src, const std::string &target,
-                                            const bool isReturnEmpty = false);
+  static std::string Trim(const std::string &s);
+  static std::string Replace(const std::string &src, const std::string &target, const std::string &replacement);
+  static std::string Append(const std::string &src, const std::string &target, const std::string &spliter);
+  static std::string GetStrAfterLast(const std::string &src, const std::string &target,
+                                     bool isReturnEmpty = false);
+  static std::string GetStrBeforeLast(const std::string &src, const std::string &target,
+                                      bool isReturnEmpty = false);
   static bool HasCommandInjectionChar(const std::string &s) {
     return std::regex_search(s, kCommandInjectionRegex);
   }
 
-  const static bool EndsWith(const std::string &str, const std::string &end) {
+  static bool EndsWith(const std::string &str, const std::string &end) {
     if (end.size() > str.size()) {
       return false;
     }
@@ -58,7 +57,7 @@ class StringUtils {
     return std::equal(end.rbegin(), end.rend(), str.rbegin());
   }
 
-  const static bool StartsWith(const std::string &str, const std::string &start) {
+  static bool StartsWith(const std::string &str, const std::string &start) {
     if (start.size() > str.size()) {
       return false;
     }
@@ -69,6 +68,5 @@ class StringUtils {
  private:
   static std::regex kCommandInjectionRegex;
 };
-
 }  // namespace maple
 #endif  // MAPLE_UTIL_INCLUDE_STRING_UTILS_H

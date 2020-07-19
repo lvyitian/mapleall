@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #include "me_emit.h"
@@ -62,7 +62,9 @@ AnalysisResult *MeDoEmission::Run(MeFunction *func, MeFuncResultMgr *m) {
       // initialize isDeleted field to true; will reset when emitting Maple IR
       for (size_t k = 1; k < mirfunction->symTab->GetSymbolTableSize(); k++) {
         MIRSymbol *sym = mirfunction->symTab->GetSymbolFromStIdx(k);
-        if (sym->sKind == kStVar) {
+        if (sym->sKind == kStVar &&
+            sym->GetName() != "__Exc_Ptr__" &&
+            sym->GetName() != "__Exc_Filter__") {
           sym->SetIsDeleted();
         }
       }
@@ -73,8 +75,11 @@ AnalysisResult *MeDoEmission::Run(MeFunction *func, MeFuncResultMgr *m) {
     } else {
       func->EmitBeforeHSSA(func->mirFunc, layoutbbs->GetBBs());
     }
-    maple::ConstantFold cf(&func->mirModule);
-    cf.Simplify(func->mirFunc->body);
+    if (!DEBUGFUNC(func)) {
+      // constantfolding does not update BB's stmtNodeList, which breaks MirCFG::DumpToFile()
+      maple::ConstantFold cf(&func->mirModule);
+      cf.Simplify(func->mirFunc->body);
+    }
     if (DEBUGFUNC(func)) {
       LogInfo::MapleLogger() << "\n==============after meemit =============" << std::endl;
       func->mirFunc->Dump();

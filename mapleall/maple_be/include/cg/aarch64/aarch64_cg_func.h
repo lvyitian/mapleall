@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #ifndef MAPLEBE_INCLUDE_CG_AARCH64CGFUNC_H
@@ -29,7 +29,9 @@
 #include "aarch64_store_load_opt.h"
 #include "aarch64_global_opt.h"
 #include "aarch64_reaching_definition.h"
+//#include "aarch64_schedule.h"
 #include "mpl_atomic.h"
+#include "name_mangler.h"
 
 #define DWARF_SCALAR_REG_BEGIN 0
 #define DWARF_FP_REG_BEGIN 64
@@ -64,6 +66,12 @@ class AArch64CGFunc : public CGFunc {
     regno_t regno_javaCatch;  // For O2.
     Operand *opnd_javaCatch;  // For O0-O1.
   } ujavaCatch;
+  enum fpParamState {
+    kNotFp,
+    kIsFp32bit,
+    kIsFp64bit,
+    kStateUnknown,
+  };
   Operand *rcc_;
   Operand *vary_;
   Operand *fsp_;  // used to point the address of local variables and formal parameters
@@ -95,6 +103,8 @@ class AArch64CGFunc : public CGFunc {
   unsigned int refCount;  // Ref count number. 0 if function don't have "bl MCC_InitializeLocalStackRef"
   int beginOffset;        // Begin offset based x29.
   Insn *yieldPointInsn;   // The insn of yield point at the entry of the func.
+
+  static const uint32 kParmMemcpySize = 40;
 
  private:
   MOperator PickStInsn(uint32 bitsize, PrimType rtype, AArch64isa::memory_ordering_t mo = AArch64isa::kMoNone);
@@ -139,8 +149,14 @@ class AArch64CGFunc : public CGFunc {
   AArch64MemOperand *SplitStpLdpOffsetForCalleeSavedWithAddInstruction(AArch64MemOperand *mo, uint32 bitlen,
                                                                        AArch64reg_t baseReg = AArch64reg_t::kRinvalid);
 
+  void CreateCallStructParamPassByStack(int32 symSize, MIRSymbol *sym, RegOperand *addropnd, int32 baseOffset);
+  AArch64RegOperand *GenUnalignedSymCallStructParam(AArch64reg_t reg, MIRSymbol *sym, uint32 memOffset, PrimType pty, RegOperand *addropnd);
+  void CreateCallStructParamPassByReg(AArch64reg_t reg, MemOperand *mopnd, AArch64ListOperand *srcopnds, CSR_call_info_t &ci, MIRSymbol *sym, uint32 offset, fpParamState state, RegOperand *addropnd = nullptr);
+  RegOperand *CreateCallStructParamMemcpy(MIRSymbol *sym, RegOperand *addropnd, uint32 structSize, int32 copyOffset);
+  AArch64RegOperand *CreateCallStructParamCopyToStack(uint32 numMemOp, MIRSymbol *sym, RegOperand *addropnd, int32 copyOffset, PLocInfo *ploc);
   void SelectParmList(StmtNode *narynode, AArch64ListOperand *srcopnds, CSR_call_info_t &ci, bool iscallnative = false);
 
+  Operand *SelectIgoto(Operand *opnd0) override;
   void SelectCondGoto(LabelOperand *targetopnd, Opcode jmpop, Opcode cmpop, Operand *opnd0, Operand *opnd1,
                       PrimType primType);
 
@@ -326,6 +342,7 @@ class AArch64CGFunc : public CGFunc {
   void SelectAddrof(Operand *result, AArch64MemOperand *memopnd);
   Operand *SelectAddrof(AddrofNode *expr) override;
   Operand *SelectAddroffunc(AddroffuncNode *expr) override;
+  Operand *SelectAddroflabel(AddroflabelNode *expr) override;
 
   Operand *SelectIread(BaseNode *parent, IreadNode *expr) override;
 
@@ -364,7 +381,7 @@ class AArch64CGFunc : public CGFunc {
   Operand *SelectCmpOp(CompareNode *node, Operand *o0, Operand *o1) override;
 
   void SelectAArch64Cmp(Operand *o, Operand *i, bool isIntty, uint32 dsize);
-  void SelectAArch64FPCmpQuiet(Operand *o0, Operand *o1, uint32 dsize) override;
+  void SelectFPCmpQuiet(Operand *o0, Operand *o1, uint32 dsize) override;
   void SelectAArch64CCmp(Operand *o, Operand *i, Operand *nzcv, CondOperand *cond, bool is64bits);
   void SelectAArch64CSet(Operand *o, CondOperand *cond, bool is64bits);
   void SelectAArch64CSINV(Operand *res, Operand *o0, Operand *o1, CondOperand *cond, bool is64bits);
@@ -433,6 +450,7 @@ class AArch64CGFunc : public CGFunc {
   }
 
   void SelectMPLClinitCheck(IntrinsiccallNode *);
+  void SelectCVaStart(IntrinsiccallNode *);
 
  public:
   Operand *SelectSelect(TernaryNode *node, Operand *opnd0, Operand *opnd1, Operand *opnd2) override;
@@ -450,7 +468,7 @@ class AArch64CGFunc : public CGFunc {
   void SelectCopyImm(Operand *dest, AArch64ImmOperand *src, PrimType dtype);
   Operand *SelectCopyToVecRegister(Operand *, PrimType, PrimType);
   void SelectLibCall(const char *, vector<Operand *> &, PrimType, PrimType, bool is2nd = false);
-  Operand *GetTargetRetOperand(PrimType ptype) override;
+  Operand *GetTargetRetOperand(PrimType ptype, int32 sreg) override;
   Operand *GetOrCreateRflag() override;
   Operand *GetRflag() override;
   Operand *GetOrCreatevaryreg();
@@ -630,8 +648,6 @@ class AArch64CGFunc : public CGFunc {
     return (((num_intreg_to_callee_save + num_fpreg_to_callee_save) & 0x1) == 0);
   }
 
-  void DBGFixCallFrameLocationOffsets() override;
-
   inline bool ShouldSaveFPLR() {
     return (cg->UseFP() || HasCall() || cg->NeedInsertInstrumentationFunction());
   }
@@ -693,7 +709,7 @@ class AArch64CGFunc : public CGFunc {
 
   // CFI directives related stuffs
   Operand *CreateCfiRegOperand(uint32 reg, uint8 size) override {
-    // Having kRinvalid=0 (see aarch64isa.h) means
+    // Having kRinvalid=0 (see aarch64_isa.h) means
     // each register gets assigned an id number one greater than
     // its physical number
     if (reg < V0) {
@@ -813,6 +829,8 @@ class AArch64CGFunc : public CGFunc {
   void InitialSpillSlot(BB *bb);
 
   MemOperand *LoadStructCopyBase(MIRSymbol *symbol, int32 offset, int datasize) override;
+
+  void ReplaceLargeStackOffsetImm(Insn *insn);
 };
 
 }  // namespace maplebe

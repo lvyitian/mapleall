@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #include <climits>
@@ -22,7 +22,6 @@
 #include "name_mangler.h"
 #include "opcode_info.h"
 #include "mir_pragma.h"
-#include "debug_info.h"
 #include "bin_mplt.h"
 #include "option.h"
 #include "clone.h"
@@ -143,8 +142,6 @@ void MIRParser::Error(const char *str) {
   message.append(": ");
   message.append(lexer.GetTokenString());
   message.append("\n");
-
-  mod.dbgInfo->SetErrPos(lexer.GetLineNum(), lexer.GetCurIdx());
 }
 
 const std::string &MIRParser::GetError() {
@@ -683,10 +680,6 @@ bool MIRParser::ParseFields(MIRStructType &type) {
       } else {
         type.fields.push_back(p);
       }
-      // dbginfo class/interface fields
-      if (mod.withDbgInfo && !isstaticfield) {
-        (void)mod.dbgInfo->GetOrCreateFieldDie(p, lnum);
-      }
       tk = lexer.GetTokenKind();
       bool isConst = tA.GetAttr(FLDATTR_static) && tA.GetAttr(FLDATTR_final) &&
                      (tA.GetAttr(FLDATTR_public) || tA.GetAttr(FLDATTR_protected));
@@ -781,10 +774,6 @@ bool MIRParser::ParseFields(MIRStructType &type) {
     MethodPair p = MethodPair(funcSt->stIdx, TyidxFuncAttrPair(funcTyidx, FuncAttrs(tA)));
     type.methods.push_back(p);
 
-    if (mod.withDbgInfo) {
-      (void)mod.dbgInfo->GetOrCreateFuncDeclDie(fn, lnum);
-    }
-
     tk = lexer.GetTokenKind();
     if (tk == TK_coma) {
       tk = lexer.NextToken();
@@ -858,7 +847,7 @@ bool MIRParser::ParseStructType(TyIdx &styIdx) {
     MIRType *prevType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(styIdx);
     ASSERT(prevType->GetKind() == kTypeStruct || prevType->GetKind() == kTypeStructIncomplete,
            "type kind should be consistent.");
-    if (static_cast<MIRStructType*>(prevType)->IsIncomplete() && !(structType.IsIncomplete())) {
+    if (prevType->IsIncomplete() && !(structType.IsIncomplete())) {
       structType.nameStrIdx = prevType->nameStrIdx;
       structType.tyIdx = styIdx;
       GlobalTables::GetTypeTable().typeTable[styIdx.GetIdx()] = structType.CopyMIRTypeNode();
@@ -889,7 +878,7 @@ bool MIRParser::ParseClassType(TyIdx &styIdx) {
     MIRType *prevType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(styIdx);
     ASSERT(prevType->GetKind() == kTypeClass || prevType->GetKind() == kTypeClassIncomplete,
            "type kind should be consistent.");
-    if (static_cast<MIRClassType*>(prevType)->IsIncomplete() && !(classType.IsIncomplete())) {
+    if (prevType->IsIncomplete() && !(classType.IsIncomplete())) {
       classType.nameStrIdx = prevType->nameStrIdx;
       classType.tyIdx = styIdx;
       GlobalTables::GetTypeTable().typeTable[styIdx.GetIdx()] = classType.CopyMIRTypeNode();
@@ -930,9 +919,9 @@ bool MIRParser::ParseInterfaceType(TyIdx &sTyIdx) {
   }
   if (sTyIdx != 0) {
     MIRType *prevType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(sTyIdx);
-    ASSERT(prevType->GetKind() == kTypeInterface || prevType->GetKind() == kTypeInterfaceIncomplete,
+    ASSERT(prevType->GetKind() == kTypeInterface || prevType->IsIncomplete(),
            "type kind should be consistent.");
-    if (static_cast<MIRInterfaceType*>(prevType)->IsIncomplete() && !(interfaceType.IsIncomplete())) {
+    if (prevType->IsIncomplete() && !(interfaceType.IsIncomplete())) {
       interfaceType.nameStrIdx = prevType->nameStrIdx;
       interfaceType.tyIdx = sTyIdx;
       GlobalTables::GetTypeTable().typeTable[sTyIdx.GetIdx()] = interfaceType.CopyMIRTypeNode();
@@ -1068,9 +1057,6 @@ bool MIRParser::ParsePrimType(TyIdx &tyIdx) {
   }
   lexer.NextToken();
   tyIdx = GlobalTables::GetTypeTable().typeTable.at(static_cast<uint32>(primtype))->tyIdx;
-  if (mod.withDbgInfo) {
-    (void)mod.dbgInfo->GetOrCreatePrimTypeDie(primtype);
-  }
   return true;
 }
 
@@ -1150,7 +1136,6 @@ bool MIRParser::ParseDefinedTypename(TyIdx &dtyidx, MIRTypeKind kind) {
   if (prevTyidx != TyIdx(0) && prevTyidx != dtyidx) {
     // replace all uses of prev_tyidx by tyIdx in typeTable
     typeDefIdxMap[prevTyidx] = dtyidx;
-    mod.dbgInfo->typedef_tyidx_map_[dtyidx.GetIdx()] = prevTyidx.GetIdx();
     // remove prev_tyidx from classlist
     mod.RemoveClass(prevTyidx);
   }
@@ -1213,8 +1198,11 @@ bool MIRParser::ParsePointType(TyIdx &ptyidx) {
     pty = PTY_ptr;
   }
   MIRPtrType pointtype(pptyidx, pty);  // use reference type here
+  if (!ParseTypeAttrs(pointtype.typeAttrs)) {
+    Error("bad type attribute in pointer type specification");
+    return false;
+  }
   ptyidx = GlobalTables::GetTypeTable().GetOrCreateMIRType(&pointtype);
-  mod.dbgInfo->pointed_pointer_map_[pptyidx.GetIdx()] = ptyidx.GetIdx();
   return true;
 }
 
@@ -1386,75 +1374,79 @@ bool MIRParser::ParseDerivedType(TyIdx &tyIdx, MIRTypeKind kind) {
   return true;
 }
 
-void MIRParser::FixupForwardReferencedTypeByMap() {
-  for (uint32 i = 1; i < GlobalTables::GetTypeTable().typeTable.size(); i++) {
-    MIRType *ty = GlobalTables::GetTypeTable().typeTable[i];
-    if (ty->typeKind == kTypePointer) {
-      MIRPtrType *ptrtype = static_cast<MIRPtrType *>(ty);
-      std::map<TyIdx, TyIdx>::iterator it = typeDefIdxMap.find(ptrtype->pointedTyIdx);
+void MIRParser::FixForwardReferencedTypeForOneAgg(MIRType *ty) {
+  if (ty->typeKind == kTypePointer) {
+    MIRPtrType *ptrtype = static_cast<MIRPtrType *>(ty);
+    std::map<TyIdx, TyIdx>::iterator it = typeDefIdxMap.find(ptrtype->pointedTyIdx);
+    if (it != typeDefIdxMap.end()) {
+      ptrtype->pointedTyIdx = it->second;
+    }
+  } else if (ty->typeKind == kTypeArray) {
+    MIRArrayType *arrayType = static_cast<MIRArrayType *>(ty);
+    std::map<TyIdx, TyIdx>::iterator it = typeDefIdxMap.find(arrayType->eTyIdx);
+    if (it != typeDefIdxMap.end()) {
+      arrayType->eTyIdx = it->second;
+    }
+  } else if (ty->typeKind == kTypeFArray || ty->typeKind == kTypeJArray) {
+    MIRFarrayType *arrayType = static_cast<MIRFarrayType *>(ty);
+    std::map<TyIdx, TyIdx>::iterator it = typeDefIdxMap.find(arrayType->elemTyIdx);
+    if (it != typeDefIdxMap.end()) {
+      arrayType->elemTyIdx = it->second;
+    }
+  } else if (ty->typeKind == kTypeStruct || ty->typeKind == kTypeStructIncomplete || ty->typeKind == kTypeUnion ||
+             ty->typeKind == kTypeClass || ty->typeKind == kTypeClassIncomplete || ty->typeKind == kTypeInterface ||
+             ty->typeKind == kTypeInterfaceIncomplete) {
+    if (ty->typeKind == kTypeClass || ty->typeKind == kTypeClassIncomplete) {
+      MIRClassType *classty = static_cast<MIRClassType *>(ty);
+      std::map<TyIdx, TyIdx>::iterator it = typeDefIdxMap.find(classty->parentTyIdx);
       if (it != typeDefIdxMap.end()) {
-        ptrtype->pointedTyIdx = it->second;
+        classty->parentTyIdx = it->second;
       }
-    } else if (ty->typeKind == kTypeArray) {
-      MIRArrayType *arrayType = static_cast<MIRArrayType *>(ty);
-      std::map<TyIdx, TyIdx>::iterator it = typeDefIdxMap.find(arrayType->eTyIdx);
-      if (it != typeDefIdxMap.end()) {
-        arrayType->eTyIdx = it->second;
+      for (uint32 j = 0; j < classty->interfacesImplemented.size(); j++) {
+        std::map<TyIdx, TyIdx>::iterator it2 = typeDefIdxMap.find(classty->interfacesImplemented[j]);
+        if (it2 != typeDefIdxMap.end()) {
+          classty->interfacesImplemented[j] = it2->second;
+        }
       }
-    } else if (ty->typeKind == kTypeFArray || ty->typeKind == kTypeJArray) {
-      MIRFarrayType *arrayType = static_cast<MIRFarrayType *>(ty);
-      std::map<TyIdx, TyIdx>::iterator it = typeDefIdxMap.find(arrayType->elemTyIdx);
-      if (it != typeDefIdxMap.end()) {
-        arrayType->elemTyIdx = it->second;
-      }
-    } else if (ty->typeKind == kTypeStruct || ty->typeKind == kTypeStructIncomplete || ty->typeKind == kTypeUnion ||
-               ty->typeKind == kTypeClass || ty->typeKind == kTypeClassIncomplete || ty->typeKind == kTypeInterface ||
-               ty->typeKind == kTypeInterfaceIncomplete) {
-      if (ty->typeKind == kTypeClass || ty->typeKind == kTypeClassIncomplete) {
-        MIRClassType *classty = static_cast<MIRClassType *>(ty);
-        std::map<TyIdx, TyIdx>::iterator it = typeDefIdxMap.find(classty->parentTyIdx);
+    } else if (ty->typeKind == kTypeInterface || ty->typeKind == kTypeInterfaceIncomplete) {
+      MIRInterfaceType *interfacety = static_cast<MIRInterfaceType *>(ty);
+      for (uint32 j = 0; j < interfacety->parentsTyIdx.size(); j++) {
+        std::map<TyIdx, TyIdx>::iterator it = typeDefIdxMap.find(interfacety->parentsTyIdx[j]);
         if (it != typeDefIdxMap.end()) {
-          classty->parentTyIdx = it->second;
-        }
-        for (uint32 j = 0; j < classty->interfacesImplemented.size(); j++) {
-          std::map<TyIdx, TyIdx>::iterator it2 = typeDefIdxMap.find(classty->interfacesImplemented[j]);
-          if (it2 != typeDefIdxMap.end()) {
-            classty->interfacesImplemented[j] = it2->second;
-          }
-        }
-      } else if (ty->typeKind == kTypeInterface || ty->typeKind == kTypeInterfaceIncomplete) {
-        MIRInterfaceType *interfacety = static_cast<MIRInterfaceType *>(ty);
-        for (uint32 j = 0; j < interfacety->parentsTyIdx.size(); j++) {
-          std::map<TyIdx, TyIdx>::iterator it = typeDefIdxMap.find(interfacety->parentsTyIdx[j]);
-          if (it != typeDefIdxMap.end()) {
-            interfacety->parentsTyIdx[j] = it->second;
-          }
-        }
-      }
-      MIRStructType *structty = static_cast<MIRStructType *>(ty);
-      for (uint32 j = 0; j < structty->fields.size(); j++) {
-        TyIdx fieldtyidx = structty->fields[j].second.first;
-        std::map<TyIdx, TyIdx>::iterator it = typeDefIdxMap.find(fieldtyidx);
-
-        if (it != typeDefIdxMap.end()) {
-          structty->fields[j].second.first = it->second;
-        }
-      }
-      for (uint32 j = 0; j < structty->staticFields.size(); j++) {
-        TyIdx fieldtyidx = structty->staticFields[j].second.first;
-        std::map<TyIdx, TyIdx>::iterator it = typeDefIdxMap.find(fieldtyidx);
-        if (it != typeDefIdxMap.end()) {
-          structty->staticFields[j].second.first = it->second;
-        }
-      }
-      for (uint32 j = 0; j < structty->methods.size(); j++) {
-        TyIdx methodtyidx = structty->methods[j].second.first;
-        std::map<TyIdx, TyIdx>::iterator it = typeDefIdxMap.find(methodtyidx);
-        if (it != typeDefIdxMap.end()) {
-          structty->methods[j].second.first = it->second;
+          interfacety->parentsTyIdx[j] = it->second;
         }
       }
     }
+    MIRStructType *structty = static_cast<MIRStructType *>(ty);
+    for (uint32 j = 0; j < structty->fields.size(); j++) {
+      TyIdx fieldtyidx = structty->fields[j].second.first;
+      std::map<TyIdx, TyIdx>::iterator it = typeDefIdxMap.find(fieldtyidx);
+
+      if (it != typeDefIdxMap.end()) {
+        structty->fields[j].second.first = it->second;
+      }
+    }
+    for (uint32 j = 0; j < structty->staticFields.size(); j++) {
+      TyIdx fieldtyidx = structty->staticFields[j].second.first;
+      std::map<TyIdx, TyIdx>::iterator it = typeDefIdxMap.find(fieldtyidx);
+      if (it != typeDefIdxMap.end()) {
+        structty->staticFields[j].second.first = it->second;
+      }
+    }
+    for (uint32 j = 0; j < structty->methods.size(); j++) {
+      TyIdx methodtyidx = structty->methods[j].second.first;
+      std::map<TyIdx, TyIdx>::iterator it = typeDefIdxMap.find(methodtyidx);
+      if (it != typeDefIdxMap.end()) {
+        structty->methods[j].second.first = it->second;
+      }
+    }
+  }
+}
+
+void MIRParser::FixupForwardReferencedTypeByMap() {
+  for (uint32 i = 1; i < GlobalTables::GetTypeTable().typeTable.size(); i++) {
+    MIRType *ty = GlobalTables::GetTypeTable().typeTable[i];
+    FixForwardReferencedTypeForOneAgg(ty);
   }
 }
 
@@ -1477,11 +1469,6 @@ bool MIRParser::ParseTypeDef() {
   TyIdx prevTyidx;
   MIRStructType *prevStype = nullptr;
   TyIdx tyIdx(0);
-  // dbginfo class/interface init
-  DBGDie *die = nullptr;
-  if (mod.withDbgInfo) {
-    die = mod.dbgInfo->InitClassTypeDie(strIdx, lexer.GetLineNum());
-  }
   if (tk == TK_gname) {
     if (isLocal) {
       Error("A local type must use local type name ");
@@ -1556,7 +1543,6 @@ bool MIRParser::ParseTypeDef() {
   if (prevTyidx != TyIdx(0) && prevTyidx != tyIdx) {
     // replace all uses of prev_tyidx by tyIdx in typeTable
     typeDefIdxMap[prevTyidx] = tyIdx;                            // record the real tydix
-    mod.dbgInfo->typedef_tyidx_map_[tyIdx.GetIdx()] = prevTyidx.GetIdx();  // record in the debuginfo
     // remove prev_tyidx from classlist
     mod.RemoveClass(prevTyidx);
   }
@@ -1582,14 +1568,6 @@ bool MIRParser::ParseTypeDef() {
         }
       }
     }
-    // dbginfo class/interface build
-    if (mod.withDbgInfo) {
-      if (type->typeKind == kTypeClass || type->typeKind == kTypeClassIncomplete) {
-        (void)mod.dbgInfo->BuildClassTypeDie(strIdx, static_cast<MIRClassType *>(type), die);
-      } else if (type->typeKind == kTypeInterface || type->typeKind == kTypeInterfaceIncomplete) {
-        (void)mod.dbgInfo->BuildInterfaceTypeDie(strIdx, static_cast<MIRInterfaceType *>(type), die);
-      }
-    }
     // setup eh root type
     MIRType *ehtype = GlobalTables::GetTypeTable().GetTypeFromTyIdx(tyIdx);
     if (mod.throwableTyidx == 0 && (ehtype->typeKind == kTypeClass || ehtype->typeKind == kTypeClassIncomplete)) {
@@ -1598,13 +1576,6 @@ bool MIRParser::ParseTypeDef() {
         mod.throwableTyidx = tyIdx;
       }
     }
-  }
-  // dbginfo struct/union build
-  else if (mod.withDbgInfo && !isLocal && (type->typeKind == kTypeStruct || type->typeKind == kTypeUnion)) {
-    (void)mod.dbgInfo->BuildStructTypeDie(strIdx, static_cast<MIRStructType *>(type), die);
-    GlobalTables::GetTypeNameTable().SetGStrIdxToTyIdx(strIdx, tyIdx);
-  } else if (mod.withDbgInfo) {
-    (void)mod.dbgInfo->PopParentDie();
   }
   return true;
 }
@@ -1708,10 +1679,6 @@ bool MIRParser::ParseDeclareReg(MIRSymbol *st, MIRFunction *curfunc) {
     mod.CurFunction()->funcAttrs.SetAttr(FUNCATTR_generic);
   }
 
-  // add dbginfo
-  if (mod.withDbgInfo) {
-    (void)mod.dbgInfo->CreateVarDie(st, lnum);
-  }
   return true;
 }
 
@@ -1786,11 +1753,6 @@ bool MIRParser::ParseDeclareVar(MIRSymbol *st) {
   }
 
   tk = lexer.GetTokenKind();
-
-  // add dbginfo
-  if (mod.withDbgInfo) {
-    (void)mod.dbgInfo->CreateVarDie(st, lnum);
-  }
 
   // take a look if there are any initialized values
   if (tk == TK_eqsign) {
@@ -2026,23 +1988,12 @@ bool MIRParser::ParseFunction(uint32 fileidx) {
     return false;
   }
 
-  // add dbginfo
-  if (mod.withDbgInfo) {
-    (void)mod.dbgInfo->GetOrCreateFuncDeclDie(fn, lnum);
-  }
-
   bool retval = false;
   if (lexer.GetTokenKind() == TK_lbrace) {  // #2 parse Function body
     funcSt->appearsincode = true;
     definedLabels.clear();
     mod.SetCurFunction(fn);
     mod.AddFunction(fn);
-
-    // add dbginfo
-    if (mod.withDbgInfo) {
-      DBGDie *die = mod.dbgInfo->GetOrCreateFuncDefDie(fn, lnum);
-      mod.dbgInfo->PushParentDie(die);
-    }
 
     // set maple line number for function
     fn->srcPosition.SetMplLinenum(lexer.GetLineNum());
@@ -2083,9 +2034,6 @@ bool MIRParser::ParseFunction(uint32 fileidx) {
       auto classStridx = fn->GetBaseClassNameStridx();
       fn->classTyIdx.SetIdx(GlobalTables::GetTypeNameTable().GetTyIdxFromGStrIdx(classStridx).GetIdx());
     }
-    if (mod.withDbgInfo) {
-      (void)mod.dbgInfo->PopParentDie();
-    }
   }
   retval = true;
 done:
@@ -2117,6 +2065,7 @@ bool MIRParser::ParseInitValue(MIRConst *&theconst, TyIdx tyIdx) {
     }
     theconst = aconst;
   } else {  // aggregates
+    FixForwardReferencedTypeForOneAgg(type);
     if (type->typeKind == kTypeArray) {
       MIRArrayType *atype = static_cast<MIRArrayType *>(type);
       MIRType *etype = GlobalTables::GetTypeTable().GetTypeFromTyIdx(atype->eTyIdx);
@@ -2149,14 +2098,18 @@ bool MIRParser::ParseInitValue(MIRConst *&theconst, TyIdx tyIdx) {
               return false;
             }
           } else {
-            vector<uint32> sizeSubArray;
-            ASSERT(atype->dim > 1, "array dim must large then 1");
-            for (int32 i = 1; i < atype->dim; i++) {
-              sizeSubArray.push_back(atype->sizeArray[i]);
+            TyIdx elemTyIdx;
+            if (atype->dim == 1) {
+              elemTyIdx = etype->tyIdx;
+            } else {
+              vector<uint32> sizeSubArray;
+              for (int32 i = 1; i < atype->dim; i++) {
+                sizeSubArray.push_back(atype->sizeArray[i]);
+              }
+              MIRArrayType subAtype(etype->tyIdx, sizeSubArray);
+              elemTyIdx = GlobalTables::GetTypeTable().GetOrCreateMIRType(&subAtype);
             }
-            MIRArrayType subAtype(etype->tyIdx, sizeSubArray);
-            TyIdx atyidx = GlobalTables::GetTypeTable().GetOrCreateMIRType(&subAtype);
-            if (!ParseInitValue(subconst, atyidx)) {
+            if (!ParseInitValue(subconst, elemTyIdx)) {
               Error("initializaton value wrong when parsing sub array ");
               return false;
             }
@@ -2177,9 +2130,9 @@ bool MIRParser::ParseInitValue(MIRConst *&theconst, TyIdx tyIdx) {
         }
       } while (tk != TK_rbrack);
       lexer.NextToken();
-    } else if (type->typeKind == kTypeStruct) {
+    } else if (type->typeKind == kTypeStruct || type->typeKind == kTypeUnion) {
       MIRAggConst *newconst = mod.memPool->New<MIRAggConst>(&mod, type);
-      uint32 thefieldid;
+      uint32 thefieldidx;
       TyIdx fieldtyidx;
       theconst = newconst;
       MapleVector<MIRConst *> &constvec = newconst->constVec;
@@ -2193,12 +2146,12 @@ bool MIRParser::ParseInitValue(MIRConst *&theconst, TyIdx tyIdx) {
           Error("expect field ID in struct initialization but get ");
           return false;
         }
-        thefieldid = lexer.GetTheIntVal();
+        thefieldidx = lexer.GetTheIntVal();
         if (lexer.NextToken() != TK_eqsign) {
           Error("expect = after field ID in struct initialization but get ");
           return false;
         }
-        FieldPair thepair = static_cast<MIRStructType *>(type)->TraverseToField(thefieldid);
+        FieldPair thepair = static_cast<MIRStructType *>(type)->fields[thefieldidx-1];
         fieldtyidx = thepair.second.first;
         if (fieldtyidx == 0) {
           Error("field ID out of range at struct initialization at ");
@@ -2227,7 +2180,7 @@ bool MIRParser::ParseInitValue(MIRConst *&theconst, TyIdx tyIdx) {
           return false;
         }
         CHECK_FATAL(subconst != nullptr, "subconst is null in MIRParser::ParseInitValue");
-        subconst->fieldID = thefieldid;
+        subconst->fieldID = thefieldidx;
         constvec.push_back(subconst);
         tk = lexer.GetTokenKind();
         // parse comma or rbrack
@@ -2505,13 +2458,6 @@ bool MIRParser::ParseMIR(uint32 fileIdx, uint32 option, bool isIPA, bool isComb)
     options |= option;
   }
 
-  // dbg setup
-  mod.withDbgInfo = ((options & kWithDbgInfo) != 0);
-  if (mod.withDbgInfo) {
-    mod.dbgInfo->Init();
-    mod.dbgInfo->lexer_ = &lexer;
-  }
-
   // profiling setup
   mod.withProfileInfo = ((options & kWithProfileInfo) != 0);
   bool atEof = false;
@@ -2534,11 +2480,6 @@ bool MIRParser::ParseMIR(uint32 fileIdx, uint32 option, bool isIPA, bool isComb)
         return false;
       }
     }
-  }
-
-  // dbg finialize
-  if (mod.withDbgInfo) {
-    mod.dbgInfo->Finish();
   }
 
   // fix the typedef type
@@ -2911,11 +2852,15 @@ bool MIRParser::ParseMIRForImport() {
   paramImportFileList.push_back(importFileName);
   // check illegal file name for the .mplt/.so file
   std::string::size_type lastDot = importFileName.find_last_of(".");
+  bool isSo = false;  // import file is .so
   if (lastDot == std::string::npos) {
     FATAL(kLncFatal, "MPLT file has no suffix: %s\n", importFileName.c_str());
   }
   if (lastDot == importFileName.length() - strlen(".mplt") && importFileName.compare(lastDot, strlen(".mplt"), ".mplt") == 0) {
     // suffix is .mplt
+  }
+  else if (lastDot == importFileName.length() - strlen(".so") && importFileName.compare(lastDot, strlen(".so"), ".so") == 0) {
+    isSo = true;
   }
   else {
     FATAL(kLncFatal, "Import file has wrong suffix: %s\n", importFileName.c_str());
@@ -2940,20 +2885,22 @@ bool MIRParser::ParseMIRForImport() {
       INFO(kLncInfo, "finished import of %s", importFileName.c_str());
     }
   } else {
-    BinaryMplt binMplt(mod);
-    INFO(kLncInfo, "importing %s", importFileName.c_str());
-    if (!binMplt.Import(importFileName, paramIsIPA, false)) {  // not a binary mplt
-      std::ifstream mpltFile(importFileName);
-      if (!mpltFile.is_open()) {
-        FATAL(kLncFatal, "cannot open MPLT file: %s\n", importFileName.c_str());
+    if (isSo == false) {
+      BinaryMplt binMplt(mod);
+      INFO(kLncInfo, "importing %s", importFileName.c_str());
+      if (!binMplt.Import(importFileName, paramIsIPA, false)) {  // not a binary mplt
+        std::ifstream mpltFile(importFileName);
+        if (!mpltFile.is_open()) {
+          FATAL(kLncFatal, "cannot open MPLT file: %s\n", importFileName.c_str());
+        }
+        bool failedParse = !ParseMPLT(&mpltFile, importFileName);
+        mpltFile.close();
+        if (failedParse) {  // parse the mplt file
+          return false;
+        }
+      } else {
+        INFO(kLncInfo, "finished import of %s", importFileName.c_str());
       }
-      bool failedParse = !ParseMPLT(&mpltFile, importFileName);
-      mpltFile.close();
-      if (failedParse) {  // parse the mplt file
-        return false;
-      }
-    } else {
-      INFO(kLncInfo, "finished import of %s", importFileName.c_str());
     }
   }
   if (GlobalTables::GetStrTable().GetStrIdxFromName("__class_meta__") == 0) {
@@ -3082,7 +3029,6 @@ void MIRParser::EmitError(const std::string &fileName) {
   if (!strlen(GetError().c_str())) {
     return;
   }
-  mod.dbgInfo->compilemsg_->EmitMsg();
   ERR(kLncErr, "%s \n%s", fileName.c_str(), GetError().c_str());
 }
 

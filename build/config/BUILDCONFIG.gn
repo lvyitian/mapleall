@@ -1,0 +1,237 @@
+#
+# Copyright (C) [2020] Futurewei Technologies, Inc. All rights reverved.
+#
+# Licensed under the Mulan Permissive Software License v2.
+# You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+# You may obtain a copy of MulanPSL - 2.0 at:
+#
+#   https://opensource.org/licenses/MulanPSL-2.0
+#
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
+# FIT FOR A PARTICULAR PURPOSE.
+# See the MulanPSL - 2.0 for more details.
+#
+
+# This file is the master GN build configuration, all variables
+# declare here will be implicitly global.
+
+# List all the input args
+declare_args() {
+    GN_INSTALL_PREFIX = ""
+    GN_BUILD_TYPE = ""
+    USE_CLANG = 0
+    HOST_ARCH = 64
+    JAVA = 1
+    USE_ZRT = 0
+    DEFERRAL_RC = ""
+    STRICT_NAIVE_RC = ""
+    RC_TESTING = ""
+    USE_MALLOC = ""
+    COV_CHECK = 0
+    PLATFORM_SDK_VERSION = 27
+    X86_ARK = 0
+    X86 = 0
+    NOTRACING = 0
+    TARGET = ""
+    USE_OJ_LIBCORE = 0
+}
+
+# Define global args
+MAPLE_ROOT = getenv("MAPLE_ROOT")
+DYNAMICLANG = true
+RC_V2 = true
+if (X86_ARK == 1) {
+    use_qemu = false
+    use_x86 = true
+} else {
+    use_qemu = true
+    use_x86 = false
+}
+TEST_BENCHMARK = false
+MEMORY_LEAK_CHECK = false
+MARK_CYCLE_ROOTS = false
+ARCH64_TOOLCHAIN = "/usr/bin/aarch64-linux-gnu"
+OJ_LIBCORE_ENV = getenv("USE_OJ_LIBCORE")
+if (OJ_LIBCORE_ENV == "1") {
+    USE_OJ_LIBCORE = 1
+}
+
+MAPLE_BUILD_TYPE = getenv("MAPLE_BUILD_TYPE")
+
+# Put all built library files under lib
+GN_ARCHIVE_OUTPUT_DIRECTORY = "${GN_INSTALL_PREFIX}/out/${MAPLE_BUILD_TYPE}/lib"
+GN_LIBRARY_OUTPUT_DIRECTORY = "${GN_INSTALL_PREFIX}/out/${MAPLE_BUILD_TYPE}/lib"
+# Put all built binary files under bin
+GN_RUNTIME_OUTPUT_DIRECTORY = "${GN_INSTALL_PREFIX}/out/${MAPLE_BUILD_TYPE}/bin"
+
+MAPLEALL_ROOT = "${MAPLE_ROOT}/mapleall"
+MAPLE_RE_ROOT = "${MAPLE_ROOT}/maple_engine"
+
+# Toolchain setup
+if (USE_CLANG == 1) {
+    GN_C_COMPILER = "clang"
+    GN_CXX_COMPILER = "clang++"
+    target_toolchain = "//build/toolchain:clang"
+} else {
+    GN_C_COMPILER = "gcc"
+    GN_CXX_COMPILER = "g++"
+    target_toolchain = "//build/toolchain:clang"
+}
+set_default_toolchain(target_toolchain)
+
+# Cross compile
+GN_C_CROSS_COMPILER = "/usr/bin/aarch64-linux-gnu-gcc-5"
+GN_CXX_CROSS_COMPILER = "/usr/bin/aarch64-linux-gnu-g++-5"
+GN_AR_CROSS_COMPILER = "/usr/bin/aarch64-linux-gnu-ar"
+GN_RANLIB_CROSS_COMPILER = "/usr/bin/aarch64-linux-gnu-ranlib"
+
+# C/CXX Build flags
+cflags = []
+if (GN_BUILD_TYPE == "RELEASE") {
+    if (COV_CHECK == 1) {
+        cflags_cc = [
+        "-O0",
+        ]
+        cflags_c = [
+        "-O0",
+        ]
+    } else {
+        if (X86_ARK == 1) {
+            cflags_cc = [
+            "-O3",
+            "-g",
+            ]
+            cflags_c = [
+            "-O3",
+            "-g",
+            ]
+        }
+        else {
+            cflags_cc = [
+            "-O3",
+            ]
+            cflags_c = [
+            "-O3",
+            ]
+        }
+    }
+} else if (GN_BUILD_TYPE == "DEBUG") {
+    cflags_cc = [
+    "-O0",
+    "-g3",
+    ]
+    cflags_c = [
+    "-O0",
+    "-g3",
+    ]
+} else if (GN_BUILD_TYPE == "RELWITHDEBINFO") {
+    cflags_cc = [
+    "-O0",
+    "-g",
+    ]
+    cflags_c = [
+    "-O0",
+    "-g",
+    ]
+}
+
+if (USE_OJ_LIBCORE  == 1) {
+    cflags_cc += [
+        "-D__OPENJDK__",
+    ]
+    cflags_c += [
+        "-D__OPENJDK__",
+    ]
+}
+
+cflags_c += [
+    "-Wall",
+    "-fstack-protector-strong",
+    "-fPIC",
+]
+cflags_cc += [
+    "-Wall",
+    "-fstack-protector-strong",
+    "-fPIC",
+]
+
+C_FLAGS_FOR_TARGET = cflags_c
+C_FLAGS_FOR_TARGET += [
+    "-Werror",
+]
+
+CXX_FLAGS_FOR_TARGET = cflags_cc
+CXX_FLAGS_FOR_TARGET += [
+    "-Werror",
+]
+if (COV_CHECK == 1) {
+    C_FLAGS_FOR_TARGET += [
+        "-pie",
+    ]
+    CXX_FLAGS_FOR_TARGET += [
+        "-pie",
+    ]
+}
+
+if (HOST_ARCH == 64) {
+    cflags_c += [
+        "-m64",
+    ]
+    cflags_cc += [
+        "-m64",
+    ]
+} else {
+    cflags_c += [
+        "-m32",
+    ]
+    cflags_cc += [
+        "-m32",
+    ]
+}
+
+if (DYNAMICLANG) {
+    cflags_cc += [
+        "-DDYNAMICLANG",
+    ]
+}
+
+if (RC_V2) {
+    cflags_cc += [
+        "-DRC_NO_MMAP",
+    ]
+}
+
+if (TEST_BENCHMARK) {
+    cflags_cc += [
+        "-DTEST_BENCHMARK",
+    ]
+}
+
+if (MEMORY_LEAK_CHECK) {
+    cflags_cc += [
+        "-DMEMORY_LEAK_CHECK",
+    ]
+}
+
+if (MARK_CYCLE_ROOTS) {
+    cflags_cc += [
+        "-DMARK_CYCLE_ROOTS",
+    ]
+}
+
+cflags_cc += [
+    "-DMIR_FEATURE_FULL=1",
+]
+
+if (JAVA == 1) {
+#   TARGET = "aarch64"
+    cflags_cc += [
+        "-DMIR_JAVA=1"
+    ]
+} else {
+#   TARGET = "vm"
+    cflags_cc += [
+        "-DMIR_JAVA=0",
+    ]
+}

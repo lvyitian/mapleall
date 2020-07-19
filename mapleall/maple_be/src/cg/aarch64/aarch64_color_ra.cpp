@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #include "aarch64/aarch64_color_ra.h"
@@ -988,7 +988,6 @@ void GraphColorRegAllocator::ComputeLiveRangesForEachOperand(Insn *insn) {
             delInsn = 1;
           } else if (del == kImmediateDelete) {
             delInsn = 1;
-            //break;
           }
         }
       } else if (delInsn == 1 && opnd->IsRegister()) {
@@ -1627,7 +1626,7 @@ regno_t GraphColorRegAllocator::FindColorForLr(LiveRange *lr) {
   for (auto it : lr->prefs) {
     reg = it + base;
     if ((FIND_IN(*currRegSet, reg) || FIND_IN(*nextRegSet, reg)) && (lr->forbidden[reg] == false) &&
-        lr->pregveto[reg] == false)) {
+        lr->pregveto[reg] == false) {
       return reg;
     }
   }
@@ -3013,12 +3012,12 @@ MemOperand *GraphColorRegAllocator::GetReuseMem(uint32 vregno, uint32 size, RegT
   // When vreg#s do not change going through VtableImpl.mpl file
   // then this can be simplified.
 #ifdef CONSISTENT_MEMOPND
-  GetConsistentReuseMem(vregno, size, regtype);
+  return GetConsistentReuseMem(vregno, size, regtype);
 #else   // CONSISTENT_MEMOPND
-  GetCommonReuseMem(vregno, size, regtype);
+  return GetCommonReuseMem(vregno, size, regtype);
 #endif  // CONSISTENT_MEMOPND
 
-  return nullptr;
+  //return nullptr;
 }
 
 MemOperand *GraphColorRegAllocator::GetSpillMem(uint32 vregno, uint8 isDest, Insn *insn, AArch64reg_t regno,
@@ -3045,7 +3044,7 @@ void GraphColorRegAllocator::SpillOperandForSpillPre(Insn *insn, Operand *opnd, 
   PrimType stype = (regsize <= k32) ? PTY_i32 : PTY_i64;
 
   if (a64cgfunc->IsImmediateOffsetOutOfRange(static_cast<AArch64MemOperand *>(spillMem), k64)) {
-    regno_t pregNo = phyopnd->GetRegisterNumber();
+    regno_t pregNo = R17;
     spillMem = a64cgfunc->SplitOffsetWithAddInstruction(static_cast<AArch64MemOperand *>(spillMem), k64,
                                                         (AArch64reg_t)pregNo, false, insn);
   }
@@ -3078,7 +3077,7 @@ void GraphColorRegAllocator::SpillOperandForSpillPost(Insn *insn, Operand *opnd,
 
   bool isOutOfRange = false;
   if (a64cgfunc->IsImmediateOffsetOutOfRange(static_cast<AArch64MemOperand *>(spillMem), k64)) {
-    regno_t pregNo = phyopnd->GetRegisterNumber();
+    regno_t pregNo = R17;
     spillMem = a64cgfunc->SplitOffsetWithAddInstruction(static_cast<AArch64MemOperand *>(spillMem), k64,
                                                         (AArch64reg_t)pregNo, true, insn);
     isOutOfRange = true;
@@ -3109,7 +3108,27 @@ MemOperand *GraphColorRegAllocator::GetSpillOrReuseMem(LiveRange *lr, uint32 reg
       lr->spillSize = (regsize <= k32) ? k32 : k64;
     } else {
 #endif  // REUSE_SPILLMEM
-      memopnd = GetSpillMem(lr->regno, isDef, insn, (AArch64reg_t)(lr->spillReg), isOutOfRange);
+      regno_t baseRegNO;
+      if (!isDef) {
+        /* src will use its' spill reg as baseRegister when offset out-of-range
+         * add x16, x29, #max-offset  //out-of-range
+         * ldr x16, [x16, #offset]    //reload
+         * mov xd, x16
+         */
+        baseRegNO = lr->spillReg;
+        if ( baseRegNO > RLAST_INT_REG ) {
+          baseRegNO = R17;
+        }
+      } else {
+        /* dest will use R17 as baseRegister when offset out-of-range
+         * mov x16, xs
+         * add x17, x29, #max-offset  //out-of-range
+         * str x16, [x17, #offset]    //spill
+         */
+        baseRegNO = R17;
+      }
+      ASSERT(baseRegNO != kRinvalid, "invalid base register number");
+      memopnd = GetSpillMem(lr->regno, isDef, insn, (AArch64reg_t)(baseRegNO), isOutOfRange);
 #ifdef REUSE_SPILLMEM
       if (isOutOfRange == 0) {
         lr->spillMem = memopnd;

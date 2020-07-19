@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #include <iostream>
@@ -87,7 +87,7 @@ bool MeOption::spillatcatch = false;
 bool MeOption::earlydecref = false;
 bool MeOption::placementrc = false;
 bool MeOption::strengthreduction = true;
-bool MeOption::rcfre = true;
+bool MeOption::rcfre = false;
 string MeOption::inlinefunclist = "";
 #if MIR_JAVA
 string MeOption::acquireFuncName = "";
@@ -137,6 +137,7 @@ enum OptionIndex {
   kOptL0,
   kOptL1,
   kOptL2,
+  kOptL3,
   kRange,
   kEaOptRc,
   kEpreLimit,
@@ -185,6 +186,7 @@ enum OptionIndex {
   kSpillatCatch,
   kEarlyDecref,
   kPlacementRC,
+  kNoPlacementRC,
   kStrengthReduction,
   kNoStrengthReduction,
   kRCFullRedundancyElim,
@@ -246,7 +248,8 @@ const Descriptor kUsage[] = {
   { kRealCheckcast, 0, "", "realCheckCast", kBuildTypeAll, kArgCheckPolicyNone, "  --realCheckCast" },
   { kOptL0, 0, "", "O0", kBuildTypeAll, kArgCheckPolicyNone, "  --O0                              Disable most optimizations" },
   { kOptL1, 0, "", "O1", kBuildTypeAll, kArgCheckPolicyNone, "  --O1                              Enable only fast optimizations" },
-  { kOptL2, 0, "", "O2", kBuildTypeAll, kArgCheckPolicyNone, "  --O2                              Enable all optimizations" },
+  { kOptL2, 0, "", "O2", kBuildTypeAll, kArgCheckPolicyNone, "  --O2                              Enable all common optimizations" },
+  { kOptL3, 0, "", "O3", kBuildTypeAll, kArgCheckPolicyNone, "  --O3                              Enable aggressive optimizations" },
   { kEpreLimit, 0, "", "eprelimit", kBuildTypeAll, kArgCheckPolicyRequired,
     "  --eprelimit=NUM                   Apply EPRE optimization only for the first NUM expressions" },
   { kEprepuLimit, 0, "", "eprepulimit", kBuildTypeAll, kArgCheckPolicyRequired,
@@ -329,6 +332,8 @@ const Descriptor kUsage[] = {
     "  --earlydecref                     Insert cleanup decrefs for localrefvars as early as possible" },
   { kPlacementRC, 0, "", "placementrc", kBuildTypeAll, kArgCheckPolicyNone,
     "  --placementrc                     Insert RC decrements for localrefvars using the placement optimization approach" },
+  { kNoPlacementRC, 0, "", "noplacementrc", kBuildTypeAll, kArgCheckPolicyNone,
+    "  --noplacementrc                   Do not insert RC decrements for localrefvars using the placement optimization approach" },
   { kStrengthReduction, 0, "", "strengthreduction", kBuildTypeAll, kArgCheckPolicyNone,
     "  --strengthreduction               Perform strength reduction optimization" },
   { kNoStrengthReduction, 0, "", "nostrengthreduction", kBuildTypeAll, kArgCheckPolicyNone,
@@ -500,7 +505,11 @@ bool MeOption::ParseOptions(int argc, char **argv, string &fileName) {
         break;
       case kOptL2:
         MeOption::optLevel = 2;
-        // Turn the followings ON only at O2
+        // Turn the followings ON only above O2
+        MeOption::optdirectcall = true;
+        break;
+      case kOptL3:
+        MeOption::optLevel = 3;
         MeOption::optdirectcall = true;
         break;
       case kEpreLimit:
@@ -636,6 +645,9 @@ bool MeOption::ParseOptions(int argc, char **argv, string &fileName) {
         break;
       case kPlacementRC:
         MeOption::placementrc = true;
+        break;
+      case kNoPlacementRC:
+        MeOption::placementrc = false;
         break;
       case kStrengthReduction:
         MeOption::strengthreduction = true;

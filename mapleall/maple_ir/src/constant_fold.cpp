@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #include "constant_fold.h"
@@ -104,6 +104,7 @@ StmtNode *ConstantFold::Simplify(StmtNode *x) {
     case OP_decrefreset:
     case OP_regassign:
     case OP_assertnonnull:
+    case OP_igoto:
       return SimplifyUnary(static_cast<UnaryStmtNode *>(x));
     case OP_assertge:
     case OP_assertlt:
@@ -265,7 +266,7 @@ MIRIntConst *ConstantFold::FoldIntConstComparisonMIRConst(Opcode opcode, PrimTyp
       break;
     }
     case OP_ge: {
-      if (IsUnsignedInteger(cst0ptyp)) {
+      if (IsUnsignedInteger(opndTyp)) {
         if (use64) {
           result = static_cast<uint64>(cst0->value) >= static_cast<uint64>(cst1->value);
         } else {
@@ -281,7 +282,7 @@ MIRIntConst *ConstantFold::FoldIntConstComparisonMIRConst(Opcode opcode, PrimTyp
       break;
     }
     case OP_gt: {
-      if (IsUnsignedInteger(cst0ptyp)) {
+      if (IsUnsignedInteger(opndTyp)) {
         if (use64) {
           result = static_cast<uint64>(cst0->value) > static_cast<uint64>(cst1->value);
         } else {
@@ -297,7 +298,7 @@ MIRIntConst *ConstantFold::FoldIntConstComparisonMIRConst(Opcode opcode, PrimTyp
       break;
     }
     case OP_le: {
-      if (IsUnsignedInteger(cst0ptyp)) {
+      if (IsUnsignedInteger(opndTyp)) {
         if (use64) {
           result = static_cast<uint64>(cst0->value) <= static_cast<uint64>(cst1->value);
         } else {
@@ -313,7 +314,7 @@ MIRIntConst *ConstantFold::FoldIntConstComparisonMIRConst(Opcode opcode, PrimTyp
       break;
     }
     case OP_lt: {
-      if (IsUnsignedInteger(cst0ptyp)) {
+      if (IsUnsignedInteger(opndTyp)) {
         if (use64) {
           result = static_cast<uint64>(cst0->value) < static_cast<uint64>(cst1->value);
         } else {
@@ -339,7 +340,7 @@ MIRIntConst *ConstantFold::FoldIntConstComparisonMIRConst(Opcode opcode, PrimTyp
     case OP_cmp:
     case OP_cmpl:
     case OP_cmpg: {
-      if (IsUnsignedInteger(cst0ptyp)) {
+      if (IsUnsignedInteger(opndTyp)) {
         if (use64) {
           if (static_cast<uint64>(cst0->value) > static_cast<uint64>(cst1->value)) {
             result = 1;
@@ -1389,6 +1390,9 @@ std::pair<BaseNode *, int64> ConstantFold::FoldIread(IreadNode *n) {
       MIRStructType *stty = static_cast<MIRStructType *>(msyType);
       MIRType *fieldTy = stty->GetFieldType(newFieldid);
       res = module->CurFuncCodeMemPool()->New<AddrofNode>(OP_dread, fieldTy->GetPrimType(), addrofNode->stIdx, newFieldid);
+      if (newFieldid == 0) {  // use original iread's primType
+        res->primType = n->primType;
+      }
     }
   } else if (e != n->uOpnd) {
     res = module->CurFuncCodeMemPool()->New<IreadNode>(op, n->primType, n->tyIdx, fieldID, static_cast<BaseNode *>(e));
@@ -1645,7 +1649,7 @@ std::pair<BaseNode *, int64> ConstantFold::FoldCompare(CompareNode *n) {
   ConstvalNode *rConst = dynamic_cast<ConstvalNode *>(rp.first);
 
   if (lConst && rConst && !IsPrimitiveDynType(n->opndType)) {
-    res = FoldConstComparison(n->op, n->primType, n->Opnd(0)->primType, lConst, rConst);
+    res = FoldConstComparison(n->op, n->primType, n->opndType, lConst, rConst);
   } else {
     BaseNode *l = PairToExpr(n->Opnd(0)->primType, lp);
     BaseNode *r = PairToExpr(n->Opnd(1)->primType, rp);

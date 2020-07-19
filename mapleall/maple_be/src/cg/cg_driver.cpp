@@ -1,25 +1,25 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #include "cg.h"
 #if TARGX86
-#include "x86cg.h"
+#include "x86_cg.h"
 #elif TARGX86_64
 #error "X86_64 codegen is yet to be supported"
 #elif TARGARM
-#include "armcg.h"
+#include "arm_cg.h"
 #elif TARGAARCH64
 #include "aarch64_cg.h"
 #elif TARGARK
@@ -31,6 +31,7 @@
 #endif
 #include "mpl_logging.h"
 #include "mir_parser.h"
+#include "bin_mpl_import.h"
 #include "option_parser.h"
 #include <sys/stat.h>
 
@@ -76,12 +77,27 @@ int main(int argc, char **argv) {
   cgoption.ParseOptions(argc, argv, fileName);
 
   g = new Globals(&maple::kOpcodeInfo, &GlobalTables::GetGlobalTables());
-  MIRModule *themodule = new MIRModule(fileName.c_str());
-  MIRParser *parser = new MIRParser(*themodule);
   g->optim_level = cgoption.optim_level;
+  MIRModule *themodule = new MIRModule(fileName.c_str());
+  std::string::size_type lastdot = fileName.find_last_of(".");
+  bool isbpl = fileName.compare(lastdot, 5, ".bpl\0") == 0;
 
   int nErr = 0;
-  if (parser->ParseMIR(0, cgoption.parserOpt)) {
+  MIRParser *parser = new MIRParser(*themodule);
+  if (!isbpl) {
+    if (!parser->ParseMIR(0, cgoption.parserOpt)) {
+      parser->EmitError(fileName);
+      nErr = 1;
+    }
+  } else {
+    BinaryMplImport binMplt(*themodule);
+    binMplt.imported = false;
+    if (!binMplt.Import(fileName, true)) {
+      nErr = 1;
+    }
+  }
+
+  if (nErr == 0) {
     if (cgoption.parserOpt & kCheckCompleteType) {
       parser->EmitIncompleteTypes();
     }
@@ -176,15 +192,11 @@ int main(int argc, char **argv) {
       }
 
       // load profile info for class meta data - uses same binary metadata profile (meta.list) as mpl2mpl
-      // (for mplcg use option --classmeta_profile=xxxxxx)
       uint32 javaNameIdx = themodule->GetFileinfo(GlobalTables::GetStrTable().GetOrCreateStrIdxFromName("INFO_filename"));
       const std::string &javaName = GlobalTables::GetStrTable().GetStringFromStrIdx(GStrIdx(javaNameIdx));
       themodule->profile.DeCompress(CGOptions::classMetaProFile, javaName);
 #endif
 
-      if (cgoption.WithDwarf()) {
-        thecg.emitter_->EmitDIHeader();
-      }
       // 3. generate phase pipeline based on function.
       unsigned long rangeNum = 0;
       if (!CGOptions::quiet) {
@@ -219,7 +231,6 @@ int main(int argc, char **argv) {
           std::sort(themodule->functionList.begin(), themodule->functionList.end(), FuncOrderLessThan);
         }
       }
-      bool isFramework = false;
       for (MapleVector<MIRFunction *>::iterator it = themodule->functionList.begin();
            it != themodule->functionList.end(); it++) {
         MIRFunction *mirFunc = *it;
@@ -231,16 +242,16 @@ int main(int argc, char **argv) {
         MapleAllocator funcscopeAllocator(funcMp);
         // 4, Create CGFunc
         CGFunc *cgfunc = thecg.CreateCGFunc(themodule, mirFunc, becommon, funcMp, &funcscopeAllocator);
-        if (cgoption.WithDwarf()) {
-          cgfunc->SetDebugInfo(themodule->dbgInfo);
-        }
         CG::curCgFunc = cgfunc;
+        CG::curPuIdx = cgfunc->mirModule.CurFunction()->puIdx;
         // 5. Run the cg optimizations phases.
         if (CGOptions::useRange && (rangeNum >= CGOptions::range[0] && rangeNum <= CGOptions::range[1])) {
           CGOptions::inRange = true;
         }
         fpm.Run(cgfunc);
         fpm.Emit(cgfunc);
+
+        thecg.emitter_->EmitLocalVariable(cgfunc);
         // 6. Invalid all analysis result.
         fpm.GetAnalysisResultManager()->InvalidAllResults();
 
@@ -248,10 +259,6 @@ int main(int argc, char **argv) {
         mempoolctrler.DeleteMemPool(funcMp);
         rangeNum++;
         CGOptions::inRange = false;
-      }
-
-      if (cgoption.WithDwarf()) {
-        thecg.emitter_->EmitDIFooter();
       }
 
 #if TARGAARCH64
@@ -273,7 +280,7 @@ int main(int argc, char **argv) {
                 if (!strcmp(contend.c_str(), "#Libframework_end")) {
                   onlyForFramework = false;
                 }
-                if (onlyForFramework && !isFramework) {
+                if (onlyForFramework) {
                   continue;
                 }
                 thecg.emitter_->Emit(contend + "\n");
@@ -292,25 +299,13 @@ int main(int argc, char **argv) {
       thecg.emitter_->EmitGlobalVariable();
       if (JAVALANG) {
         thecg.emitter_->EmitMplPersonalityV0();
-      }
-      // 10. emit debug infomation.
-      if (cgoption.WithDwarf()) {
-        thecg.emitter_->SetupDBGInfo(themodule->dbgInfo);
-        thecg.emitter_->EmitDIHeaderFileInfo();
-        thecg.emitter_->EmitDIDebugInfoSection(themodule->dbgInfo);
-        thecg.emitter_->EmitDIDebugAbbrevSection(themodule->dbgInfo);
-        thecg.emitter_->EmitDIDebugARangesSection();
-        thecg.emitter_->EmitDIDebugRangesSection();
-        thecg.emitter_->EmitDIDebugLineSection();
-        thecg.emitter_->EmitDIDebugStrSection();
+      } else if (themodule->srcLang == kSrcLangCPlusPlus) {
+        thecg.emitter_->EmitGxxPersonalityV0();
       }
       thecg.emitter_->CloseOutput();
     } else {
       cerr << "Skipped generating .s because -no-cg is given" << endl;
     }
-  } else {
-    parser->EmitError(fileName);
-    nErr = 1;
   }
 
   // release

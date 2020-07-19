@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #include "native_stub_func.h"
@@ -19,6 +19,7 @@
 #include "reflection_analysis.h"
 #include <iostream>
 #include <fstream>
+#include "name_mangler.h"
 
 /*
  * This phase is the processing of the java native function. It
@@ -44,7 +45,7 @@ static constexpr int64 kInvalidCode = 0x00000000000000FF;
 
 GenNativeStubFunc::GenNativeStubFunc(MIRModule *mod, KlassHierarchy *kh, bool dump) : FuncOptimizeImpl(mod, kh, dump) {
   MIRType *jstrType =
-      GlobalTables::GetTypeTable().GetOrCreateClassType(NameMangler::GetInternalNameLiteral("Ljava_2Flang_2FString_3B").c_str(), mod);
+      GlobalTables::GetTypeTable().GetOrCreateClassType(NameMangler::GetInternalNameLiteral(NameMangler::kJavaLangStringStr).c_str(), mod);
   MIRPtrType *jstrPtype = static_cast<MIRPtrType *>(GlobalTables::GetTypeTable().GetOrCreatePointerType(jstrType, PTY_ref));
   jstrPtrTyidx = jstrPtype->tyIdx;
 

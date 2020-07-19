@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #ifndef REACHINGDEFINITION_H
@@ -23,6 +23,8 @@
 #include <set>
 
 namespace maplebe {
+
+using namespace std;
 
 #define RD_REGANALYSIS 0x1
 #define RD_MEMANALYSIS 0x2
@@ -77,7 +79,7 @@ class ReachingDefinition : public AnalysisResult {
   MemPool *mp;             // For allocate defs/uses of insn.
   MapleAllocator rdalloc;  // For allocate defs/uses of insn.
   LiveAnalysis *live;
-  std::set<Insn *> pseudoInsns;
+  set<Insn *> pseudoInsns;
 
  public:
   explicit ReachingDefinition(CGFunc *func, MemPool *mp, MapleAllocator ma, LiveAnalysis *la)
@@ -88,8 +90,8 @@ class ReachingDefinition : public AnalysisResult {
   void InitBB(BB *bb, int mode);
   void GenLastUse(BB *bb, int mode);
   void InitOut(BB *bb);
-  bool GenerateIn(BB *bb, std::set<DataAnalysisInfo, DataAnalysisInfoCmp> &setChangedDataInfo);
-  bool GenerateOut(BB *bb, std::set<DataAnalysisInfo, DataAnalysisInfoCmp> &setChangedDataInfo);
+  bool GenerateIn(BB *bb, set<DataAnalysisInfo, DataAnalysisInfoCmp> &setChangedDataInfo);
+  bool GenerateOut(BB *bb, set<DataAnalysisInfo, DataAnalysisInfoCmp> &setChangedDataInfo);
   void DirtyAllBBOut(BB *bb);
   void DirtyAllStackMemGen(BB *bb);
   void DirtyAllStackMemOnBBIn(BB *bb);
@@ -98,9 +100,9 @@ class ReachingDefinition : public AnalysisResult {
   void DefineRegisterOnBBIn(BB *, Operand *, Insn *, short index, int prop = 0);
   void DefineMem(BB *, Operand *, Insn *, short index, int prop = 0);
   void DefineMemOnBBIn(BB *, Operand *, Insn *, short index, int prop = 0);
-  bool GenerateInForFirstCleanupBB(BB *firstCleanupBB, const std::set<BB *, BBIdCmp> &bbNormalSet,
-                                   const std::set<regno_t> &regnoSet,
-                                   std::set<DataAnalysisInfo, DataAnalysisInfoCmp> &setChangedDataInfo);
+  bool GenerateInForFirstCleanupBB(BB *firstCleanupBB, const set<BB *, BBIdCmp> &bbNormalSet,
+                                   const set<regno_t> &regnoSet,
+                                   set<DataAnalysisInfo, DataAnalysisInfoCmp> &setChangedDataInfo);
   MemPool *GetMemPool() const {
     return mp;
   }

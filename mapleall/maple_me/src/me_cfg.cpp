@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #include <iostream>
@@ -21,10 +21,70 @@
 #include "me_irmap.h"
 #include "mir_builder.h"
 #include <algorithm>
+#include "name_mangler.h"
+#include <string>
 
 using namespace std;
 
 namespace maple {
+
+// determine if need to be replaced by assertnonnull
+bool MirCFG::IfReplaceWithAssertnonnull(BB *bb) {
+  StmtNode *stmt = bb->stmtNodeList.first;
+  GStrIdx npeGstringIdx = GlobalTables::GetStrTable().GetStrIdxFromName(string(NameMangler::kJavaLang) + string(NameMangler::kNullPointerException));
+  TyIdx npeTypeIdx = func->mirModule.typeNameTab->GetTyIdxFromGStrIdx(npeGstringIdx);
+  /* match first stmt */
+  while (stmt && stmt->op == OP_comment) {
+    stmt = stmt->GetNext();
+  }
+  if (!stmt || stmt->op != OP_intrinsiccallwithtype) {
+    return false;
+  }
+  IntrinsiccallNode *cnode = static_cast<IntrinsiccallNode *>(stmt);
+  if (cnode->tyIdx != npeTypeIdx) {
+    return false;
+  }
+  stmt = stmt->GetNext();
+  /* match second stmt */
+  while (stmt && stmt->op == OP_comment) {
+    stmt = stmt->GetNext();
+  }
+  if (!stmt || stmt->op != OP_dassign) {
+    return false;
+  }
+  DassignNode *dassignNode = static_cast<DassignNode *>(stmt);
+  if (dassignNode->GetRhs()->op != OP_gcmalloc) {
+    return false;
+  }
+  GCMallocNode *gcMallocNode = static_cast<GCMallocNode *>(dassignNode->GetRhs());
+  if (gcMallocNode->tyIdx != npeTypeIdx) {
+    return false;
+  }
+  stmt = stmt->GetNext();
+  /* match third stmt */
+  while (stmt && stmt->op == OP_comment) {
+    stmt = stmt->GetNext();
+  }
+  if (!stmt || stmt->op != OP_callassigned) {
+    return false;
+  }
+  CallNode *callAssignedNode = static_cast<CallNode *>(stmt);
+  if (GlobalTables::GetFunctionTable().GetFunctionFromPuidx(callAssignedNode->puIdx)->GetName() !=
+            (string(NameMangler::kJavaLang) +
+             string(NameMangler::kNullPointerException) +
+             string(NameMangler::kInitSuffix))) {
+    return false;
+  }
+  stmt = stmt->GetNext();
+  // match last stmt
+  while (stmt && stmt->op == OP_comment) {
+    stmt = stmt->GetNext();
+  }
+  if (stmt && stmt->op == OP_throw) {
+    return true;
+  }
+  return false;
+}
 
 void MirCFG::BuildMirCFG() {
   MapleVector<BB *> entryblocks(func->alloc.Adapter());
@@ -70,6 +130,10 @@ void MirCFG::BuildMirCFG() {
         BB *meBb = func->labelBBIdMap[lblidx];
         bb->succ.push_back(meBb);
         meBb->pred.push_back(bb);
+        /* can the gotostmt be replaced by assertnonnull ? */
+        if (IfReplaceWithAssertnonnull(meBb)) {
+          pattern_set_.insert(lblidx);
+        }
         break;
       }
       case kBBSwitch: {
@@ -92,6 +156,14 @@ void MirCFG::BuildMirCFG() {
         }
         break;
       }
+      case kBBIgoto: {
+        for (LabelIdx lidx : func->mirFunc->labelTab->addrTakenLabels) {
+          BB *mebb = func->labelBBIdMap[lidx];
+          bb->succ.push_back(mebb);
+          mebb->pred.push_back(bb);
+        }
+        break;
+      }
       case kBBReturn:
         break;
       default: {
@@ -105,7 +177,7 @@ void MirCFG::BuildMirCFG() {
       }
     }
     /* deal try blocks, add catch handler to try's succ */
-    if (bb->isTry) {
+    if (func->mirModule.IsJavaModule() && bb->isTry) {
       ASSERT((func->bbTryNodeMap.find(bb) != func->bbTryNodeMap.end()), "try bb without try");
       StmtNode *stmt = func->bbTryNodeMap[bb];
       TryNode *trynode = static_cast<TryNode *>(stmt);
@@ -137,7 +209,7 @@ void MirCFG::BuildMirCFG() {
           bb->isExit = true;  // may exit
           exitblocks.push_back(bb);
         }
-      } else if ((func->mirModule.srcLang == kSrcLangJava) && bb->isExit) {
+      } else if ((func->mirModule.IsJavaModule()) && bb->isExit) {
         // deal with throw bb, if throw bb in a tryblock and has finallyhandler
         StmtNode *lastStmt = bb->stmtNodeList.last;
         if (lastStmt && lastStmt->op == OP_throw) {
@@ -156,6 +228,63 @@ void MirCFG::BuildMirCFG() {
   for (MapleVector<BB *>::iterator it = exitblocks.begin(); it != exitblocks.end(); ++it) {
     func->commonExitBB->pred.push_back(*it);
   }
+}
+
+// replace "if() throw NPE()" with assertnonnull
+void MirCFG::ReplaceWithAssertnonnull() {
+  if (func->GetName() ==
+                 (NameMangler::kJavaUtil +
+                  std::string("Objects_3B_7CrequireNonNull_7C_28") +
+                  NameMangler::kJavaLangObjectStr +
+                  NameMangler::kRightBracketStr +
+                  NameMangler::kJavaLangObjectStr)) {
+    return;
+  }
+  for (LabelIdx lblidx : pattern_set_) {
+    BB *bb = func->labelBBIdMap[lblidx];
+    /* if BB->pred.size()==0, it won't enter this function */
+    for (uint32 i = 0; i < bb->pred.size(); i++) {
+      BB *innerBb = bb->pred[i];
+      if (innerBb->kind == kBBCondGoto) {
+        StmtNode *stmt = innerBb->stmtNodeList.last;
+        Opcode stmtop = stmt->op;
+        if (!stmt->IsCondBr()) {
+          continue;
+        }
+        CondGotoNode *cgotoNode = static_cast<CondGotoNode *>(stmt);
+        if ((stmtop == OP_brtrue && cgotoNode->uOpnd->op != OP_eq) ||
+            (stmtop == OP_brfalse && cgotoNode->uOpnd->op != OP_ne)) {
+          continue;
+        }
+        CompareNode *cmpNode = static_cast<CompareNode *>(cgotoNode->uOpnd);
+        BaseNode *opnd = nullptr;
+        if (cmpNode->opndType != PTY_ref && cmpNode->opndType != PTY_ptr) {
+          continue;
+        }
+        if (cmpNode->bOpnd[0]->op == OP_constval) {
+          ConstvalNode *constNode = static_cast<ConstvalNode *>(cmpNode->bOpnd[0]);
+          if (!constNode->constVal->IsZero()) {
+            continue;
+          }
+          opnd = cmpNode->bOpnd[1];
+        } else if (cmpNode->bOpnd[1]->op == OP_constval) {
+          ConstvalNode *constNode = static_cast<ConstvalNode *>(cmpNode->bOpnd[1]);
+          if (!constNode->constVal->IsZero()) {
+            continue;
+          }
+          opnd = cmpNode->bOpnd[0];
+        }
+        CHECK_FATAL(opnd != nullptr, "Compare with non-zero");
+        UnaryStmtNode *nullcheck = func->mirModule.mirBuilder->CreateStmtUnary(OP_assertnonnull, opnd);
+        innerBb->ReplaceStmt(stmt, nullcheck);
+        innerBb->kind = kBBFallthru;
+        innerBb->RemoveBBFromSucc(bb);
+        bb->RemoveBBFromPred(innerBb);
+        i--;
+      }
+    }
+  }
+  return;
 }
 
 // used only after DSE because it looks at live field of VersionSt
@@ -239,15 +368,16 @@ void MirCFG::UnreachCodeAnalysis(bool updatePhi) {
       }
       if (bb->isTryEnd) {
         // unreachable bb has try end info
-        int j = static_cast<int>(i) - 1;
-        for (; j >= 0; j--) {
-          if (func->bbVec[j] != nullptr) {
-            // move entrytry tag to previous bb with try
-            if (func->bbVec[j]->isTry && !func->bbVec[j]->isTryEnd) {
+        BB *trybb = func->endTryBB2TryBB[bb];
+        if (visitedBBs[trybb->id.idx]) { // corresponding try is still around
+          // move endtry tag to previous non-deleted bb
+          int j = static_cast<int>(i) - 1;
+          for (; j >= 0; j--) {
+            if (func->bbVec[j] != nullptr) {
               func->bbVec[j]->isTryEnd = true;
               func->endTryBB2TryBB[func->bbVec[j]] = func->endTryBB2TryBB[bb];
+              break;
             }
-            break;
           }
         }
       }

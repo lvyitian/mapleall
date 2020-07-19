@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #include "eh_func.h"
@@ -205,7 +205,6 @@ EHFunc *CGFunc::BuildEHFunc() {
     nextstmt = stmt->GetNext();
     Opcode op = stmt->op;
     switch (op) {
-      case OP_cpptry:
       case OP_try:
       case OP_javatry: {
         TryNode *javatrynode = static_cast<TryNode *>(stmt);
@@ -284,7 +283,7 @@ EHFunc *CGFunc::BuildEHFunc() {
 }
 
 bool EHFunc::NeedFullLSDA() {
-  if (cgfunc->func->IsJava()) {
+  if (cgfunc->func->IsJava() || cgfunc->mirModule.srcLang == kSrcLangCPlusPlus) {
     return HasJavaTry();
   } else {
     return false;
@@ -746,8 +745,191 @@ void EHFunc::CreateLSDAAction() {
   }
 }
 
+EHFunc *CGFunc::BuildCppEHFunc() {
+  MIRFunction *mirFunc = this->func;
+  MIRModule *mirModule = mirFunc->module;
+  EHFunc *newehfunc = memPool->New<EHFunc>(this);
+  this->ehfunc = newehfunc;
+  std::vector<EHJavaTry *> cpptryStack;  // top of stack is last cpptry
+  std::unordered_map<LabelNode *, CppCatchNode *> label2catch_map;
+  StmtNode *nextstmt = nullptr;
+
+  // collect all try-catch blocks
+  for (StmtNode *stmt = mirFunc->body->GetFirst(); stmt; stmt = nextstmt) {
+    nextstmt = stmt->GetNext();
+    Opcode op = stmt->op;
+    switch (op) {
+      case OP_cpptry: {
+        TryNode *cpptrynode = static_cast<TryNode *>(stmt);
+        EHJavaTry *ehcpptry = memPool->New<EHJavaTry>(funcscope_allocator_, cpptrynode);
+        cpptryStack.push_back(ehcpptry);
+        newehfunc->javatry_vec.push_back(ehcpptry);
+        break;
+      }
+      case OP_endtry: {
+        CHECK_FATAL(!cpptryStack.empty(), "BuildCppEHFunc: no matching cpptry for endtry");
+        EHJavaTry *lastEHCppTry = cpptryStack.back();
+        lastEHCppTry->endtry_node = stmt;
+        cpptryStack.pop_back();
+        break;
+      }
+      case OP_cppcatch: {
+        CppCatchNode *cppcatchnode = static_cast<CppCatchNode *>(stmt);
+        CG_ASSERT(stmt->GetPrev()->op == OP_label, "BuildCppEHFunc: cppcatch's previous node is not a label");
+        LabelNode *labelstmt = static_cast<LabelNode *>(stmt->GetPrev());
+        label2catch_map[labelstmt] = cppcatchnode;
+        break;
+      }
+      case OP_block:
+        CG_ASSERT(false, "should've lowered earlier");
+      default:
+        break;
+    }
+  }
+
+  newehfunc->BuildCppEHTypeTable(label2catch_map);
+
+  if (newehfunc->javatry_vec.size() > 0) {
+    newehfunc->CreateCppLSDA(label2catch_map);
+  }
+
+  if (EHFUNCDEBUG) {
+    newehfunc->DumpEHFunc();
+  }
+  return newehfunc;
+}
+
+// catchvec is going to be released by the caller
+void EHFunc::BuildCppEHTypeTable(const std::unordered_map<LabelNode *, CppCatchNode *> &label2catch_map) {
+  MIRBuilder *mirbuilder = cgfunc->func->module->mirBuilder;
+
+  if (label2catch_map.size() > 0) {
+    // the first one assume to be <void>
+    TyIdx voidtyidx(PTY_void);
+    eh_ty_table.push_back(voidtyidx);
+    CG_ASSERT(eh_ty_table.size() == 1, "");
+    ty2index_table[voidtyidx] = 0;
+
+    // create void pointer and update becommon's size table
+    cgfunc->becommon.UpdateTypeTable(GlobalTables::GetTypeTable().GetVoidPtr());
+  }
+}
+
+void EHFunc::CreateCppLSDA(std::unordered_map<LabelNode *, CppCatchNode *> &label2catch_map) {
+  // create map from each cpptry to its first catch
+  std::unordered_map<TryNode *, std::pair<LabelNode *, CppCatchNode *>> try2catch_map;
+  for (uint32 i = 0; i < javatry_vec.size(); i++) {
+    EHJavaTry *ehcpptry = javatry_vec[i];
+    TryNode *cpptrynode = ehcpptry->javatry_node;
+    if (cpptrynode->offsets.size() != 0) {
+      // find the LabelNode for the landing pad of this cpptry
+      std::unordered_map<LabelNode *, CppCatchNode *>::iterator it = label2catch_map.begin();
+      for (; it != label2catch_map.end(); it++) {
+        if (it->first->labelIdx == cpptrynode->offsets[0]) {
+          try2catch_map.insert(std::make_pair(cpptrynode, *it));
+          break;
+        }
+      }
+    }
+  }
+
+  MIRBuilder *mirbuilder = cgfunc->func->module->mirBuilder;
+  BlockNode *bodynode = cgfunc->func->body;
+  // create header
+  LSDAHeader *lsdaheader = cgfunc->memPool->New<LSDAHeader>();
+  LabelIdx lsdahdlblidx = CreateLabel("LSDAHD");  // LSDA head
+  LabelNode *lsdahdlblnode = mirbuilder->CreateStmtLabel(lsdahdlblidx);
+  lsdaheader->lsda_label = lsdahdlblnode;
+  lsdaheader->lpstart_encoding = 0xff;
+  lsdaheader->ttype_encoding = 0x9b;
+  LabelIdx lsdattstartidx = CreateLabel("LSDAALLS");  // LSDA all start;
+  LabelNode *lsdattlblnode = mirbuilder->CreateStmtLabel(lsdattstartidx);
+  LabelIdx lsdattendidx = CreateLabel("LSDAALLE");  // LSDA all end;
+  LabelNode *lsdacstelblnode = mirbuilder->CreateStmtLabel(lsdattendidx);
+  lsdaheader->ttype_offset.start_offset = lsdattlblnode;
+  lsdaheader->ttype_offset.end_offset = lsdacstelblnode;
+  lsdaheader->callsite_encoding = 0x1;
+  lsda_header = lsdaheader;
+  // create callsite table
+  LSDACallSiteTable *lsdacallsitetable = cgfunc->memPool->New<LSDACallSiteTable>(cgfunc->funcscope_allocator_);
+  lsda_callsite_table = lsdacallsitetable;
+  LabelIdx lsdacststartidx = CreateLabel("LSDACSTS");  // LSDA callsite table start;
+  LabelNode *lsdacststartlabel = mirbuilder->CreateStmtLabel(lsdacststartidx);
+  LabelIdx lsdacstendidx = CreateLabel("LSDACSTE");  // LSDA callsite table end;
+  LabelNode *lsdacstendlabel = mirbuilder->CreateStmtLabel(lsdacstendidx);
+  lsdacallsitetable->cs_table.start_offset = lsdacststartlabel;
+  lsdacallsitetable->cs_table.end_offset = lsdacstendlabel;
+  // create each callsite by iterating the EHJavaTry
+  for (uint32 i = 0; i < javatry_vec.size(); i++) {
+    EHJavaTry *ehcpptry = javatry_vec[i];
+    TryNode *cpptrynode = ehcpptry->javatry_node;
+    StmtNode *endtrynode = ehcpptry->endtry_node;
+    // replace javatry with a label which is the callsite_start
+    LabelIdx csstartlblidx = CreateLabel("LSDACS");
+    LabelNode *cslblnode = mirbuilder->CreateStmtLabel(csstartlblidx);
+    LabelIdx csendlblidx = CreateLabel("LSDACE");
+    LabelNode *celblnode = mirbuilder->CreateStmtLabel(csendlblidx);
+    bodynode->ReplaceStmt1WithStmt2(cpptrynode, cslblnode);
+    bodynode->ReplaceStmt1WithStmt2(endtrynode, celblnode);
+    LabelNode *ladpadendlabel = nullptr;
+    std::unordered_map<TryNode *, std::pair<LabelNode *, CppCatchNode *>>::iterator it = try2catch_map.find(cpptrynode);
+    if (it != try2catch_map.end()) {
+      ladpadendlabel = it->second.first;
+    }
+    LSDACallSite *lsdacallsite = cgfunc->memPool->New<LSDACallSite>();
+    lsdacallsite->Init(cgfunc->start_label, cslblnode, cslblnode, celblnode, ladpadendlabel ? cgfunc->start_label : 0, ladpadendlabel, 0x1);
+    ehcpptry->lsdacallsite = lsdacallsite;
+    lsdacallsitetable->callsite_table.push_back(lsdacallsite);
+  }
+
+  // LSDAAction table
+  CreateCppLSDAAction(try2catch_map);
+}
+
+void EHFunc::CreateCppLSDAAction(std::unordered_map<TryNode *, std::pair<LabelNode *, CppCatchNode *>> &try2catch_map) {
+  // iterate each cpptry and its corresponding catch
+  LSDAActionTable *actiontable = cgfunc->memPool->New<LSDAActionTable>(cgfunc->funcscope_allocator_);
+  lsda_action_table = actiontable;
+
+  // determine if __TYPEINFO_TABLE__ exists
+  GStrIdx strIdx = GlobalTables::GetStrTable().GetStrIdxFromName("__TYPEINFO_TABLE__");
+  MIRSymbol *typeinfoTableSym = cgfunc->func->symTab->GetSymbolFromStrIdx(strIdx);
+  bool hasTypeinfoTable = (typeinfoTableSym != nullptr);
+
+  for (uint32 i = 0; i < javatry_vec.size(); i++) {
+    EHJavaTry *ehcpptry = javatry_vec[i];
+    TryNode *cpptrynode = ehcpptry->javatry_node;
+    LSDAAction *lastaction = nullptr;
+    LSDACallSite *lsdacallsite = ehcpptry->lsdacallsite;
+    CppCatchNode *catchnode = nullptr;
+    std::unordered_map<TryNode *, std::pair<LabelNode *, CppCatchNode *>>::iterator it = try2catch_map.find(cpptrynode);
+    if (it != try2catch_map.end()) {
+      catchnode = it->second.second;
+    }
+    MIRType *mirtype = nullptr;
+    if (catchnode && catchnode->exceptionTyIdx.GetIdx() != 0) {
+      mirtype = GlobalTables::GetTypeTable().GetTypeFromTyIdx(catchnode->exceptionTyIdx);
+    }
+    uint32 tyindex = hasTypeinfoTable ? 1 : 0;
+    if (mirtype) {
+      tyindex = ty2index_table[mirtype->tyIdx]; // get its index in eh_ty_table
+    }
+    LSDAAction *lsdaaction = cgfunc->memPool->New<LSDAAction>(tyindex, lastaction == nullptr ? 0 : 0x7d);
+    lastaction = lsdaaction;
+    actiontable->action_table.push_back(lsdaaction);
+    lsdacallsite->cs_action = (actiontable->action_table.size() - 1) * 2 + 1;
+    if (catchnode == nullptr) {
+      lsdacallsite->cs_action = 0;
+    }
+  }
+}
+
 AnalysisResult *CgDoBuildEHFunc::Run(CGFunc *cgfunc, CgFuncResultMgr *m) {
-  cgfunc->BuildEHFunc();
+  if (cgfunc->mirModule.srcLang == kSrcLangCPlusPlus) {
+    cgfunc->BuildCppEHFunc();
+  } else {
+    cgfunc->BuildEHFunc();
+  }
   return nullptr;
 }
 

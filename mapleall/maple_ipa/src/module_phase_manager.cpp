@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #include "module_phase_manager.h"
@@ -34,6 +34,7 @@
 #include "native_stub_func.h"
 #include "coderelayout.h"
 #include "muid_replacement.h"
+#include "simplify.h"
 #include "gen_check_cast.h"
 #include "scalarreplacement.h"
 #endif
@@ -43,8 +44,7 @@
 
 namespace maple {
 
-// Manage the phases of middle and implement some maplecomb-options such as
-// skipAfter, skipFrom, quiet.
+// Manage the phases of middle
 AnalysisResult *DoKlassHierarchy::Run(MIRModule *module, ModuleResultMgr *m) {
   MemPool *mp = mempoolctrler.NewMemPool("classhierarchy mempool");
   KlassHierarchy *kh = mp->New<KlassHierarchy>(module, mp);

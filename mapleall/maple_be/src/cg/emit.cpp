@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #include "emit.h"
@@ -27,12 +27,16 @@
 
 namespace maplebe {
 
+#define CLANG (cg_->mirModule->IsCModule())
+#define JAVALANG (cg_->mirModule->IsJavaModule())
+
 extern bool doPie;
 
 using namespace maple;
 
 void Emitter::EmitLabelRef(const char *name, LabelIdx labidx) {
-  out << ".label." << name << "__" << labidx;
+  const char *idx = std::to_string(CG::curPuIdx).c_str();
+  out << ".label." << idx << "__" << labidx;
 }
 
 void Emitter::EmitStmtLabel(const char *name, LabelIdx labidx) {
@@ -42,8 +46,10 @@ void Emitter::EmitStmtLabel(const char *name, LabelIdx labidx) {
 
 void Emitter::EmitLabelPair(const char *name, const LabelPair &pairlabel) {
   CG_ASSERT((pairlabel.end_offset || pairlabel.start_offset), "NYI");
-  out << ".label." << name << "__" << pairlabel.end_offset->labelIdx << " - "
-       << ".label." << name << "__" << pairlabel.start_offset->labelIdx << "\n";
+  EmitLabelRef(name, pairlabel.end_offset->labelIdx);
+  out << " - ";
+  EmitLabelRef(name, pairlabel.start_offset->labelIdx);
+  out << "\n";
 }
 
 Asmlabel Emitter::GetTypeAsmInfoName(PrimType pty) {
@@ -101,30 +107,6 @@ void Emitter::EmitFileInfo(const std::string &fileName) {
   Emit(irFile.c_str());
   Emit("\n");
 
-  // .file #num src_file_name
-  if (cg_->cgopt_.WithLoc()) {
-    // .file 1 mpl_file_name
-    if (cg_->cgopt_.WithAsm()) {
-      Emit("\t// ");
-    }
-    Emit(asminfo_->asm_file);
-    Emit("1 ");
-    Emit(irFile.c_str());
-    Emit("\n");
-    if (cg_->cgopt_.WithSrc()) {
-      // insert a list of src files
-      for (auto it : cg_->mirModule->srcFileInfo) {
-        if (cg_->cgopt_.WithAsm()) {
-          Emit("\t// ");
-        }
-        Emit(asminfo_->asm_file);
-        Emit(it.second).Emit(" \"");
-        const std::string kStr = GlobalTables::GetStrTable().GetStringFromStrIdx(it.first);
-        Emit(kStr.c_str());
-        Emit("\"\n");
-      }
-    }
-  }
   free(curDirName);
 #if TARGARM
   emit("\t.syntax unified\n");
@@ -175,12 +157,6 @@ void Emitter::EmitAsmLabel(const MIRSymbol *st, Asmlabel al) {
   MIRType *ty = st->GetType();
   const std::string &syName = st->GetName();
 
-#if TARGARM || TARGAARCH64 || TARGARK
-  std::string align = std::to_string(static_cast<int>(log2(g->becommon->type_align_table[ty->tyIdx.GetIdx()])));
-#else
-  std::string align = std::to_string(g->becommon->type_align_table[ty->tyIdx.GetIdx()]);
-#endif
-  std::string size = std::to_string(g->becommon->type_size_table.at(ty->tyIdx.GetIdx()));
   switch (al) {
     case kAsmGlbl: {
       Emit(asminfo_->asm_global);
@@ -207,18 +183,31 @@ void Emitter::EmitAsmLabel(const MIRSymbol *st, Asmlabel al) {
       return;
     }
     case kAsmComm: {
+      std::string size;
+      if (isFlexibleArray) {
+        size = std::to_string(g->becommon->type_size_table.at(ty->tyIdx.GetIdx()) + arraySize);
+      } else {
+        size = std::to_string(g->becommon->type_size_table.at(ty->tyIdx.GetIdx()));
+      }
       Emit(asminfo_->asm_comm);
       Emit(syName.c_str());
       Emit(", ");
       Emit(size.c_str());
       Emit(", ");
+#if TARGARM || TARGAARCH64 || TARGARK
+      std::string align = std::to_string(static_cast<int>(log2(g->becommon->type_align_table[ty->tyIdx.GetIdx()])));
+#else
+      std::string align = std::to_string(g->becommon->type_align_table[ty->tyIdx.GetIdx()]);
+#endif
 #if PECOFF
       emit(align.c_str());
 #else /* ELF */
       if (syName.find("__ClassInitProtectRegion__") == 0) {
         Emit(4096);
       } else if ((st->GetType()->typeKind == kTypeStruct ||
-                  st->GetType()->typeKind == kTypeClass)
+                  st->GetType()->typeKind == kTypeClass ||
+                  st->GetType()->typeKind == kTypeArray ||
+                  st->GetType()->typeKind == kTypeUnion)
                  &&
                  (st->storageClass == kScGlobal ||
                   st->storageClass == kScPstatic ||
@@ -232,6 +221,20 @@ void Emitter::EmitAsmLabel(const MIRSymbol *st, Asmlabel al) {
       return;
     }
     case kAsmAlign: {
+      std::string align;
+      if (st->GetType()->typeKind == kTypeStruct ||
+          st->GetType()->typeKind == kTypeClass ||
+          st->GetType()->typeKind == kTypeArray ||
+          st->GetType()->typeKind == kTypeUnion) {
+        align = "3";
+      } else {
+
+#if TARGARM || TARGAARCH64 || TARGARK
+        align = std::to_string(static_cast<int>(log2(g->becommon->type_align_table[ty->tyIdx.GetIdx()])));
+#else
+        align = std::to_string(g->becommon->type_align_table[ty->tyIdx.GetIdx()]);
+#endif
+      }
       Emit(asminfo_->asm_align);
       Emit(align.c_str());
       Emit("\n");
@@ -243,6 +246,12 @@ void Emitter::EmitAsmLabel(const MIRSymbol *st, Asmlabel al) {
       return;
     }
     case kAsmSize: {
+      std::string size;
+      if (isFlexibleArray) {
+        size = std::to_string(g->becommon->type_size_table.at(ty->tyIdx.GetIdx()) + arraySize);
+      } else {
+        size = std::to_string(g->becommon->type_size_table.at(ty->tyIdx.GetIdx()));
+      }
       Emit(asminfo_->asm_size);
       Emit(syName.c_str());
       Emit(", ");
@@ -318,12 +327,32 @@ void Emitter::EmitBitFieldConstant(StructEmitInfo *semitinfo, MIRConst *ct, cons
   }
 }
 
-void Emitter::EmitStrConstant(MIRStrConst *ct) {
-  Emit("\t.string \"");
+void Emitter::EmitStrConstant(MIRStrConst *ct, bool isAscii, bool isIndirect) {
+  if (isIndirect) {
+    uint32 strId = ct->value.GetIdx();
+    if (stringPtr[strId] == 0) {
+      Emit("\t.xword\t").Emit(".LSTR__").Emit(std::to_string(strId).c_str());
+      stringPtr[strId] = ct->value;
+    }
+    return;
+  }
   // don't expand special character in a writeout to .s,
   // convert all \s to \\s in string for storing in .string
-  const char *str = GlobalTables::GetUStrTable().GetStringFromStrIdx(ct->value).c_str();
-  while (*str) {
+  const string ustr = GlobalTables::GetUStrTable().GetStringFromStrIdx(ct->value);
+  const char *str = ustr.c_str();
+  size_t len = ustr.size();
+  if (isAscii) {
+    Emit("\t.ascii \"");  // Do not terminate with \0
+    if (isFlexibleArray) {
+      arraySize += len;
+    }
+  } else {
+    Emit("\t.string \"");
+    if (isFlexibleArray) {
+      arraySize += len + 1;
+    }
+  }
+  for (int i = 0; i < len; i++) {
     char buf[5];
     if (isprint(*str)) {
       buf[0] = *str;
@@ -340,6 +369,11 @@ void Emitter::EmitStrConstant(MIRStrConst *ct) {
       Emit("\\n");
     } else if (*str == '\t') {
       Emit("\\t");
+    } else if (*str == '\0') {
+      buf[0] = '\\';
+      buf[1] = '0';
+      buf[2] = 0;
+      Emit(buf);
     } else {
       // all others, print as number
       int ret = snprintf_s(buf, sizeof(buf), 4, "\\x%02x", (*str) & 0xFF);
@@ -380,14 +414,196 @@ void Emitter::EmitStr16Constant(MIRStr16Const *ct) {
   }
 }
 
-void Emitter::EmitScalarConstant(MIRConst *ct, bool newline = true, bool flag32 = false) {
+uint32 Emitter::EmitPadForNextField(MIRConst *ct, uint32 byteUsed, uint32 align) {
+  uint32 dataSize;
+  if (ct->kind == kConstAggConst) {
+    MIRType *ty = ct->type;
+    MIRStructType *sty = static_cast<MIRStructType *>(ty);
+    dataSize = g->becommon->type_size_table.at(sty->tyIdx.GetIdx());
+  } else if (dynamic_cast<MIRIntConst *>(ct)) {
+    dataSize = GetPrimTypeBitSize(ct->type->primType) >> 3;
+  } else if (dynamic_cast<MIRFloatConst *>(ct)) {
+    dataSize = 4;
+  } else  {
+    dataSize = 8;
+  }
+
+  if (byteUsed == 0) {
+    return dataSize;
+  }
+
+  uint32 pad;
+  if ((dataSize + byteUsed) > align) {
+    pad = align - byteUsed;
+    if (pad) {
+      Emit("\t.zero\t");
+      Emit(std::to_string(pad).c_str());
+      Emit("\n");
+    }
+    return (dataSize + pad);
+  }
+  pad = (dataSize - 1) & byteUsed;
+  if (pad) {
+    Emit("\t.zero\t");
+    Emit(std::to_string(pad).c_str());
+    Emit("\n");
+  }
+
+  return (dataSize + pad);
+}
+
+void Emitter::EmitAggConst(MIRConst *ct, bool newline, bool flag32) {
+  MIRType *ty = ct->type;
+  MIRStructType *sty;
+  if (ty->GetKind() == kTypeArray) {
+    EmitArrayConstant(ct);
+    return;
+  } else {
+    sty = static_cast<MIRStructType *>(ty);
+  }
+
+  uint32 ssize = g->becommon->type_size_table.at(sty->tyIdx.GetIdx());
+  uint32 salign = g->becommon->type_align_table.at(sty->tyIdx.GetIdx());
+
+  MIRAggConst *aggCt = dynamic_cast<MIRAggConst *>(ct);
+  uint32 alignUsed = 0; // #bytes used up to alignment
+  uint32 bitSize = 0;   // max number of bits for bitfield as defined in source
+  uint32 bitsUsed = 0;  // Cumulative bits of previous bitfields.
+  uint64 bitData = 0;
+  uint32 fieldCount = 0;
+  FieldVector fields = sty->fields;
+  bool terminate = false;
+  MapleVector<MIRConst *>::iterator it;
+  MIRConst *ctIt;
+  ctIt = *(aggCt->constVec.begin());
+  if (ctIt->fieldID != 1) {
+    Emit("\t.skip\t").Emit(g->becommon->type_size_table[fields[0].second.first.GetIdx()]).Emit("\n");
+    fieldCount = 1;
+  }
+  for (it = aggCt->constVec.begin(); it != aggCt->constVec.end(); ) {
+    ctIt = *it;
+    TyIdx fieldtyidx = fields[fieldCount].second.first;
+    MIRType *fieldty = GlobalTables::GetTypeTable().GetTypeFromTyIdx(fieldtyidx);
+    uint32 oldFieldSize = 0;
+    while (fieldty->typeKind == kTypeBitField) {
+      if ((fieldCount + 1) != ctIt->fieldID) {
+        // A bitfield is skipped, and it is 0 length
+        TyIdx skippedFieldIdx = fields[fieldCount].second.first;
+        MIRType *skippedFieldTy = GlobalTables::GetTypeTable().GetTypeFromTyIdx(skippedFieldIdx);
+        MIRBitfieldType *skippedBitTy = static_cast<MIRBitfieldType *>(skippedFieldTy);
+        uint32 skippedBitSize = skippedBitTy->fieldSize;
+        CHECK_FATAL(skippedFieldTy->typeKind == kTypeBitField, "Skipped init field should be bitfield");
+        CHECK_FATAL(skippedBitSize == 0, "Skipped bitfield size not 0");
+
+        uint32 numBytes = (bitsUsed >> 3) + ((bitsUsed & 0x7) > 0);
+        for (int byte = 0; byte < numBytes; ++byte) {
+          uint64 dt;
+          Emit("\t.byte\t");
+          dt = (bitData >> (byte * BITS_PER_BYTE)) & 0x0ffLL;
+          Emit(std::to_string(dt).c_str());
+          Emit("\n");
+        }
+        uint32 maxSize = g->becommon->type_size_table[skippedFieldIdx.GetIdx()];
+        uint32 numZero = maxSize - ((bitsUsed >> 3) + ((bitsUsed & 0x7) > 0));
+        if (numZero > 0) {
+          Emit("\t.zero\t");
+          Emit(std::to_string(numZero).c_str());
+          Emit("\n");
+          alignUsed = (alignUsed + numZero) & (salign - 1);
+        }
+
+        fieldCount++;
+        fieldtyidx = fields[fieldCount].second.first;
+        fieldty = GlobalTables::GetTypeTable().GetTypeFromTyIdx(fieldtyidx);
+        bitData = 0;
+        bitsUsed = 0;
+        alignUsed = 0;
+      }
+
+      uint32 fieldSize = g->becommon->type_size_table[fieldtyidx.GetIdx()];
+      if (fieldSize < oldFieldSize) {
+        fieldSize = oldFieldSize;
+      } else {
+        oldFieldSize = fieldSize;
+      }
+      MIRIntConst *intCt;
+      MIRBitfieldType *bitty = static_cast<MIRBitfieldType *>(fieldty);
+      bitSize = bitty->fieldSize;
+      intCt = dynamic_cast<MIRIntConst *>(ctIt);
+      uint32 potentialBytes = ((bitsUsed + bitSize) >> 3) + (((bitsUsed + bitSize) & 0x7) > 0);
+      if ((bitSize + bitsUsed) <= (salign * BITS_PER_BYTE) &&
+          potentialBytes <= fieldSize) {
+        bitData |= (intCt->value << bitsUsed);
+        bitsUsed += bitSize;
+      } else {
+        uint32 numBytes = (bitsUsed >> 3) + ((bitsUsed & 0x7) > 0);
+        for (int byte = 0; byte < numBytes; ++byte) {
+          uint64 dt;
+          Emit("\t.byte\t");
+          dt = (bitData >> (byte * BITS_PER_BYTE)) & 0x0ffLL;
+          Emit(std::to_string(dt).c_str());
+          Emit("\n");
+        }
+        if (potentialBytes > fieldSize) {
+          // The base type of bitfield might not be identical to source.
+          // However it must not change the intended layout.
+          int32 numZero = fieldSize - numBytes;
+          if (numZero > 0) {
+            Emit("\t.zero\t");
+            Emit(std::to_string(numZero).c_str());
+            Emit("\n");
+            alignUsed = (alignUsed + numZero) & (salign - 1);
+          }
+        }
+
+        bitData = intCt->value;
+        bitsUsed = bitSize;
+        alignUsed = (alignUsed + numBytes) & (salign - 1);
+      }
+
+      fieldCount++;
+      it++;
+      if (it == aggCt->constVec.end()) {
+        terminate = true;
+        break;
+      }
+      ctIt = *it;
+      fieldtyidx = fields[fieldCount].second.first;
+      fieldty = GlobalTables::GetTypeTable().GetTypeFromTyIdx(fieldtyidx);
+    }
+    if (bitData != 0) {
+      uint32 numBytes = (bitsUsed >> 3) + ((bitsUsed & 0x7) > 0);
+      for (int byte = 0; byte < numBytes; ++byte) {
+        uint64 dt;
+        Emit("\t.byte\t");
+        dt = (bitData >> (byte * BITS_PER_BYTE)) & 0x0ffLL;
+        Emit(std::to_string(dt).c_str());
+        Emit("\n");
+      }
+      bitData = 0;
+      alignUsed = (alignUsed + numBytes) & (salign - 1);
+    }
+    if (terminate) {
+      break;
+    }
+    alignUsed = (alignUsed + EmitPadForNextField(ctIt, alignUsed, salign)) & (salign - 1);
+    EmitScalarConstant(ctIt, newline, flag32, true);
+
+    fieldCount++;
+    it++;
+  }
+
+  if (alignUsed && alignUsed < salign) {
+    Emit("\t.zero\t");
+    Emit(std::to_string(salign - alignUsed).c_str());
+    Emit("\n");
+  }
+}
+
+void Emitter::EmitScalarConstant(MIRConst *ct, bool newline = true, bool flag32 = false, bool isIndirect = false) {
   // Handle aggregate const separately, as each constant is in a vector.
   if (ct->kind == kConstAggConst) {
-    MIRAggConst *aggCt = dynamic_cast<MIRAggConst *>(ct);
-    for (auto ctIt : aggCt->constVec) {
-      EmitScalarConstant(ctIt, newline, flag32);
-    }
-    return;
+    return EmitAggConst(ct, newline, flag32);
   }
   MIRType *ty = ct->type;
   Asmlabel asmname = GetTypeAsmInfoName(ty->primType);
@@ -402,19 +618,42 @@ void Emitter::EmitScalarConstant(MIRConst *ct, bool newline = true, bool flag32 
       EmitAsmLabel(asmname);
     }
     Emit(std::to_string(intCt->value).c_str());
+    if (isFlexibleArray) {
+      arraySize += (sizeinbits / BITS_PER_BYTE);
+    }
   } else if (MIRFloatConst *floatCt = dynamic_cast<MIRFloatConst *>(ct)) {
     EmitAsmLabel(asmname);
     Emit(std::to_string(floatCt->GetIntValue()).c_str());
+    if (isFlexibleArray) {
+      arraySize += 4;
+    }
   } else if (MIRDoubleConst *doubleCt = dynamic_cast<MIRDoubleConst *>(ct)) {
     EmitAsmLabel(asmname);
     Emit(std::to_string(doubleCt->GetIntValue()).c_str());
+    if (isFlexibleArray) {
+      arraySize += 8;
+    }
   } else if (MIRStrConst *strCt = dynamic_cast<MIRStrConst *>(ct)) {
-    EmitStrConstant(strCt);
+    if (CLANG) {
+      EmitStrConstant(strCt, false, isIndirect);
+    } else {
+      EmitStrConstant(strCt);
+    }
   } else if (MIRStr16Const *str16Ct = dynamic_cast<MIRStr16Const *>(ct)) {
     EmitStr16Constant(str16Ct);
   } else if (MIRAddrofConst *symaddr = dynamic_cast<MIRAddrofConst *>(ct)) {
     MIRSymbol *symaddrSym = GlobalTables::GetGsymTable().GetSymbolFromStIdx(symaddr->GetSymbolIndex().Idx());
     Emit("\t.quad\t" + symaddrSym->GetName());
+    if (symaddr->GetOffset() != 0) {
+      Emit(" + ").Emit(symaddr->GetOffset());
+    }
+  } else if (MIRAddroffuncConst *funcaddr = dynamic_cast<MIRAddroffuncConst *>(ct)) {
+    Emit("\t.quad\t");
+    Emit(GlobalTables::GetFunctionTable().GetFunctionFromPuidx(funcaddr->GetValue())->GetName());
+  } else if (MIRLblConst *lbl = dynamic_cast<MIRLblConst *>(ct)) {
+    Emit("\t.xword\t");
+    MIRSymbol *funcSt = GlobalTables::GetGsymTable().GetSymbolFromStIdx(CG::curCgFunc->mirModule.CurFunction()->stIdx.Idx());
+    EmitLabelRef(funcSt->GetName().c_str(), lbl->value);
   } else {
     CG_ASSERT(false, "NYI");
   }
@@ -922,6 +1161,17 @@ void Emitter::EmitConstantTable(MIRSymbol *st, MIRConst *ct, const std::map<GStr
 
 void Emitter::EmitArrayConstant(MIRConst *ct) {
   MIRType *ty = ct->type;
+  if (ct->kind == kConstStrConst) {
+    // This is to distinguish between
+    //   char *v = "...."
+    // and
+    //   char v[] = "...."
+    // Here it is an array of char disguised as string.
+    MIRStrConst *strCt = static_cast<MIRStrConst *>(ct);
+    EmitStrConstant(strCt, true);
+    Emit("\n");
+    return;
+  }
   MIRAggConst *arrCt = static_cast<MIRAggConst *>(ct);
   MIRArrayType *aty = static_cast<MIRArrayType *>(ty);
   CG_ASSERT(aty, "");
@@ -930,10 +1180,15 @@ void Emitter::EmitArrayConstant(MIRConst *ct) {
   for (uint32 i = 0; i < inum; i++) {
     MIRConst *elemcst = arrCt->constVec[i];
     if (IsPrimitiveScalar(elemcst->type->primType)) {
-      EmitScalarConstant(elemcst);
+      if (CLANG) {
+        EmitScalarConstant(elemcst, true, false, true);
+      } else {
+        EmitScalarConstant(elemcst);
+      }
     } else if (kTypeArray == elemcst->type->GetKind()) {
       EmitArrayConstant(elemcst);
-    } else if (kTypeStruct == elemcst->type->GetKind() || kTypeClass == elemcst->type->GetKind()) {
+    } else if (kTypeStruct == elemcst->type->GetKind() || kTypeClass == elemcst->type->GetKind() ||
+               kTypeUnion == elemcst->type->GetKind()) {
       EmitStructConstant(elemcst);
     } else {
       CG_ASSERT(false, "");
@@ -953,13 +1208,24 @@ void Emitter::EmitStructConstant(MIRConst *ct) {
   MIRType *ty = ct->type;
   MIRAggConst *structCt = static_cast<MIRAggConst *>(ct);
   MIRStructType *sty = static_cast<MIRStructType *>(ty);
-  CG_ASSERT(sty->typeKind != kTypeUnion, "NYI, not support now.");
   // all elements of struct.
-  uint8 anum = sty->fields.size();
+  uint8 anum;
+  if (sty->typeKind == kTypeUnion) {
+    anum = 1;
+  } else {
+    anum = sty->fields.size();
+  }
   // total size of emitted elements size.
   uint32 ssize = g->becommon->type_size_table.at(sty->tyIdx.GetIdx());
   uint32 fieldidx = 1;
+  if (sty->typeKind == kTypeUnion) {
+    fieldidx = structCt->constVec[0]->fieldID;
+  }
   for (uint32 i = 0; i < anum; i++) {
+    if (((i + 1) == anum) && CLANG) {
+      isFlexibleArray = g->becommon->type_has_flexible_array[ty->tyIdx.GetIdx()];
+      arraySize = 0;
+    }
     MIRConst *elemcst = structCt->GetAggConstElement(fieldidx);
     MIRType *ety = sty->GetElemType(i);
     MIRType *nety = nullptr;
@@ -980,9 +1246,11 @@ void Emitter::EmitStructConstant(MIRConst *ct) {
     } else {
       if (elemcst) {
         if (IsPrimitiveScalar(ety->primType)) {
-          EmitScalarConstant(elemcst);
+          EmitScalarConstant(elemcst, true, false, true);
         } else if (kTypeArray == ety->GetKind()) {
-          EmitArrayConstant(elemcst);
+          if (ety->GetSize() != 0) {
+            EmitArrayConstant(elemcst);
+          }
         } else if (kTypeStruct == ety->GetKind()) {
           EmitStructConstant(elemcst);
         } else if (kTypeClass == ety->GetKind()) {
@@ -1063,6 +1331,7 @@ void Emitter::EmitBlockMarkerWithAddr(const char *markerName, const std::string 
   } else {  // exposed as local symbol, for release.
     Emit(asminfo_->asm_local).Emit(markerName).Emit("\n");
   }
+  // emit(asminfo_->asm_hidden).emit(marker_name).emit("\n");
   EmitAsmLabel(kAsmData);
   Emit(asminfo_->asm_align).Emit("  3\n");
   Emit(markerName).Emit(":\n");
@@ -1079,7 +1348,7 @@ void Emitter::EmitLiteral(MIRSymbol *literal, const std::map<GStrIdx, MIRType *>
      .data
      .align 3
      _C_STR_xxxx:
-     .quad CLASSINFO_PREFIX+kJavaLangStringStr
+     .quad __cinf_Ljava_2Flang_2FString_3B
      ....
      .size _C_STR_xxxx, 40
    */
@@ -1262,6 +1531,19 @@ void Emitter::MarkVtabOrItabEndFlag(std::vector<MIRSymbol *> &symV, std::vector<
   }
 }
 
+void Emitter::EmitStringPointers() {
+  for (auto idx: stringPtr) {
+    if (idx == 0) {
+      continue;
+    }
+    uint32 strId = idx.GetIdx();
+    const char *str = GlobalTables::GetUStrTable().GetStringFromStrIdx(idx).c_str();
+    Emit("\t.align 3\n");
+    Emit(".LSTR__").Emit(strId).Emit(":\n");
+    Emit("\t.string\t").Emit("\"").Emit(str).Emit("\"\n");
+  }
+}
+
 void Emitter::EmitGlobalVar(MIRSymbol *globalvar) {
   EmitAsmLabel(globalvar, kAsmType);
   EmitAsmLabel(globalvar, kAsmLocal);
@@ -1320,6 +1602,53 @@ void Emitter::EmitGlobalVars(std::vector<std::pair<MIRSymbol *, bool>> &globalva
   const std::string kStaticVarEndAdd =
       std::to_string(g->becommon->type_size_table.at(ty->tyIdx.GetIdx())) + "+" + endSym->GetName();
   EmitBlockMarkerWithAddr("__MBlock_globalVars_cold_end", kStaticVarEndAdd);
+}
+
+void Emitter::EmitLocalVariable(CGFunc *cgfunc) {
+  // function local pstatic initialization
+  if (CLANG == false) {
+    return;
+  }
+  MIRSymbolTable *lSymTab = cgfunc->mirModule.CurFunction()->symTab;
+  if (lSymTab == nullptr) {
+    return;
+  }
+  // anything larger than is created by cg
+  size_t lsize = cgfunc->GetLsymSize();
+  for (size_t i = 0; i < lsize; i++) {
+    MIRSymbol *st = lSymTab->GetSymbolFromStIdx(i);
+    if (st == nullptr) {
+      continue;
+    }
+    if (st->storageClass != kScPstatic) {
+      continue;
+    }
+
+    static vector<string> emittedLocalSym;
+    bool found = false;
+    for (auto name : emittedLocalSym) {
+      if (name == st->GetName()) {
+        found = true;
+        break;
+      }
+    }
+    if (found) {
+      continue;
+    }
+    emittedLocalSym.push_back(st->GetName());
+
+    Emit(asminfo_->asm_section);
+    Emit(asminfo_->asm_data);
+    Emit("\n");
+    EmitAsmLabel(st, kAsmAlign);
+    MIRConst *ct = st->GetConst();
+    if (ct == nullptr) {
+      EmitAsmLabel(st, kAsmComm);
+    } else {
+      EmitAsmLabel(st, kAsmSyname);
+      EmitScalarConstant(ct);
+    }
+  }
 }
 
 void Emitter::EmitGlobalVariable() {
@@ -1392,11 +1721,15 @@ void Emitter::EmitGlobalVariable() {
       // _PTR__cinf is emitted in dataDefTab and dataUndefTab
       continue;
     } else if (st->IsMuidTab()) {
-      muidVec[0] = st;
-      EmitMuidTable(muidVec, stridx2type, st->GetMuidTabName());
+      if (JAVALANG) {
+        muidVec[0] = st;
+        EmitMuidTable(muidVec, stridx2type, st->GetMuidTabName());
+      }
       continue;
     } else if (st->IsCodeLayoutInfo()) {
-      EmitFuncLayoutInfo(st);
+      if (JAVALANG) {
+        EmitFuncLayoutInfo(st);
+      }
       continue;
     } else if (st->GetName().find(NameMangler::kStaticFieldNamePrefixStr) == 0) {
       staticFieldsVec.push_back(st);
@@ -1452,7 +1785,6 @@ void Emitter::EmitGlobalVariable() {
       }
       continue;
     }
-
     EmitAsmLabel(st, kAsmType);
     // emit initialized global/static variables.
     if (kScGlobal == st->storageClass || (kScFstatic == st->storageClass && !st->IsReadOnly())) {
@@ -1501,14 +1833,18 @@ void Emitter::EmitGlobalVariable() {
           uint32 sizeinbits = GetPrimTypeBitSize(ct->type->primType);
           CHECK_FATAL(sizeinbits == 64, "EmitGlobalVariable: pointer must be of size 8");
         }
-        EmitScalarConstant(ct);
+        if (CLANG) {
+          EmitScalarConstant(ct, true, false, true);
+        } else {
+          EmitScalarConstant(ct);
+        }
       } else if (kTypeArray == ty->GetKind()) {
         if (st->HasAddrOfValues()) {
           EmitConstantTable(st, ct, stridx2type);
         } else {
           EmitArrayConstant(ct);
         }
-      } else if (kTypeStruct == ty->GetKind() || kTypeClass == ty->GetKind()) {
+      } else if (kTypeStruct == ty->GetKind() || kTypeClass == ty->GetKind() || kTypeUnion == ty->GetKind()) {
         if (st->HasAddrOfValues()) {
           EmitConstantTable(st, ct, stridx2type);
         } else {
@@ -1546,16 +1882,24 @@ void Emitter::EmitGlobalVariable() {
         EmitAsmLabel(st, kAsmComm);
       } else {
         EmitAsmLabel(st, kAsmSyname);
-        EmitScalarConstant(ct);
+        EmitScalarConstant(ct, true, false, true);
       }
     }
+    if (CLANG && st->GetName().compare(0, 4, "_ZTI") == 0) {
+      EmitDWRef(st->GetName().c_str());
+    }
   }
+  EmitStringPointers();
   // emit global var
   EmitGlobalVars(globalVarVec);
   // emit literal strings
   EmitLiterals(literalVec, stridx2type);
   // emit static field strings
   EmitStaticFields(staticFieldsVec);
+
+  if (CLANG) {
+    return;
+  }
 
   EmitMuidTable(constStrVec, stridx2type, NameMangler::kMuidConststrPrefixStr);
 
@@ -1682,6 +2026,10 @@ void Emitter::EmitGlobalVariable() {
 void Emitter::EmitMplPersonalityV0() {
   // finally emit __gxx_personality_v0 DW.ref
   EmitDWRef("__mpl_personality_v0");
+}
+
+void Emitter::EmitGxxPersonalityV0() {
+  EmitDWRef("__gxx_personality_v0");
 }
 
 void Emitter::EmitGlobalRootList(const MIRSymbol *gcrootsSt) {
@@ -1937,7 +2285,7 @@ void ImmOperand::dump() {
 }
 
 void LabelOperand::Emit(Emitter &emitter, OpndProp *opndprop) {
-  emitter.Emit(".label.").Emit(parent_func_).Emit("__").Emit(labidx_);
+  emitter.EmitLabelRef(parent_func_, labidx_);
 }
 
 void LabelOperand::dump() {

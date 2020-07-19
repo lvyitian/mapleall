@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #include "global_tables.h"
@@ -28,20 +28,22 @@ TypeTable::TypeTable() : ptrTypeMap(), refTypeMap() {
   // enter the primitve types in typeTable
   typeTable.push_back(static_cast<MIRType *>(nullptr));
   ASSERT(typeTable.size() == static_cast<int>(PTY_void), "use PTY_void as the first index to type table");
-  for (uint32 pti = static_cast<uint32>(PTY_void); pti <= static_cast<uint32>(PTY_v4f32); pti++) {
+  uint32 pti;
+  for (pti = static_cast<uint32>(PTY_begin)+1; pti < static_cast<uint32>(PTY_end); pti++) {
     MIRTypeKind defaultKind = pti == PTY_constStr ? kTypeConstString : kTypeScalar;
     MIRType *type = new MIRType(defaultKind, (PrimType)pti);
     type->tyIdx = TyIdx(pti);
     typeTable.push_back(type);
     typeHashTable.insert(type);
   }
+  lastDefaultTyIdx.SetIdx(pti);
   if (!voidPtrType) {
     voidPtrType = GetOrCreatePointerType(GetVoid(), PTY_ptr);
   }
 }
 
 TypeTable::~TypeTable() {
-  for (uint32 pti = static_cast<uint32>(PTY_void); pti <= static_cast<uint32>(PTY_v4f32); pti++) {
+  for (uint32 pti = static_cast<uint32>(PTY_begin)+1; pti < static_cast<uint32>(PTY_end); pti++) {
     delete typeTable[pti];
     typeTable[pti] = nullptr;
   }
@@ -52,7 +54,7 @@ MIRType* TypeTable::CreateMIRTypeNode(MIRType *ptype) {
   ntype->tyIdx = TyIdx(typeTable.size());
   typeTable.push_back(ntype);
 
-  if (ptype->typeKind == kTypePointer) {
+  if (ptype->typeKind == kTypePointer && static_cast<MIRPtrType *>(ptype)->typeAttrs == TypeAttrs()) {
     MIRPtrType *pty = static_cast<MIRPtrType*>(ptype);
     if (pty->primType == PTY_ptr) {
       ptrTypeMap[pty->pointedTyIdx] = ntype->tyIdx;
@@ -67,7 +69,7 @@ MIRType* TypeTable::CreateMIRTypeNode(MIRType *ptype) {
 
 // is_create means force to create a new ty
 MIRType* TypeTable::GetOrCreateMIRTypeNode(MIRType *ptype) {
-  if (ptype->typeKind == kTypePointer) {
+  if (ptype->typeKind == kTypePointer && static_cast<MIRPtrType *>(ptype)->typeAttrs == TypeAttrs()) {
     MIRPtrType *type = static_cast<MIRPtrType *>(ptype);
     auto *pMap = (type->primType == PTY_ptr ? &ptrTypeMap : &refTypeMap);
     auto *otherPMap = (type->primType == PTY_ref ? &ptrTypeMap : &refTypeMap);
@@ -241,7 +243,11 @@ FPConstTable::FPConstTable() : floatConstTable(), doubleConstTable() {
   minusZeroDoubleConst = new MIRDoubleConst(-0.0, GlobalTables::GetTypeTable().typeTable.at(PTY_f64));
 }
 
-MIRFloatConst *FPConstTable::GetOrCreateFloatConst(float fval) {
+MIRFloatConst *FPConstTable::GetOrCreateFloatConst(float fval, uint32 fieldID) {
+  if (fieldID != 0) {
+    MIRFloatConst *fconst = new MIRFloatConst(fval, GlobalTables::GetTypeTable().GetTypeFromTyIdx((TyIdx)PTY_f32), fieldID);
+    return fconst;
+  }
   if (std::isnan(fval)) {
     return nanFloatConst;
   }
@@ -267,7 +273,11 @@ MIRFloatConst *FPConstTable::GetOrCreateFloatConst(float fval) {
   }
 }
 
-MIRDoubleConst *FPConstTable::GetOrCreateDoubleConst(double fval) {
+MIRDoubleConst *FPConstTable::GetOrCreateDoubleConst(double fval, uint32 fieldID) {
+  if (fieldID != 0) {
+    MIRDoubleConst *dconst = new MIRDoubleConst(fval, GlobalTables::GetTypeTable().GetTypeFromTyIdx((TyIdx)PTY_f64), fieldID);
+    return dconst;
+  }
   if (std::isnan(fval)) {
     return nanDoubleConst;
   }

@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #include <iostream>
@@ -53,13 +53,19 @@ static bool CompareBackedge(const pair<BB *, BB *> &a, const pair<BB *, BB *> &b
   }
 }
 
-bool MeDoLoopCanon::NeedConvert(BB *bb, BB *pred, MapleAllocator &localAlloc, MapleMap<Key, bool> &swapSuccs) {
+bool MeDoLoopCanon::NeedConvert(MeFunction *func, BB *bb, BB *pred, MapleAllocator &localAlloc, MapleMap<Key, bool> &swapSuccs) {
   ASSERT(bb && pred, "bb and pred should not be null");
   bb->isInLoop = true;
   pred->isInLoop = true;
   /* do not convert do-while loop */
   if ((bb->kind != kBBCondGoto) || (pred == bb) || bb->isTry || bb->IsCatch()) {
     return false;
+  }
+  if (bb->bbLabel != 0) {
+    MapleUnorderedSet<LabelIdx> *addrTakenLabels = &func->mirFunc->labelTab->addrTakenLabels;
+    if (addrTakenLabels->find(bb->bbLabel) != addrTakenLabels->end()) {
+      return false;  // target of igoto cannot be cloned
+    }
   }
 
   ASSERT(bb->succ.size() == 2, "");
@@ -232,7 +238,7 @@ AnalysisResult *MeDoLoopCanon::Run(MeFunction *func, MeFuncResultMgr *m) {
       ASSERT(func->commonEntryBB && pred, "");
       /* bb is reachable from entry && bb dominator pred */
       if (dom->Dominate(func->commonEntryBB, bb) && dom->Dominate(bb, pred) && !pred->wontExit &&
-          (NeedConvert(bb, pred, localAlloc, swapSuccs))) {
+          (NeedConvert(func, bb, pred, localAlloc, swapSuccs))) {
         if (DEBUGFUNC(func)) {
           LogInfo::MapleLogger() << "find backedge " << bb->id.idx << " <-- " << pred->id.idx << endl;
         }

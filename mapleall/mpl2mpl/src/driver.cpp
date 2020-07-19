@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 /* This driver only run ipa phases */
@@ -33,13 +33,10 @@
 #include "muid.h"
 #include "bin_mpl_import.h"
 
-#if 1
 #define ADD_IF_NOT_SKIPPED(vec, str)        \
   if (Options::skipPhase.compare(str) != 0) \
     vec.push_back(std::string(str));
-#endif
 
-#if 1
 int main(int argc, char **argv) {
   MemPoolCtrler mpc;
   // new me global mempool
@@ -145,5 +142,3 @@ int main(int argc, char **argv) {
   mpc.DeleteMemPool(modulemp);
   return 0;
 }
-
-#endif

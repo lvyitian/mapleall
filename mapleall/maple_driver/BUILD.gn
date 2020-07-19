@@ -1,16 +1,16 @@
 #
-# Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+# Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
 #
-# OpenArkCompiler is licensed under the Mulan PSL v1.
-# You can use this software according to the terms and conditions of the Mulan PSL v1.
-# You may obtain a copy of Mulan PSL v1 at:
+# Licensed under the Mulan Permissive Software License v2.
+# You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+# You may obtain a copy of MulanPSL - 2.0 at:
 #
-#     http://license.coscl.org.cn/MulanPSL
+#     https://opensource.org/licenses/MulanPSL-2.0
 #
 # THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
 # EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
 # FIT FOR A PARTICULAR PURPOSE.
-# See the Mulan PSL v1 for more details.
+# See the MulanPSL - 2.0 for more details.
 #
 
 configs = [ "${MAPLEALL_ROOT}:mapleallcompilecfg" ]
@@ -46,8 +46,7 @@ include_directories = [
   "${MAPLEALL_ROOT}/maple_be/include/ad",
   "${MAPLE_RE_ROOT}/include",
   "${MAPLEALL_ROOT}/mempool/include",
-  "${MAPLEALL_ROOT}/huawei_secure_c/include",
-  "${MAPLEALL_ROOT}/../third-party/md5/include",
+  "${MAPLE_ROOT}/huawei_secure_c/include",
 ]
 
 executable("maple") {
@@ -78,7 +77,7 @@ executable("maple") {
     "${MAPLEALL_ROOT}/mempool:libmempool",
     "${MAPLEALL_ROOT}/maple_be:libmplbe",
     "${MAPLEALL_ROOT}/maple_util:libmplutil",
-    "${MAPLEALL_ROOT}/huawei_secure_c:libHWSecureC",
+    "${MAPLE_ROOT}/huawei_secure_c:libHWSecureC",
   ]
   libs = []
   libs += [
@@ -101,7 +100,7 @@ static_library("liboption_parser_extra") {
     "${MAPLEALL_ROOT}/maple_driver/include",
     "${MAPLEALL_ROOT}/maple_ir/include",
     "${MAPLEALL_ROOT}/mempool/include",
-    "${MAPLEALL_ROOT}/huawei_secure_c/include",
+    "${MAPLE_ROOT}/huawei_secure_c/include",
   ]
 }
 
@@ -115,7 +114,7 @@ static_library("liboption_parser") {
     "${MAPLEALL_ROOT}/maple_driver/include",
     "${MAPLEALL_ROOT}/maple_ir/include",
     "${MAPLEALL_ROOT}/mempool/include",
-    "${MAPLEALL_ROOT}/huawei_secure_c/include",
+    "${MAPLE_ROOT}/huawei_secure_c/include",
   ]
 
   output_dir = "${root_out_dir}/lib/${HOST_ARCH}"

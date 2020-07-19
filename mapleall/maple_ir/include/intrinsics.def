@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 // DEF_MIR_INTRINSIC(STR, NAME, INTRN_CLASS, RETURN_TYPE, ARG0, ARG1, ARG2, ARG3, ARG4, ARG5)
@@ -165,6 +165,8 @@ DEF_MIR_INTRINSIC(MCCPostNativeCall,\
                   MCC_PostNativeCall, INTRNNOSIDEEFFECT, kArgTyVoid, kArgTyPtr)
 DEF_MIR_INTRINSIC(MCCCannotFindNativeMethod,\
                   MCC_CannotFindNativeMethod, INTRNNOSIDEEFFECT, kArgTyPtr, kArgTyPtr)
+//DEF_MIR_INTRINSIC(MCCJavaArrayFill,\
+//                  MCC_JavaArrayFill, INTRNNOSIDEEFFECT, kArgTyVoid, kArgTyPtr, kArgTyPtr, kArgTyI32)
 DEF_MIR_INTRINSIC(MCCStringAppendStringInt,\
                   MCC_StringAppend_StringInt, INTRNNOSIDEEFFECT, kArgTyPtr, kArgTyPtr, kArgTyI32)
 DEF_MIR_INTRINSIC(MCCDecodeReference,\
@@ -177,12 +179,17 @@ DEF_MIR_INTRINSIC(MCCGetCurrentClassLoader,\
                   MCC_GetCurrentClassLoader, INTRNNOSIDEEFFECT, kArgTyPtr, kArgTyPtr)
 DEF_MIR_INTRINSIC(MCCStringAppendStringJcharString,\
                   MCC_StringAppend_StringJcharString, INTRNNOSIDEEFFECT, kArgTyPtr, kArgTyPtr, kArgTyU16,  kArgTyPtr)
+//DEF_MIR_INTRINSIC(MCCJavaPolymorphicCall,\
+//                  MCC_JavaPolymorphicCall, INTRNNOSIDEEFFECT, kArgTyU64, kArgTyPtr, kArgTyPtr, kArgTyI32, kArgTyPtr)
+//DEF_MIR_INTRINSIC(MCCGetClass,\
+//                  MCC_GetClass, INTRNNOSIDEEFFECT, kArgTyPtr, kArgTyPtr, kArgTyPtr)
 DEF_MIR_INTRINSIC(MCCNewPermanentObject,\
                   MCC_NewPermanentObject, INTRNNOSIDEEFFECT, kArgTyA64, kArgTyA64)
 DEF_MIR_INTRINSIC(MCCNewPermanentArray,\
                   MCC_NewPermanentArray, INTRNNOSIDEEFFECT, kArgTyA64, kArgTyU64, kArgTyU64, kArgTyPtr, kArgTyA64, kArgTyI64)
 
 #include "intrinsic_misc.def"
+#include "intrinsic_c.def"
 
 DEF_MIR_INTRINSIC(LAST,\
                   nullptr, kIntrnUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)

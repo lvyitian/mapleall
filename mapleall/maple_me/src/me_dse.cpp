@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #include "me_dse.h"
@@ -103,6 +103,7 @@ void MeDSE::DseProcess() {
         }
         case OP_brtrue:
         case OP_brfalse:
+        case OP_igoto:
         case OP_switch: {
           // control flow in an infinite loop cannot be changed
           if (bb->wontExit) {
@@ -149,12 +150,14 @@ void MeDSE::DseProcess() {
           const std::string &tname = GlobalTables::GetStrTable().GetStringFromStrIdx(pointedclassty->nameStrIdx);
           TyidxFieldAttrPair fldpair = ty->GetPointedTyidxFldAttrPairWithFieldId(iass->fieldID);
           MIRType *pointedty = GlobalTables::GetTypeTable().GetTypeFromTyIdx(fldpair.first);
-          bool typevolatile = false;
+          bool typevolatile = ty->PointeeVolatile();
           bool hasfinalattr = false;
-          if (iass->fieldID == 0) {
-            typevolatile = pointedty->HasVolatileField();
-          } else {
-            typevolatile = fldpair.second.GetAttr(FLDATTR_volatile);
+          if (!typevolatile) {
+            if (iass->fieldID == 0) {
+              typevolatile = pointedty->HasVolatileField();
+            } else {
+              typevolatile = fldpair.second.GetAttr(FLDATTR_volatile);
+            }
           }
           if (mirModule->IsCModule() && !typevolatile) {
             // go thru maydefs to check volatile symbols
@@ -249,24 +252,38 @@ void MeDSE::UpdateStmt(BB *bb) {
 
       if (kOpcodeInfo.IsCallAssigned(op)) {
         MapleVector<MustDefNode> *mustdefs = SSAGenericGetMustDefNode(stmt, &func->meSSATab->stmtsSSAPart);
-        MapleVector<MustDefNode>::iterator it = mustdefs->begin();
-        for (; it != mustdefs->end(); it++) {
-          if ((*it).IsRequired()) {
+        // cannot delete return value assignment if any return value is larger then register size
+        bool hasLargeReturn = false;
+        for (MustDefNode mustdef : *mustdefs) {
+          OriginalSt *ost = mustdef.result->ost;
+          if (!ost->IsSymbol()) {
             continue;
           }
+          if (ost->symOrPreg.mirSt->GetType()->GetSize() > 16) {
+            hasLargeReturn = true;
+            break;
+          }
+        }
+        if (!hasLargeReturn) {
+          MapleVector<MustDefNode>::iterator it = mustdefs->begin();
+          for (; it != mustdefs->end(); it++) {
+            if ((*it).IsRequired()) {
+              continue;
+            }
 
-          if (DEBUGFUNC(func)) {
-            LogInfo::MapleLogger() << "**** DSE1 deleting return value assignment in: ";
-            stmt->Dump(mirModule);
+            if (DEBUGFUNC(func)) {
+              LogInfo::MapleLogger() << "**** DSE1 deleting return value assignment in: ";
+              stmt->Dump(mirModule);
+            }
+            CallReturnVector *returnValues = stmt->GetCallReturnVector();
+            CHECK_FATAL(returnValues, "null ptr check  ");
+            returnValues->clear();
+            mustdefs->clear();
+            if (mirModule->srcLang == kSrcLangJs) {
+              break;  // no need update opcode for JS
+            }
+            break;
           }
-          CallReturnVector *returnValues = stmt->GetCallReturnVector();
-          CHECK_FATAL(returnValues, "null ptr check  ");
-          returnValues->clear();
-          mustdefs->clear();
-          if (mirModule->srcLang == kSrcLangJs) {
-            break;  // no need update opcode for JS
-          }
-          break;
         }
       }
     }

@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #ifndef MAPLE_IR_INCLUDE_MIR_MODULE_H
@@ -46,7 +46,6 @@ class MIRSymbolTable;
 class MIRTypeNameTable;
 class MIRFloatConst;
 class MIRDoubleConst;
-class DebugInfo;
 class BinaryMplt;
 using MIRInfoPair = std::pair<GStrIdx, uint32>;
 using MIRInfoVector = MapleVector<MIRInfoPair>;
@@ -115,8 +114,6 @@ class MIRModule : public mir_module_t {
 
   TyIdx throwableTyidx;  // a special type that is the base of java exception type. only used for java
 
-  DebugInfo *dbgInfo;
-  bool withDbgInfo;
   bool withProfileInfo;
 
   ////   for cg in mplt
@@ -154,7 +151,6 @@ class MIRModule : public mir_module_t {
   void RemoveClass(TyIdx t);
 
  public:
-  MIRModule &operator=(const MIRModule &p) = default;
   MIRModule(MIRModule &p) = default;
   MIRModule(const char *fn = "");
   ~MIRModule() {

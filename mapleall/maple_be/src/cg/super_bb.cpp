@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #include "super_bb.h"
@@ -684,7 +684,7 @@ void SuperBBBuilder::DeleteEmptyBB() {
 BB *SuperBBBuilder::CreateNewFallThroughBB(BB *prevBB) {
   BB *newBB = cgFunc->CreateNewBBFromBB(prevBB);
   uint32 succSize = prevBB->succs.size();
-  CG_ASSERT((succSize < 2), "Error: SplitProcess prevBB succ > 1");
+  CG_ASSERT((succSize <= 2), "Error: SplitProcess prevBB succ > 2");
 
   // preds/succs chain of prevBB -> newBB -> nextBB
   if (succSize == 1) {
@@ -695,6 +695,18 @@ BB *SuperBBBuilder::CreateNewFallThroughBB(BB *prevBB) {
     nextBB->preds.erase(itPrev);
     nextBB->preds.push_back(newBB);
     prevBB->succs.erase(prevBB->succs.begin());
+    prevBB->SetKind(BB::kBBFallthru);
+  } else if (succSize == 2) {
+    for (auto nextBB : prevBB->succs) {
+      newBB->succs.push_back(nextBB);
+      auto itPrev = find(nextBB->preds.begin(), nextBB->preds.end(), prevBB);
+      CG_ASSERT(itPrev!=nextBB->preds.end(),"Error: SplitProcess nextBB pred not found");
+      nextBB->preds.erase(itPrev);
+      nextBB->preds.push_back(newBB);
+      nextBB->SetKind(prevBB->GetKind());
+      prevBB->SetKind(BB::kBBFallthru);
+    }
+    prevBB->succs.clear();
   }
 
   newBB->preds.push_back(prevBB);

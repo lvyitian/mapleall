@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #include <cinttypes>
@@ -26,12 +26,16 @@ namespace maplebe {
 
 using namespace maple;
 
+#define CLANG (mirModule.IsCModule())
+
 BECommon::BECommon(MIRModule &mod)
   : mirModule(mod),
     type_size_table(GlobalTables::GetTypeTable().typeTable.size(), 0, mirModule.memPoolAllocator.Adapter()),
     type_align_table(GlobalTables::GetTypeTable().typeTable.size(), 0, mirModule.memPoolAllocator.Adapter()),
+    type_has_flexible_array(GlobalTables::GetTypeTable().typeTable.size(), false, mirModule.memPoolAllocator.Adapter()),
     struct_fieldcount_table(GlobalTables::GetTypeTable().typeTable.size(), 0, mirModule.memPoolAllocator.Adapter()),
     jclass_layout_table(mirModule.memPoolAllocator.Adapter()),
+    funcReturnType(mirModule.memPoolAllocator.Adapter()),
     optim_level(0) {
   for (uint32 i = 1; i < GlobalTables::GetTypeTable().typeTable.size(); ++i) {
     MIRType *ty = GlobalTables::GetTypeTable().typeTable[i];
@@ -134,8 +138,6 @@ void BECommon::ComputeTypeSizesAligns(MIRType *ty, uint8 align) {
         ComputeTypeSizesAligns(elemty);
         elemsize = type_size_table[elemty->tyIdx.GetIdx()];
       }
-      CHECK_FATAL(elemsize != 0, "");
-      CHECK_FATAL(type_align_table[elemty->tyIdx.GetIdx()] != 0, "");
       elemsize = std::max(elemsize, static_cast<uint32>(type_align_table[elemty->tyIdx.GetIdx()]));
       // compute total number of elements from the multipel dimensions
       uint64 numelems = 1;
@@ -170,8 +172,17 @@ void BECommon::ComputeTypeSizesAligns(MIRType *ty, uint8 align) {
       FieldVector fields = structty->fields;
       uint64 allocedSize = 0;
       uint64 allocedSizeInBits = 0;
-      struct_fieldcount_table[structty->tyIdx.GetIdx()] = fields.size();
-      for (uint32 j = 0; j < fields.size(); j++) {
+      uint32 numFieldElems = fields.size();
+      struct_fieldcount_table[structty->tyIdx.GetIdx()] = numFieldElems;
+
+      if (numFieldElems == 0) {
+        // This is for C.  For C++, size is 1.
+        type_size_table[i.GetIdx()] = 0;
+        type_align_table[i.GetIdx()] = 8;
+        break;
+      }
+
+      for (uint32 j = 0; j < numFieldElems; j++) {
         TyIdx fieldtyidx = fields[j].second.first;
         MIRType *fieldty = GlobalTables::GetTypeTable().GetTypeFromTyIdx(fieldtyidx);
         uint32 fieldsize = type_size_table[fieldtyidx.GetIdx()];
@@ -199,6 +210,9 @@ void BECommon::ComputeTypeSizesAligns(MIRType *ty, uint8 align) {
             // allocate the bitfield
             allocedSizeInBits += fldsize;
             allocedSize = std::max(allocedSize, RoundUp(allocedSizeInBits, fieldalign * 8) / 8);
+            if (fldsize == 0) {
+              allocedSizeInBits = allocedSize *8;
+            }
           } else {
             // pad alloced_size according to the field alignment
             allocedSize = RoundUp(allocedSize, fieldalign);
@@ -209,8 +223,21 @@ void BECommon::ComputeTypeSizesAligns(MIRType *ty, uint8 align) {
           allocedSize = std::max(allocedSize, static_cast<uint64>(fieldsize));
         }
         type_align_table[i.GetIdx()] = std::max(type_align_table[i.GetIdx()], fieldalign);
+        /*
+         * Last struct element of a struct which has more than one member
+         * wich is a flexible array.
+         */
+        if ((j != 0) && ((j+1) == numFieldElems) &&
+            (fieldty->typeKind == kTypeArray) &&
+            (type_size_table[fieldtyidx.GetIdx()] == 0)) {
+          type_has_flexible_array[i.GetIdx()] = true;
+        }
       }
-      type_size_table[i.GetIdx()] = RoundUp(allocedSize, align);
+      if (align) {
+        type_size_table[i.GetIdx()] = RoundUp(allocedSize, align);
+      } else {
+        type_size_table[i.GetIdx()] = RoundUp(allocedSize, type_align_table[i.GetIdx()]);
+      }
       break;
     }
 
@@ -447,11 +474,9 @@ void BECommon::GenObjSize(MIRClassType *classtype, FILE *outfile) {
   uint64_t objsize = type_size_table.at(classtype->GetTypeIndex().GetIdx());
 
   if (objsize == 0) {
-    // fprintf(stderr, "Warning: objsize is zero!  class: %s\n", classname.c_str());
     return;
   }
 
-#if 1  // this provides a quick way to find super class
   TyIdx parenttyidx = classtype->parentTyIdx;
   MIRType *parentty = GlobalTables::GetTypeTable().GetTypeFromTyIdx(parenttyidx);
   const char *parentname = nullptr;
@@ -462,9 +487,6 @@ void BECommon::GenObjSize(MIRClassType *classtype, FILE *outfile) {
     parentname = "THIS_IS_ROOT";
   }
   fprintf(outfile, "__MRT_CLASS(%s, %" PRId64 ", %s)\n", classname.c_str(), objsize, parentname);
-#else
-  fprintf(outfile, "__MRT_CLASS(%s, %" PRId64 ")\n", classname.c_str(), objsize);
-#endif
 }
 
 // compute the offset of the field given by fieldID within the structure type
@@ -604,6 +626,15 @@ MIRType *BECommon::BeGetOrCreateFunctionType(TyIdx tyIdx, std::vector<TyIdx> &ve
   }
   AddAndComputeSizeAlign(newty);
   return newty;
+}
+
+void BECommon::FinalizeTypeTable() {
+  if (CLANG && (GlobalTables::GetTypeTable().typeTable.size() > type_size_table.size())) {
+    for (uint32 i = type_size_table.size(); i < GlobalTables::GetTypeTable().typeTable.size(); ++i) {
+      MIRType *ty = GlobalTables::GetTypeTable().typeTable[i];;
+      AddAndComputeSizeAlign(ty);
+    }
+  }
 }
 
 BaseNode *BECommon::GetAddressOfNode(BaseNode *node) {

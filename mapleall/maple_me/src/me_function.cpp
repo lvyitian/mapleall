@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #include <iostream>
@@ -44,11 +44,9 @@ void MeFunction::PartialInit(bool issecondpass) {
   regNum = 0;
   hasEH = false;
   secondPass = issecondpass;
-  // if (!issecondpass) { // TODO: this is a hack to avoid cond jump to be eliminated
   maple::ConstantFold cf(&mirModule);
   cf.Simplify(mirModule.CurFunction()->body);
-  // }
-  if ((mirModule.srcLang == kSrcLangJava) && (mirModule.CurFunction()->info.size() > 0)) {
+  if (JAVALANG && (mirModule.CurFunction()->info.size() > 0)) {
     std::string string("INFO_registers");
     GStrIdx strIdx = GlobalTables::GetStrTable().GetOrCreateStrIdxFromName(string);
     regNum = mirModule.CurFunction()->GetInfo(strIdx);
@@ -182,8 +180,8 @@ void MeFunction::CreateBasicBlocks() {
   StmtNode *nextstmt = mirModule.CurFunction()->body->GetFirst();
   ASSERT(nextstmt != nullptr, "function has no statement");
   BB *curbb = first_bb_;
-  StmtNode *javatryStmt = nullptr;  // record current javatry stmt for map<bb, javatry_stmt>
-  BB *lastjavatryBb = nullptr;      // bb containing javatry_stmt
+  std::stack<StmtNode *> tryStmtStack;
+  std::stack<BB *> tryBBStack;      // bb containing javatry_stmt
   do {
     StmtNode *stmt = nextstmt;
     nextstmt = stmt->GetNext();
@@ -196,10 +194,21 @@ void MeFunction::CreateBasicBlocks() {
         curbb->kind = kBBGoto;
         if (nextstmt) {
           BB *newbb = NewBasicBlock();
-          if (javatryStmt != nullptr) {
-            SetTryBlockInfo(javatryStmt, lastjavatryBb, nextstmt, curbb, newbb);
+          if (JAVALANG && !tryStmtStack.empty()) {
+            SetTryBlockInfo(tryStmtStack.top(), tryBBStack.top(), nextstmt, curbb, newbb);
           }
           curbb = newbb;
+        }
+        break;
+      }
+      case OP_igoto: {
+        if (curbb->IsEmpty()) {
+          curbb->SetFirst(stmt);
+        }
+        curbb->SetLast(stmt);
+        curbb->kind = kBBIgoto;
+        if (nextstmt) {
+          curbb = NewBasicBlock();
         }
         break;
       }
@@ -210,12 +219,12 @@ void MeFunction::CreateBasicBlocks() {
 
         if (JAVALANG && static_cast<DassignNode *>(stmt)->GetRhs()->MayThrowException()) {
           stmt->op = OP_maydassign;
-          if (javatryStmt != nullptr) {
+          if (!tryStmtStack.empty()) {
             // breaks new BB only inside try blocks
             curbb->SetLast(stmt);
             curbb->kind = kBBFallthru;
             BB *newbb = NewBasicBlock();
-            SetTryBlockInfo(javatryStmt, lastjavatryBb, nextstmt, curbb, newbb);
+            SetTryBlockInfo(tryStmtStack.top(), tryBBStack.top(), nextstmt, curbb, newbb);
             curbb = newbb;
             break;
           }
@@ -233,8 +242,8 @@ void MeFunction::CreateBasicBlocks() {
         curbb->SetLast(stmt);
         curbb->kind = kBBCondGoto;
         BB *newbb = NewBasicBlock();
-        if (javatryStmt != nullptr) {
-          SetTryBlockInfo(javatryStmt, lastjavatryBb, nextstmt, curbb, newbb);
+        if (JAVALANG && !tryStmtStack.empty()) {
+          SetTryBlockInfo(tryStmtStack.top(), tryBBStack.top(), nextstmt, curbb, newbb);
         }
         curbb = newbb;
         break;
@@ -247,7 +256,7 @@ void MeFunction::CreateBasicBlocks() {
         break;
       }
       case OP_throw:
-        if (javatryStmt != nullptr) {
+        if (JAVALANG && !tryStmtStack.empty()) {
           // handle as goto
           if (curbb->IsEmpty()) {
             curbb->SetFirst(stmt);
@@ -256,7 +265,7 @@ void MeFunction::CreateBasicBlocks() {
           curbb->kind = kBBGoto;
           if (nextstmt) {
             BB *newbb = NewBasicBlock();
-            SetTryBlockInfo(javatryStmt, lastjavatryBb, nextstmt, curbb, newbb);
+            SetTryBlockInfo(tryStmtStack.top(), tryBBStack.top(), nextstmt, curbb, newbb);
             curbb = newbb;
           }
           break;
@@ -273,8 +282,8 @@ void MeFunction::CreateBasicBlocks() {
         curbb->isExit = true;
         if (nextstmt) {
           BB *newbb = NewBasicBlock();
-          if (javatryStmt != nullptr) {
-            SetTryBlockInfo(javatryStmt, lastjavatryBb, nextstmt, curbb, newbb);
+          if (JAVALANG && !tryStmtStack.empty()) {
+            SetTryBlockInfo(tryStmtStack.top(), tryBBStack.top(), nextstmt, curbb, newbb);
           }
           curbb = newbb;
           if (stmt->op == OP_gosub) {
@@ -283,48 +292,36 @@ void MeFunction::CreateBasicBlocks() {
         }
         break;
       }
-      case OP_endtry:
-        if (mirModule.srcLang == kSrcLangJava) {
-          if (javatryStmt == nullptr) {
-            break;
+      case OP_endtry: {
+        ASSERT(!tryStmtStack.empty(), "");
+        if (!curbb->IsEmpty()) {
+          StmtNode *laststmt = stmt->GetPrev();
+          CHECK_FATAL((curbb->stmtNodeList.last == nullptr || curbb->stmtNodeList.last == laststmt), "something wrong building BB");
+          curbb->SetLast(laststmt);
+          if (curbb->kind == kBBUnknown) {
+            curbb->kind = kBBFallthru;
           }
-          /* skip OP_entry and generate it in emit phase */
-          ASSERT(javatryStmt != nullptr, "");
-          ASSERT(lastjavatryBb != nullptr, "");
-          javatryStmt = nullptr;  // reset intryblocks
-          if (!curbb->IsEmpty()) {
-            StmtNode *laststmt = stmt->GetPrev();
-            CHECK_FATAL((curbb->stmtNodeList.last == nullptr || curbb->stmtNodeList.last == laststmt), "something wrong building BB");
-            curbb->SetLast(laststmt);
-            if (curbb->kind == kBBUnknown) {
-              curbb->kind = kBBFallthru;
-            }
-            curbb->isTryEnd = true;
-            endTryBB2TryBB[curbb] = lastjavatryBb;
-            curbb = NewBasicBlock();
-          } else if (curbb->bbLabel != 0) {
+          curbb->isTryEnd = true;
+          endTryBB2TryBB[curbb] = tryBBStack.top();
+          curbb = NewBasicBlock();
+        } else {
+          // endtry has already been processed in SetTryBlockInfo() for java
+          if (!JAVALANG || curbb->bbLabel != 0) {
             // create the empty BB
             curbb->kind = kBBFallthru;
             curbb->isTryEnd = true;
-            endTryBB2TryBB[curbb] = lastjavatryBb;
+            endTryBB2TryBB[curbb] = tryBBStack.top();
             curbb = NewBasicBlock();
-          } else {
-          }  // endtry has already been processed in SetTryBlockInfo()
-          lastjavatryBb = nullptr;
-        } else {
-          /* TODO:: js has OP_endtry and donothing now */
-          if (curbb->IsEmpty()) {
-            curbb->SetFirst(stmt);
-          }
-          if ((nextstmt == nullptr) && (curbb->stmtNodeList.last == nullptr)) {
-            curbb->SetLast(stmt);
           }
         }
+        tryStmtStack.pop();
+        tryBBStack.pop();
         break;
+      }
       case OP_cpptry:
       case OP_try:
       case OP_javatry: {
-        // start a new bb or with a label
+        // start a new bb
         if (!curbb->IsEmpty()) {
           // prepare a new bb
           StmtNode *laststmt = stmt->GetPrev();
@@ -334,26 +331,28 @@ void MeFunction::CreateBasicBlocks() {
             curbb->kind = kBBFallthru;
           }
           BB *newbb = NewBasicBlock();
-          // assume no nested javatry, so no need to call SetTryBlockInfo()
+          // java has no nested javatry, so no need to call SetTryBlockInfo()
           curbb = newbb;
         }
         curbb->SetFirst(stmt);
-        javatryStmt = stmt;
-        lastjavatryBb = curbb;
+        tryStmtStack.push(stmt);
+        tryBBStack.push(curbb);
         curbb->isTry = true;
-        bbTryNodeMap[curbb] = javatryStmt;
-        // prepare a new bb that contains only a OP_javatry. It is needed for
-        // dse to work correctly: assignments in a try block should not affect
-        // assignments before the try block as exceptions might occur.
-        curbb->SetLast(stmt);
-        curbb->kind = kBBFallthru;
-        BB *newbb = NewBasicBlock();
-        SetTryBlockInfo(javatryStmt, lastjavatryBb, nextstmt, curbb, newbb);
-        curbb = newbb;
+        if (JAVALANG) {
+          bbTryNodeMap[curbb] = tryStmtStack.top();
+          // prepare a new bb that contains only a OP_javatry. It is needed
+          // to work correctly: assignments in a try block should not affect
+          // assignments before the try block as exceptions might occur.
+          curbb->SetLast(stmt);
+          curbb->kind = kBBFallthru;
+          BB *newbb = NewBasicBlock();
+          SetTryBlockInfo(tryStmtStack.top(), tryBBStack.top(), nextstmt, curbb, newbb);
+          curbb = newbb;
+        }
         break;
       }
       case OP_cppcatch: {
-        // start a new bb or with a label
+        // start a new bb
         if (!curbb->IsEmpty()) {
           // prepare a new bb
           StmtNode *laststmt = stmt->GetPrev();
@@ -368,11 +367,12 @@ void MeFunction::CreateBasicBlocks() {
         }
         curbb->SetFirst(stmt);
         curbb->isCatch = true;
+        curbb->isEntry = true;
         break;
       }
       case OP_catch:
       case OP_javacatch: {
-        // start a new bb or with a label
+        // start a new bb
         if (!curbb->IsEmpty()) {
           // prepare a new bb
           StmtNode *laststmt = stmt->GetPrev();
@@ -383,8 +383,8 @@ void MeFunction::CreateBasicBlocks() {
             curbb->kind = kBBFallthru;
           }
           BB *newbb = NewBasicBlock();
-          if (javatryStmt != nullptr) {
-            SetTryBlockInfo(javatryStmt, lastjavatryBb, nextstmt, curbb, newbb);
+          if (!tryStmtStack.empty()) {
+            SetTryBlockInfo(tryStmtStack.top(), tryBBStack.top(), nextstmt, curbb, newbb);
           }
           curbb = newbb;
         }
@@ -418,7 +418,7 @@ void MeFunction::CreateBasicBlocks() {
           StmtNode *curLast = curbb->stmtNodeList.last;
           CHECK_FATAL((curLast == nullptr || curLast == laststmt), "something wrong building BB");
           if ((curLast == nullptr) && (laststmt->op != OP_label)) {
-            if (mirModule.srcLang == kSrcLangJava && laststmt->op == OP_endtry) {
+            if (mirModule.IsJavaModule() && laststmt->op == OP_endtry) {
               if (curbb->stmtNodeList.first == nullptr) {
                 curbb->SetLast(nullptr);
               } else {
@@ -435,19 +435,10 @@ void MeFunction::CreateBasicBlocks() {
             curbb->kind = kBBFallthru;
           }
           BB *newbb = NewBasicBlock();
-          if (javatryStmt != nullptr) {
+          if (!tryStmtStack.empty()) {
             newbb->isTry = true;
-            bbTryNodeMap[newbb] = javatryStmt;
-            if (curbb->kind == kBBFallthru && false) {
-              // let's create a new javatry and update the predessor of fallthru to this bb.
-              StmtNode *newjavatrystmt = javatryStmt->CloneTree(&mirModule);
-              javatryStmt = newjavatrystmt;
-              curbb->isTryEnd = true;
-              endTryBB2TryBB[curbb] = lastjavatryBb;
-              lastjavatryBb = newbb;
-              mirModule.CurFunction()->body->InsertAfter(stmt, newjavatrystmt);
-              newbb->SetFirst(newjavatrystmt);
-              bbTryNodeMap[newbb] = newjavatrystmt;
+            if (JAVALANG) {
+              bbTryNodeMap[newbb] = tryStmtStack.top();
             }
           }
           curbb = newbb;
@@ -478,8 +469,8 @@ void MeFunction::CreateBasicBlocks() {
         curbb->SetLast(stmt);
         curbb->kind = kBBSwitch;
         BB *newbb = NewBasicBlock();
-        if (javatryStmt != nullptr) {
-          SetTryBlockInfo(javatryStmt, lastjavatryBb, nextstmt, curbb, newbb);
+        if (JAVALANG && !tryStmtStack.empty()) {
+          SetTryBlockInfo(tryStmtStack.top(), tryBBStack.top(), nextstmt, curbb, newbb);
         }
         curbb = newbb;
         break;
@@ -495,10 +486,8 @@ void MeFunction::CreateBasicBlocks() {
       }
     }
   } while (nextstmt);
-  ASSERT(javatryStmt == nullptr,
-          "");  // tryandendtry should be one-one mapping
-  ASSERT(lastjavatryBb == nullptr,
-          "");  // tryandendtry should be one-one mapping
+  ASSERT(tryStmtStack.empty(), "CreateBasicBlcoks: missing endtry");
+  ASSERT(tryBBStack.empty(), "CreateBasicBlocks: javatry and endtry should be one-to-one mapping");
   last_bb_ = curbb;
   if (last_bb_->IsEmpty() || last_bb_->kind == kBBUnknown) {
     // insert a return statement
@@ -530,6 +519,7 @@ void MeFunction::Prepare(unsigned long rangeNum) {
 
   theCFG = memPool->New<MirCFG>(this);
   theCFG->BuildMirCFG();
+  theCFG->ReplaceWithAssertnonnull();
   theCFG->VerifyLabels();
   theCFG->UnreachCodeAnalysis();
   theCFG->WontExitAnalysis();

@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #include <vector>
@@ -19,7 +19,7 @@
 #include "aarch64_cg_func.h"
 #include "aarch64_cg.h"
 #include "aarch64_rt_support.h"
-#include "opcode_info.h"
+#include "opcode_info.h"  // mapleir/include/opcode_info.h
 #include "cg_assert.h"
 #include "mir_builder.h"
 #include "mpl_atomic.h"
@@ -58,7 +58,6 @@ void AArch64CGFunc::SelectMPLClinitCheck(IntrinsiccallNode *intrnnode) {
     CHECK_FATAL(addrof, "static_cast failed");
     MIRSymbol *symbol = func->GetLocalOrGlobalSymbol(addrof->stIdx);
     CG_ASSERT(addrof->fieldID == 0, "For debug SelectCGArrayElemAdd.");
-    // CG_ASSERT(symbol->GetName().find (CLASSINFO_PREFIX_STR) == 0, "must be a symbol with __classinfo__");
     ConstvalNode *constvalnode = static_cast<ConstvalNode *>(arg1);
     CHECK_FATAL(constvalnode, "static_cast failed");
     MIRConst *mirconst = constvalnode->constVal;
@@ -66,18 +65,6 @@ void AArch64CGFunc::SelectMPLClinitCheck(IntrinsiccallNode *intrnnode) {
     CHECK_FATAL(mirintconst, "dynamic_cast failed");
     stopnd = CreateStImmOperand(symbol, mirintconst->value, 0);
   }
-
-  //{
-  //  AArch64ListOperand* src_opnds = memPool->New<AArch64ListOperand>(funcscope_allocator_);
-  //  //src_opnds->push_opnd(stopnd);
-  //  MIRSymbol *st = globaltable.CreateSymbol(kScopeGlobal);
-  //  std::string funcname("__mpl_pre_clinit");
-  //  st->SetNameStridx(globaltable.GetOrCreateGstridxFromName(funcname));
-  //  st->storageClass = kScText;
-  //  st->sKind = kStFunc;
-  //  Operand *targetopnd = GetOrCreateFuncNameOpnd(func->GetLocalOrGlobalSymbol(st->GetStIdx(), false));
-  //  curbb->AppendInsn(cg->BuildInstruction<AArch64Insn>(MOP_xbl, targetopnd, src_opnds));
-  //}
 
   regno_t vreg2no = New_V_Reg(kRegTyInt, GetPrimTypeSize(PTY_a64));
   RegOperand *vreg2 = CreateVirtualRegisterOperand(vreg2no);
@@ -95,18 +82,134 @@ void AArch64CGFunc::SelectMPLClinitCheck(IntrinsiccallNode *intrnnode) {
     Insn *newinsn = cg->BuildInstruction<AArch64Insn>(MOP_clinit, vreg2, stopnd);
     curbb->AppendInsn(newinsn);
   }
+}
 
-  //{
-  //  AArch64ListOperand* src_opnds = memPool->New<AArch64ListOperand>(funcscope_allocator_);
-  //  //src_opnds->push_opnd(stopnd);
-  //  MIRSymbol *st = globaltable.CreateSymbol(kScopeGlobal);
-  //  std::string funcname("__mpl_post_clinit");
-  //  st->SetNameStridx(globaltable.GetOrCreateGstridxFromName(funcname));
-  //  st->storageClass = kScText;
-  //  st->sKind = kStFunc;
-  //  Operand *targetopnd = GetOrCreateFuncNameOpnd(func->GetLocalOrGlobalSymbol(st->GetStIdx(), false));
-  //  curbb->AppendInsn(cg->BuildInstruction<AArch64Insn>(MOP_xbl, targetopnd, src_opnds));
-  //}
+
+void AArch64CGFunc::SelectCVaStart(IntrinsiccallNode *intrnnode) {
+  CG_ASSERT(intrnnode->NumOpnds() == 2, "must be 2 operands");
+  // 2 operands, but only 1 needed. Don't need to emit code for second operand
+
+  RegOperand *opnd0;                // first argument of intrinisc
+  BaseNode *argexpr = intrnnode->Opnd(0);
+  AddrofNode *ad = static_cast<AddrofNode *>(argexpr);
+  MIRSymbol *sym = mirModule.CurFunction()->GetLocalOrGlobalSymbol(ad->stIdx, false);
+  int32 offs = 0;
+  AArch64ImmOperand *offsOpnd;
+  AArch64ImmOperand *offsOpnd2;
+  RegOperand *tmpreg;            // offs value to be assigned (rhs)
+  MemOperand *strOpnd;           // mem operand in va_list struct (lhs)
+  regno_t vregno = New_V_Reg(kRegTyInt, GetPrimTypeSize(PTY_a64));
+  RegOperand *vreg = CreateVirtualRegisterOperand(vregno);
+  Operand *stkOpnd;
+  Insn *insn;
+  AArch64MemLayout *memlayout = static_cast<AArch64MemLayout *>(this->memlayout);
+  int32 grAreaSize = memlayout->GetSizeOfGRSavearea();
+  bool isSym = sym && (argexpr->op == OP_addrof);
+
+  // if first argument of va_start is not a symbol, load its value
+  if (!isSym) {
+    Operand *opnd = HandleExpr(intrnnode, argexpr);
+    opnd0 = LoadIntoRegister(opnd, PTY_a64);
+  }
+
+  // FPLR only pushed in regalloc() after intrin function
+  if (UseFP() || UsedStpSubPairForCallFrameAllocation()) {
+    stkOpnd = GetOrCreatePhysicalRegisterOperand(RFP, 64, kRegTyInt);
+  } else {
+    stkOpnd = GetOrCreatePhysicalRegisterOperand(RSP, 64, kRegTyInt);
+  }
+
+  // Find beginning of unnamed arg on stack.
+  // Ex. void foo(int i1, dbl d1, struct S r, struct S s, ...)
+  //     where struct S has size 32, r and s are on stack but they are named.
+  ParmLocator parmlocator(becommon);
+  PLocInfo ploc;
+  uint32 stksize = 0;
+  for (uint32 i = 0; i < func->formalDefVec.size(); i++) {
+    MIRType *ty = GlobalTables::GetTypeTable().GetTypeFromTyIdx(func->formalDefVec[i].formalTyIdx);
+    uint32_t ptyIdx = ty->tyIdx.GetIdx();
+    parmlocator.LocateNextParm(ty, ploc);
+    if (ploc.reg0 == kRinvalid) {  // on stack
+      stksize = ploc.memoffset + ploc.memsize;
+    }
+  }
+  stksize = RoundUp(stksize, SIZEOFPTR);
+
+  // __stack
+  offsOpnd = CreateImmOperand(0, 64, true, true); // isvary reset StackFrameSize
+  if (stksize) {
+    offsOpnd2 = CreateImmOperand(stksize, 64, false);
+    SelectAdd(vreg, offsOpnd, offsOpnd2, PTY_a64);
+    SelectAdd(vreg, stkOpnd, vreg, PTY_a64);
+  } else {
+    SelectAdd(vreg, stkOpnd, offsOpnd, PTY_a64);
+  }
+  if (!isSym) {
+    AArch64OfstOperand *offopnd = GetOrCreateOfstOpnd(0, 64);
+    strOpnd = GetOrCreateMemOpnd(AArch64MemOperand::kAddrModeBOi, 64, opnd0, nullptr,
+              offopnd, static_cast<MIRSymbol *>(nullptr));
+  } else {
+    strOpnd = GetOrCreateMemOpnd(sym, 0, 64);
+  }
+  insn = cg->BuildInstruction<AArch64Insn>(MOP_xstr, vreg, strOpnd);
+  curbb->AppendInsn(insn);
+
+  // __gr_top   ; it's the same as __stack before the 1st va_arg
+  if (!isSym) {
+    AArch64OfstOperand *offopnd = GetOrCreateOfstOpnd(8, 64);
+    strOpnd = GetOrCreateMemOpnd(AArch64MemOperand::kAddrModeBOi, 64, opnd0, nullptr,
+              offopnd, static_cast<MIRSymbol *>(nullptr));
+  } else {
+    strOpnd = GetOrCreateMemOpnd(sym, 8, 64);
+  }
+  SelectAdd(vreg, stkOpnd, offsOpnd, PTY_a64);
+  insn = cg->BuildInstruction<AArch64Insn>(MOP_xstr, vreg, strOpnd);
+  curbb->AppendInsn(insn);
+
+  // __vr_top
+  offsOpnd2 = CreateImmOperand(RoundUp(grAreaSize, SIZEOFPTR*2), 64, false);
+  SelectSub(vreg, offsOpnd, offsOpnd2, PTY_a64);  // if 1st opnd is register => sub
+  SelectAdd(vreg, stkOpnd, vreg, PTY_a64);
+  if (!isSym) {
+    AArch64OfstOperand *offopnd = GetOrCreateOfstOpnd(16, 64);
+    strOpnd = GetOrCreateMemOpnd(AArch64MemOperand::kAddrModeBOi, 64, opnd0, nullptr,
+              offopnd, static_cast<MIRSymbol *>(nullptr));
+  } else {
+    strOpnd = GetOrCreateMemOpnd(sym, 16, 64);
+  }
+  insn = cg->BuildInstruction<AArch64Insn>(MOP_xstr, vreg, strOpnd);
+  curbb->AppendInsn(insn);
+
+  // __gr_offs
+  offs = 0 - grAreaSize;
+  offsOpnd = CreateImmOperand(offs, 32, false);
+  tmpreg = CreateRegisterOperandOfType(PTY_i32);
+  SelectCopyImm(tmpreg, offsOpnd, PTY_i32);
+  if (!isSym) {
+    AArch64OfstOperand *offopnd = GetOrCreateOfstOpnd(3*SIZEOFPTR, 32);
+    strOpnd = GetOrCreateMemOpnd(AArch64MemOperand::kAddrModeBOi, 32, opnd0, nullptr,
+              offopnd, static_cast<MIRSymbol *>(nullptr));
+  } else {
+    strOpnd = GetOrCreateMemOpnd(sym, (3 * SIZEOFPTR), 32);
+  }
+  insn = cg->BuildInstruction<AArch64Insn>(MOP_wstr, tmpreg, strOpnd);
+  curbb->AppendInsn(insn);
+
+  // __vr_offs
+  offs = 0 - memlayout->GetSizeOfVRSavearea();
+  offsOpnd = CreateImmOperand(offs, 32, false);
+  tmpreg = CreateRegisterOperandOfType(PTY_i32);
+  SelectCopyImm(tmpreg, offsOpnd, PTY_i32);
+  if (!isSym) {
+    AArch64OfstOperand *offopnd = GetOrCreateOfstOpnd(3*SIZEOFPTR+sizeof(int32), 32);
+    strOpnd = GetOrCreateMemOpnd(AArch64MemOperand::kAddrModeBOi, 32, opnd0, nullptr,
+              offopnd, static_cast<MIRSymbol *>(nullptr));
+  } else {
+    strOpnd = GetOrCreateMemOpnd(sym, (3*SIZEOFPTR+sizeof(int32)), 32);
+  }
+  insn = cg->BuildInstruction<AArch64Insn>(MOP_wstr, tmpreg, strOpnd);
+  curbb->AppendInsn(insn);
+  return;
 }
 
 void AArch64CGFunc::SelectIntrinCall(IntrinsiccallNode *intrinsiccallnode) {
@@ -131,6 +234,10 @@ void AArch64CGFunc::SelectIntrinCall(IntrinsiccallNode *intrinsiccallnode) {
   }
   if (intrinsic == INTRN_MPL_CLEANUP_LOCALREFVARS || intrinsic == INTRN_MPL_CLEANUP_LOCALREFVARS_SKIP ||
       intrinsic == INTRN_MPL_STACK) {
+    return;
+  }
+  if (intrinsic == INTRN_C_va_start) {
+    SelectCVaStart(intrinsiccallnode);
     return;
   }
   std::vector<Operand *> operands;  // Temporary.  Deallocated on return.
@@ -199,7 +306,7 @@ void AArch64CGFunc::SelectIntrinCall(IntrinsiccallNode *intrinsiccallnode) {
   }
 }
 
-/* NOTE: consider moving the following things into aarch64cg.cpp  They may
+/* NOTE: consider moving the following things into aarch64_cg.cpp  They may
  * serve not only inrinsics, but other MapleIR instructions as well.
 
  * Do it as if we are adding a label in straight-line assembly code.

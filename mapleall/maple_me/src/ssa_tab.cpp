@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #include <iostream>
@@ -126,21 +126,22 @@ void SSATab::CreateSSAStmt(StmtNode *stmt, const BB *curbb, bool ignoreCallassig
         }
         for (uint32 j = 0; j < returnValues->size(); j++) {
           CallReturnPair retpair = (*returnValues)[j];
+          OriginalSt *ost = nullptr;
           if (!retpair.second.IsReg()) {
             StIdx stIdx = (*returnValues)[j].first;
             MIRSymbolTable *symtab = mirModule.CurFunction()->symTab;
             MIRSymbol *st = symtab->GetSymbolFromStIdx(stIdx.Idx());
-            OriginalSt *ost = FindOrCreateSymbolOriginalSt(st, mirModule.CurFunction()->puIdx,
+            ost = FindOrCreateSymbolOriginalSt(st, mirModule.CurFunction()->puIdx,
                                                                              retpair.second.GetFieldid());
-            versionStTable.CreateZeroVersionSt(ost);
-            VersionSt *vst = versionStTable.GetZeroVersionSt(ost);
-            if (!ignoreCallassignedDefs) {
-              AddDefBB4Ost(ost->index, curbb->id);
-            }
-            thessapart->InsertMustDefNode(vst, stmt);
           } else {
-            CHECK_FATAL(false, "NYI");
+            ost = originalStTable.FindOrCreatePregOriginalSt(retpair.second.pregIdx, mirModule.CurFunction()->puIdx);
           }
+          versionStTable.CreateZeroVersionSt(ost);
+          VersionSt *vst = versionStTable.GetZeroVersionSt(ost);
+          if (!ignoreCallassignedDefs) {
+            AddDefBB4Ost(ost->index, curbb->id);
+          }
+          thessapart->InsertMustDefNode(vst, stmt);
         }
         return;
       } else if (kOpcodeInfo.IsCall(stmt->op)) {

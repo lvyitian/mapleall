@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #include "cg.h"
@@ -118,12 +118,6 @@ void ArkMemLayout::LayoutStackFrame(int32 &structCopySize, int32 &maxParmStackSi
     seg__args_stkpassed.size += be.type_size_table[ptyIdx];
     // We need it as dictated by the AArch64 ABI $5.4.2 C12
     seg__args_stkpassed.size = RoundUp(seg__args_stkpassed.size, SIZEOFPTR);
-    if (cgfunc->cg->cgopt_.WithDwarf() && !nostackpara) {
-      // for O0
-      // LogInfo::MapleLogger() << "Add DIE for formal parameters" << endl
-      //     << "    and remember them" << endl;
-      cgfunc->AddDIESymbolLocation(sym, symloc);
-    }
   }
 
   // We do need this as LDR/STR with immediate
@@ -174,13 +168,6 @@ void ArkMemLayout::LayoutStackFrame(int32 &structCopySize, int32 &maxParmStackSi
         seg_locals.size += be.type_size_table[tyIdx.GetIdx()];
       }
     }
-
-    if (cgfunc->cg->cgopt_.WithDwarf()) {
-      // for O0
-      // LogInfo::MapleLogger() << "Add DIE for formal parameters" << endl
-      //     << "    and remember them" << endl;
-      cgfunc->AddDIESymbolLocation(sym, symloc);
-    }
   }
 
   // handle ret_ref sym now
@@ -198,13 +185,6 @@ void ArkMemLayout::LayoutStackFrame(int32 &structCopySize, int32 &maxParmStackSi
     seg_reflocals.size = RoundUp(seg_reflocals.size, be.type_align_table[tyIdx.GetIdx()]);
     symloc->offset = seg_reflocals.size;
     seg_reflocals.size += be.type_size_table[tyIdx.GetIdx()];
-
-    if (cgfunc->cg->cgopt_.WithDwarf()) {
-      // for O0
-      // LogInfo::MapleLogger() << "Add DIE for formal parameters" << endl
-      //     << "    and remember them" << endl;
-      cgfunc->AddDIESymbolLocation(sym, symloc);
-    }
   }
 
   ASSERT(0, "ArkMemLayout LayoutStackFrame need to handle new parameter");

@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2019-2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2019-2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 #include "mpl_options.h"
 #include <string>
@@ -1668,35 +1668,9 @@ ErrorCode MplOptions::AppendDefaultOptions(const std::string &exeName, MplOption
 }
 
 ErrorCode MplOptions::UpdatePhaseOption(const std::string &args, const std::string &exeName) {
-#if 0
-  auto iter = std::find(runningExes.begin(), runningExes.end(), exeName);
-  if (iter == runningExes.end()) {
-    LogInfo::MapleLogger(kLlErr) << "Cannot find phase " << exeName << '\n';
-    return kErrorExit;
-  }
-#endif
   std::vector<std::string> tmpArgs;
   // Split options with ' '
   StringUtils::Split(args, tmpArgs, ' ');
-#if 0
-  auto &exeOption = exeOptions[exeName];
-  ErrorCode ret = optionParser->HandleInputArgs(tmpArgs, exeName, exeOption);
-  if (ret != kErrorNoError) {
-    return ret;
-  }
-  // Fill extraOption
-  // For compiler bins called by system()
-  auto &extraOption = extras[exeName];
-  for (size_t i = 0; i < exeOption.size(); ++i) {
-    if (exeOption[i].Args() != "") {
-      MplOption mplOption("-" + exeOption[i].OptionKey(), exeOption[i].Args(), "=", false, "");
-      extraOption.push_back(mplOption);
-    } else {
-      MplOption mplOption("-" + exeOption[i].OptionKey(), "", " ", false, "");
-      extraOption.push_back(mplOption);
-    }
-  }
-#else
   // convert tmpArgs to vector of C strings
   std::vector<char *> cString;
   cString.reserve(tmpArgs.size() + 2);
@@ -1720,7 +1694,6 @@ ErrorCode MplOptions::UpdatePhaseOption(const std::string &args, const std::stri
       ret = kErrorInvalidParameter;
     }
   }
-#endif
   return ret;
 }
 

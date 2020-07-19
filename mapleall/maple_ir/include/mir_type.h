@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #ifndef MAPLE_IR_INCLUDE_MIR_TYPE_H
@@ -24,6 +24,9 @@
 #include "mempool.h"
 #include "mempool_allocator.h"
 #endif  // MIR_FEATURE_FULL
+
+#define POINTER_SIZE 8
+#define POINTER_P2SIZE 3
 
 namespace maple {
 
@@ -462,6 +465,10 @@ class MIRType {
     return GetPrimTypeSize(primType);
   }
 
+  virtual uint8 GetAlign() const {
+    return GetPrimTypeSize(primType);
+  }
+
   virtual bool HasVolatileField() {
     return false;
   }
@@ -496,6 +503,7 @@ class MIRType {
 class MIRPtrType : public MIRType {
  public:
   TyIdx pointedTyIdx;
+  TypeAttrs typeAttrs;
   bool Equalto(const MIRType &p) const override;
   MIRPtrType(TyIdx pointedTyidx) : MIRType(kTypePointer, PTY_ptr), pointedTyIdx(pointedTyidx) {}
 
@@ -514,6 +522,8 @@ class MIRPtrType : public MIRType {
   }
 
   void Dump(int indent, bool dontUseName = false) const override;
+  size_t GetSize() const override { return POINTER_SIZE; }
+  uint8 GetAlign() const override { return POINTER_SIZE; }
   TyidxFieldAttrPair GetPointedTyidxFldAttrPairWithFieldId(FieldID fldid) const;
   TyIdx GetPointedTyidxWithFieldId(FieldID fldid) const;
   bool PointsToConstString() const override;
@@ -523,11 +533,11 @@ class MIRPtrType : public MIRType {
   std::string GetCompactMplTypeName() const override;
 
   size_t GetHashIndex() const override {
-    CHECK_FATAL(0,"MIRPtrType:GetHashIndex() is not used.");
-    //constexpr uint8 kIdxShift = 4;
-    //return ((pointedTyIdx.GetIdx() << kIdxShift) + (typeKind << kShiftNumOfTypeKind));
-    return 0;
+    constexpr uint8 kIdxShift = 4;
+    return (pointedTyIdx.GetIdx() << kIdxShift) + (typeKind << kShiftNumOfTypeKind) + (typeAttrs.attrFlag << 3) + typeAttrs.attrAlign;
   }
+
+  bool PointeeVolatile() const { return typeAttrs.GetAttr(ATTR_volatile); }
 };
 
 class MIRArrayType : public MIRType {
@@ -589,6 +599,9 @@ class MIRArrayType : public MIRType {
       numelems *= sizeArray[i];
     }
     return elemsize * numelems;
+  }
+  uint8 GetAlign() const override {
+    return GetElemType()->GetAlign();
   }
 
   size_t GetHashIndex() const override {
@@ -793,6 +806,7 @@ class MIRStructType : public MIRType {
   bool IsLocal() const;
 
   size_t GetSize() const override;
+  uint8 GetAlign() const override;
 
   size_t GetHashIndex() const override {
     return ((nameStrIdx.GetIdx() << kShiftNumOfNameStrIdx) + (typeKind << kShiftNumOfTypeKind));
@@ -1096,8 +1110,18 @@ class MIRBitfieldType : public MIRType {
   }
 
   size_t GetSize() const override {
+    if (fieldSize == 0) {
+      return 0;
+    } else if (fieldSize <= 8) {
+      return 1;
+    } else {
+      return (fieldSize + 7) / 8;
+    }
+  }
+
+  uint8 GetAlign() const override {
     return 0;
-  }  // size not be in bytes
+  }  // align not be in bytes
 
   size_t GetHashIndex() const override {
     return ((static_cast<uint32>(primType) << fieldSize) + (typeKind << kShiftNumOfTypeKind));
@@ -1141,6 +1165,9 @@ class MIRFuncType : public MIRType {
   size_t GetSize() const override {
     return 0;
   }  // size unknown
+  uint8 GetAlign() const override {
+    return 0;
+  }  // align unknown
 
   size_t GetHashIndex() const override {
     constexpr uint8 kIdxShift = 6;
@@ -1167,6 +1194,9 @@ class MIRTypeByName : public MIRType {
   size_t GetSize() const override {
     return 0;
   }  // size unknown
+  uint8 GetAlign() const override {
+    return 0;
+  }  // align unknown
 
   size_t GetHashIndex() const override {
     constexpr uint8 kIdxShift = 2;
@@ -1192,6 +1222,9 @@ class MIRTypeParam : public MIRType {
   size_t GetSize() const override {
     return 0;
   }  // size unknown
+  uint8 GetAlign() const override {
+    return 0;
+  }  // align unknown
 
   bool HasTypeParam() const override {
     return true;
@@ -1226,6 +1259,9 @@ class MIRInstantVectorType : public MIRType {
   size_t GetSize() const override {
     return 0;
   }  // size unknown
+  uint8 GetAlign() const override {
+    return 0;
+  }  // align unknown
 
   size_t GetHashIndex() const override {
     uint32 hidx = typeKind << kShiftNumOfTypeKind;
@@ -1255,6 +1291,9 @@ class MIRGenericInstantType : public MIRInstantVectorType {
   size_t GetSize() const override {
     return 0;
   }  // size unknown
+  uint8 GetAlign() const override {
+    return 0;
+  }  // align unknown
 
   size_t GetHashIndex() const override {
     constexpr uint8 kIdxShift = 2;

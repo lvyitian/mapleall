@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #include "emit.h"
@@ -82,8 +82,8 @@ void AArch64Insn::EmitClinit(CG &cg, Emitter &emitter) {
   /* adrp    x3, __muid_data_undef_tab$$GetBoolean+144
    * ldr     x3, [x3, #:lo12:__muid_data_undef_tab$$GetBoolean+144]
    * or,
-   * adrp    x3, label
-   * ldr     x3, [x3, #:lo12:label]
+   * adrp    x3, _PTR__cinf_Ljava
+   * ldr     x3, [x3, #:lo12:_PTR__cinf_Ljava]
    *
    * ldr x3, [x3,#112]
    * ldr wzr, [x3]
@@ -95,11 +95,6 @@ void AArch64Insn::EmitClinit(CG &cg, Emitter &emitter) {
   OpndProp *prop0 = md->operand_[0];
   StImmOperand *stopnd = static_cast<StImmOperand *>(opnd1);
   CHECK_FATAL(stopnd != nullptr, "stopnd is null in AArch64Insn::EmitClinit");
-  // emit nop for breakpoint
-  if (cg.cgopt_.WithDwarf()) {
-    emitter.Emit("\t").Emit("nop").Emit("\n");
-  }
-
   if (stopnd->GetSymbol()->IsMuidDataUndefTab()) {
     // emit adrp
     emitter.Emit("\t").Emit("adrp").Emit("\t");
@@ -121,14 +116,14 @@ void AArch64Insn::EmitClinit(CG &cg, Emitter &emitter) {
     emitter.Emit("]");
     emitter.Emit("\n");
   } else {
-    // adrp    x3, label
+    // adrp    x3, _PTR__cinf_Ljava_2Futil_2Fconcurrent_2Fatomic_2FAtomicInteger_3B
     emitter.Emit("\tadrp\t");
     opnd0->Emit(emitter, prop0);
     emitter.Emit(",");
     emitter.Emit(NameMangler::kPtrPrefixStr + stopnd->GetName());
     emitter.Emit("\n");
 
-    // ldr     x3, [x3, #:lo12:label]
+    // ldr     x3, [x3, #:lo12:_PTR__cinf_Ljava_2Futil_2Fconcurrent_2Fatomic_2FAtomicInteger_3B]
     emitter.Emit("\tldr\t");
     opnd0->Emit(emitter, prop0);
     emitter.Emit(", [");
@@ -155,8 +150,8 @@ void AArch64Insn::EmitClinit(CG &cg, Emitter &emitter) {
 }
 
 void AArch64Insn::EmitAdrpLdr(CG &cg, Emitter &emitter) {
-  // adrp    xd, label
-  // ldr     xd, [xd, #:lo12:label]
+  // adrp    xd, _PTR__cinf_Ljava_2Futil_2Fconcurrent_2Fatomic_2FAtomicInteger_3B
+  // ldr     xd, [xd, #:lo12:_PTR__cinf_Ljava_2Futil_2Fconcurrent_2Fatomic_2FAtomicInteger_3B]
   const AArch64MD *md = &AArch64CG::kMd[MOP_adrp_ldr];
 
   Operand *opnd0 = opnds[0];
@@ -164,12 +159,8 @@ void AArch64Insn::EmitAdrpLdr(CG &cg, Emitter &emitter) {
   OpndProp *prop0 = md->operand_[0];
   StImmOperand *stopnd = static_cast<StImmOperand *>(opnd1);
   CHECK_FATAL(stopnd != nullptr, "stopnd is null in AArch64Insn::EmitAdrpLdr");
-  // emit nop for breakpoint
-  if (cg.cgopt_.WithDwarf()) {
-    emitter.Emit("\t").Emit("nop").Emit("\n");
-  }
 
-  // adrp    xd, label
+  // adrp    xd, _PTR__cinf_Ljava_2Futil_2Fconcurrent_2Fatomic_2FAtomicInteger_3B
   emitter.Emit("\t").Emit("adrp").Emit("\t");
   opnd0->Emit(emitter, prop0);
   emitter.Emit(",");
@@ -177,7 +168,7 @@ void AArch64Insn::EmitAdrpLdr(CG &cg, Emitter &emitter) {
   // emitter.emit("+").emit(stopnd->GetOffset());
   emitter.Emit("\n");
 
-  // ldr     xd, [xd, #:lo12:label]
+  // ldr     xd, [xd, #:lo12:_PTR__cinf_Ljava_2Futil_2Fconcurrent_2Fatomic_2FAtomicInteger_3B]
   emitter.Emit("\tldr\t");
   static_cast<AArch64RegOperand *>(opnd0)->isreffield_ = true;
   opnd0->Emit(emitter, prop0);
@@ -209,6 +200,39 @@ void AArch64Insn::EmitClinitTail(CG &cg, Emitter &emitter) {
 
   // emit "ldr  xzr, [x17]"
   emitter.Emit("\t").Emit("ldr\txzr, [x17]\n");
+}
+
+void AArch64Insn::EmitAdrpLabel(CG &cg, Emitter &emitter) {
+  // adrp    xd, label
+  // add     xd, xd, #lo12:label
+  const AArch64MD *md = &AArch64CG::kMd[MOP_adrp_label];
+
+  Operand *opnd0 = opnds[0];
+  Operand *opnd1 = opnds[1];
+  OpndProp *prop0 = md->operand_[0];
+
+  LabelIdx lidx = static_cast<ImmOperand *>(opnd1)->GetValue();
+
+  MIRSymbol *funcSt = GlobalTables::GetGsymTable().GetSymbolFromStIdx(CG::curCgFunc->mirModule.CurFunction()->stIdx.Idx());
+
+  //GStrIdx strIdx = CG::curCgFunc->mirModule.CurFunction()->labelTab->labelTable[lidx];
+  //string labelStr = GlobalTables::GetStrTable().GetStringFromStrIdx(strIdx);
+
+  // adrp    xd, label
+  emitter.Emit("\t").Emit("adrp").Emit("\t");
+  opnd0->Emit(emitter, prop0);
+  emitter.Emit(", ");
+  const char *idx = std::to_string(CG::curPuIdx).c_str();
+  emitter.Emit(".label.").Emit(idx).Emit("__").Emit(lidx).Emit("\n");
+
+  // add     xd, xd, #lo12:label
+  emitter.Emit("\tadd\t");
+  opnd0->Emit(emitter, prop0);
+  emitter.Emit(", ");
+  opnd0->Emit(emitter, prop0);
+  emitter.Emit(", ");
+  emitter.Emit(":lo12:").Emit(".label.").Emit(idx).Emit("__").Emit(lidx).Emit("\n");
+  emitter.Emit("\n");
 }
 
 void AArch64Insn::EmitCheckThrowPendingException(CG &cg, Emitter &emitter) {
@@ -251,6 +275,9 @@ void AArch64Insn::Emit(CG &cg, Emitter &emitter) {
     return;
   } else if (mop == MOP_clinit_tail) {
     EmitClinitTail(cg, emitter);
+    return;
+  } else if (mop == MOP_adrp_label) {
+    EmitAdrpLabel(cg, emitter);
     return;
   }
 
@@ -306,19 +333,6 @@ void AArch64Insn::Emit(CG &cg, Emitter &emitter) {
     if (isreffield && (i == 0)) {
       static_cast<AArch64RegOperand *>(opnds[seq[0]])->isreffield_ = false;
     }
-    // Temporary comment the label:.label.debug.callee
-    /*
-       if (opnds[seq[i]]->op_kind_ == maplebe::Operand::Opd_String) {
-       std::string str_comment(((CommentOperand*)(opnds[seq[i]]))->GetComment());
-       std::string mark_string = MARK_MUID_FUNC_UNDEF_STR;
-       if (str_comment.find(mark_string)== 0) {
-        uint32_t length = strlen(mark_string.c_str());
-        std::string func_name = "debug.callee." + str_comment.substr(length,str_comment.length()-length);
-        uint64_t index = ++cg.label_debug_index;
-        emitter.emit("\n.label.").emit(func_name).emit(index).emit(":");
-       }
-       }
-     */
     if (i != (commaNum - 1)) {
       emitter.Emit(", ");
     }
@@ -342,7 +356,8 @@ void AArch64CGFunc::EmitBBHeaderLabel(const char *name, LabelIdx labidx) {
     cg->label_order_cnt_++;
   }
 
-  emitter.Emit(".label.").Emit(name).Emit("__").Emit(labidx).Emit(":\t\t// label order ").Emit(lablel->GetLabelOrder()).Emit("\n");
+  const char *idx = std::to_string(CG::curPuIdx).c_str();
+  emitter.Emit(".label.").Emit(idx).Emit("__").Emit(labidx).Emit(":\t\t// label order ").Emit(lablel->GetLabelOrder()).Emit("\n");
 }
 
 std::string AArch64CGFunc::GetReflectString(uint32_t offset) {
@@ -504,26 +519,6 @@ void AArch64CGFunc::Emit() {
   emitter.Emit("\t.align 2\n");
   MIRSymbol *funcSt = GlobalTables::GetGsymTable().GetSymbolFromStIdx(func->stIdx.Idx());
 
-  // manually Replace function to optimized assembly language
-  // To Do
-  if (CGOptions::replaceasm && funcSt->GetName().compare(
-          string(NameMangler::kJavaLangStringStr) + string(NameMangler::kHashCodeStr)) == 0) {
-    std::string optFile = "maple/mrt/codetricks/asm/hashCode.s";
-    struct stat buffer;
-    if (stat(optFile.c_str(), &buffer) == 0) {
-      std::ifstream hashCodeFd(optFile);
-      if (!hashCodeFd.is_open()) {
-        ERR(kLncErr, " %s open failed!", optFile.c_str());
-        LogInfo::MapleLogger() << "wrong" << endl;
-      } else {
-        std::string contend;
-        while (getline(hashCodeFd, contend)) {
-          emitter.Emit(contend + "\n");
-        }
-      }
-    }
-    return;
-  }
 
   if (funcSt->GetFunction()->GetAttr(FUNCATTR_weak)) {
     emitter.Emit("\t.weak\t").Emit(funcSt->GetName()).Emit("\n");
@@ -561,7 +556,9 @@ void AArch64CGFunc::Emit() {
   }
   // emit instructions
   FOR_ALL_BB(bb, this) {
-    emitter.Emit("#    ").Emit("freq:").Emit(bb->frequency).Emit("\n");
+    if (bb->frequency) {
+      emitter.Emit("#    ").Emit("freq:").Emit(bb->frequency).Emit("\n");
+    }
     // emit bb headers
     if (bb->labidx != 0) {
       EmitBBHeaderLabel(funcSt->GetName().c_str(), bb->labidx);
@@ -586,14 +583,15 @@ void AArch64CGFunc::Emit() {
       LSDAHeader *lsdaheader = ehfunc->lsda_header;
       const char *funcname = funcSt->GetName().c_str();
       //  .word .label.lsda_label-func_start_label
+      const char *idx = std::to_string(CG::curPuIdx).c_str();
       emitter.Emit("\t.word ")
         .Emit(".label.")
-        .Emit(funcname)
+        .Emit(idx)
         .Emit("__")
         .Emit(lsdaheader->lsda_label->labelIdx)
         .Emit("-")
         .Emit(".label.")
-        .Emit(funcname)
+        .Emit(idx)
         .Emit("__")
         .Emit(start_label->labelIdx)
         .Emit("\n");
@@ -667,7 +665,8 @@ void AArch64CGFunc::Emit() {
       MIRLblConst *lblconst = static_cast<MIRLblConst *>(arrayConst->constVec[i]);
       CHECK_FATAL(lblconst, "null ptr check");
       emitter.Emit("\t.quad\t");
-      emitter.Emit(".label.").Emit(funcSt->GetName().c_str()).Emit("__").Emit(lblconst->value);
+      const char *idx = std::to_string(CG::curPuIdx).c_str();
+      emitter.Emit(".label.").Emit(idx).Emit("__").Emit(lblconst->value);
       emitter.Emit(" - ").Emit(st->GetName().c_str());
       emitter.Emit("\n");
     }
@@ -686,15 +685,16 @@ void AArch64CGFunc::EmitFastLSDA()  // the fast_exception_handling lsda
   //  .word 0xFFFFFFFF
   //  .word .label.LTest_3B_7C_3Cinit_3E_7C_28_29V3-func_start_label
   emitter->Emit("\t.word 0xFFFFFFFF\n");
+  const char *idx = std::to_string(CG::curPuIdx).c_str();
   if (NeedCleanup()) {
     emitter->Emit("\t.word ")
       .Emit(".label.")
-      .Emit(funcname)
+      .Emit(idx)
       .Emit("__")
       .Emit(cleanup_label->labelIdx)
       .Emit("-")
       .Emit(".label.")
-      .Emit(funcname)
+      .Emit(idx)
       .Emit("__")
       .Emit(start_label->labelIdx)
       .Emit("\n");
@@ -702,12 +702,12 @@ void AArch64CGFunc::EmitFastLSDA()  // the fast_exception_handling lsda
     CG_ASSERT(!exitbbsvec.empty(), "exitbbsvec is empty in AArch64CGFunc::EmitFastLSDA");
     emitter->Emit("\t.word ")
       .Emit(".label.")
-      .Emit(funcname)
+      .Emit(idx)
       .Emit("__")
       .Emit(exitbbsvec[0]->labidx)
       .Emit("-")
       .Emit(".label.")
-      .Emit(funcname)
+      .Emit(idx)
       .Emit("__")
       .Emit(start_label->labelIdx)
       .Emit("\n");
@@ -772,14 +772,15 @@ void AArch64CGFunc::EmitFullLSDA()  // the normal gcc_except_table
         emitter->EmitLabelPair(funcname, cleaupCode);
       } else if (func->IsJava()) {
         CG_ASSERT(!exitbbsvec.empty(), "exitbbsvec is empty in AArch64CGFunc::EmitFullLSDA");
+        const char *idx = std::to_string(CG::curPuIdx).c_str();
         emitter->Emit("\t.uleb128 ")
           .Emit(".label.")
-          .Emit(funcname)
+          .Emit(idx)
           .Emit("__")
           .Emit(exitbbsvec[0]->labidx)
           .Emit(" - ")
           .Emit(".label.")
-          .Emit(funcname)
+          .Emit(idx)
           .Emit("__")
           .Emit(start_label->labelIdx)
           .Emit("\n");
@@ -819,14 +820,15 @@ void AArch64CGFunc::EmitFullLSDA()  // the normal gcc_except_table
       emitter->EmitLabelPair(funcname, cleaupCode);
     } else {
       CG_ASSERT(!exitbbsvec.empty(), "exitbbsvec is empty in AArch64CGFunc::EmitFullLSDA");
+      const char *idx = std::to_string(CG::curPuIdx).c_str();
       emitter->Emit("\t.uleb128 ")
         .Emit(".label.")
-        .Emit(funcname)
+        .Emit(idx)
         .Emit("__")
         .Emit(exitbbsvec[0]->labidx)
         .Emit(" - ")
         .Emit(".label.")
-        .Emit(funcname)
+        .Emit(idx)
         .Emit("__")
         .Emit(start_label->labelIdx)
         .Emit("\n");
@@ -862,18 +864,40 @@ void AArch64CGFunc::EmitFullLSDA()  // the normal gcc_except_table
     emitter->Emit("\t.byte ").Emit(lsdaaction->action_filter).Emit("\n");
   }
   emitter->Emit("\t.align 2\n");
-  for (int32 i = ehfunc->eh_ty_table.size() - 1; i >= 0; i--) {
-    MIRType *mirType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(ehfunc->eh_ty_table[i]);
-    if (mirType->typeKind == kTypeScalar && mirType->primType == PTY_void) {
-      continue;
+  if (mirModule.IsJavaModule()) {
+    for (int32 i = ehfunc->eh_ty_table.size() - 1; i >= 0; i--) {
+      MIRType *mirType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(ehfunc->eh_ty_table[i]);
+      if (mirType->typeKind == kTypeScalar && mirType->primType == PTY_void) {
+        continue;
+      }
+      CG_ASSERT(mirType->typeKind == kTypeClass, "NYI");
+      const std::string &tyname = GlobalTables::GetStrTable().GetStringFromStrIdx(mirType->nameStrIdx);
+      std::string dwrefstring("DW.ref.");
+      dwrefstring.append(CLASSINFO_PREFIX_STR);
+      dwrefstring.append(tyname);
+      dwrefstring.append(" - .");
+      emitter->Emit("\t.4byte ").Emit(dwrefstring.c_str()).Emit("\n");
     }
-    CG_ASSERT(mirType->typeKind == kTypeClass, "NYI");
-    const std::string &tyname = GlobalTables::GetStrTable().GetStringFromStrIdx(mirType->nameStrIdx);
-    std::string dwrefstring("DW.ref.");
-    dwrefstring.append(CLASSINFO_PREFIX_STR);
-    dwrefstring.append(tyname);
-    dwrefstring.append(" - .");
-    emitter->Emit("\t.4byte ").Emit(dwrefstring.c_str()).Emit("\n");
+  } else {
+    GStrIdx strIdx = GlobalTables::GetStrTable().GetStrIdxFromName("__TYPEINFO_TABLE__");
+    MIRSymbol *typeinfoTableSym = func->symTab->GetSymbolFromStrIdx(strIdx);
+    if (typeinfoTableSym != nullptr) {
+      MIRAggConst *arrayConst = static_cast<MIRAggConst *>(typeinfoTableSym->value.konst);
+      if (arrayConst != nullptr) {
+        for (MIRConst *typeinfoEntryConst : arrayConst->constVec) {
+          MIRAggConst *aggconst = static_cast<MIRAggConst *>(typeinfoEntryConst);
+          if (aggconst->constVec[0]->kind != kConstAddrof) {
+            continue;
+          }
+          MIRAddrofConst *addrofConst = static_cast<MIRAddrofConst *>(aggconst->constVec[0]);
+          MIRSymbol *typeinfoSymbol = GlobalTables::GetGsymTable().GetSymbolFromStIdx(addrofConst->GetSymbolIndex().Idx());
+          std::string dwrefstring("DW.ref.");
+          dwrefstring.append(typeinfoSymbol->GetName());
+          dwrefstring.append(" - .");
+          emitter->Emit("\t.4byte ").Emit(dwrefstring.c_str()).Emit("\n");
+        }
+      }
+    }
   }
   // end of lsda
   emitter->EmitStmtLabel(funcname, lsdaheader->ttype_offset.end_offset->labelIdx);
@@ -1016,8 +1040,8 @@ void AArch64CGFunc::EmitOperand(Operand *opnd, OpndProp *prop) {
       outf << stopnd->GetName();
     }
   } else if (LabelOperand *lblopnd = dynamic_cast<LabelOperand *>(opnd)) {
-    MIRSymbol *funcSt = GlobalTables::GetGsymTable().GetSymbolFromStIdx(func->stIdx.Idx());
-    outf << ".label." << funcSt->GetName() << "__" << lblopnd->labidx_;
+    const char *idx = std::to_string(CG::curPuIdx).c_str();
+    outf << ".label." << idx << "__" << lblopnd->labidx_;
   } else if (FuncNameOperand *fn = dynamic_cast<FuncNameOperand *>(opnd)) {
     outf << fn->GetName();
   } else if (ListOperand *listopnd = dynamic_cast<ListOperand *>(opnd)) {

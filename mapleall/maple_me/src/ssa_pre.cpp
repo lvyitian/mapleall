@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #include "dominance.h"
@@ -981,13 +981,23 @@ void SSAPre::Rename2() {
           vector<MeExpr *> varvecY;
           bool alldom = true;
           CollectVarForMeExpr(exprY, varvecY);
-          for (uint32 ii = 0; ii < varvecY.size(); ii++) {
-            MeExpr *resolvedY = ResolveAllInjuringDefs(varvecY[ii]);
-            if (resolvedY != varvecY[ii]) { // exprY used to create rename2_set
-              SubstituteOpnd(exprY, varvecY[ii], resolvedY);
+          if (exprY->meOp == kMeOpOp) {
+            OpMeExpr opmeexpr(*static_cast<OpMeExpr *>(exprY), -1);
+            for (uint32 ii = 0; ii < varvecY.size(); ii++) {
+              MeExpr *resolvedY = ResolveAllInjuringDefs(varvecY[ii]);
+              if (resolvedY != varvecY[ii]) {
+                SubstituteOpnd(&opmeexpr, varvecY[ii], resolvedY);
+              }
+              if (!DefVarDominateOcc(resolvedY, defx)) {
+                alldom = false;
+              }
             }
-            if (!DefVarDominateOcc(resolvedY, defx)) {
-              alldom = false;
+            exprY = irMap->HashMeExpr(&opmeexpr);
+          } else {
+            for (uint32 ii = 0; ii < varvecY.size(); ii++) {
+              if (!DefVarDominateOcc(varvecY[ii], defx)) {
+                alldom = false;
+              }
             }
           }
           if (alldom) {
@@ -1305,6 +1315,30 @@ bool SSAPre::DefVarDominateOcc(MeExpr *meexpr, MeOccur *meocc) {
         }
         return dominance->Dominate(defBB, occbb);
       }
+      case kDefByMustdef: {
+        MeStmt *mestmt = regmeexpr->def.defMustDef->base;
+        if (!mestmt) {
+          return true;  // it's a original variable dominate everything
+        }
+        BB *defBB = mestmt->bb;
+        if (occbb == defBB) {
+          return false;
+        } else {
+          return dominance->Dominate(defBB, occbb);
+        }
+      }
+      case kDefByChi: {
+        MeStmt *mestmt = regmeexpr->def.defChi->base;
+        if (!mestmt) {
+          return true;  // it's a original variable dominate everything
+        }
+        BB *defBB = mestmt->bb;
+        if (occbb == defBB) {
+          return false;
+        } else {
+          return dominance->Dominate(defBB, occbb);
+        }
+      }
       default:
         CHECK_FATAL(false, "to be done");
     }
@@ -1526,6 +1560,7 @@ void SSAPre::BuildWorkListStmt(MeStmt *stmt, uint32 seqStmt, bool isrebuilt, MeE
     case OP_incref:
     case OP_decrefreset:
     case OP_eval:
+    case OP_igoto:
     case OP_assertnonnull:
     case OP_free: {
       UnaryMeStmt *unarystmt = static_cast<UnaryMeStmt *>(stmt);

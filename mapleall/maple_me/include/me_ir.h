@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #ifndef MAPLE_ME_INCLUDE_ME_IR_H
@@ -36,6 +36,7 @@ enum MeExprOp : std::uint8_t {
   kMeOpIvar,
   kMeOpAddrof,
   kMeOpAddroffunc,
+  kMeOpAddroflabel,
   kMeOpGcmalloc,
   kMeOpReg,
   kMeOpConst,
@@ -160,13 +161,15 @@ class ScalarMeExpr : public MeExpr {
     MustDefMeNode *defMustDef;  // definition by callassigned
   } def;
   MeDefBy defBy : 3;
+  EscapeStatus escStatus : 3;  // used by escape analysis
 
  public:
   ScalarMeExpr(int32 exprid, OriginalSt *origSt, uint32 vidx, MeExprOp meop, Opcode o, PrimType ptyp)
     : MeExpr(exprid, meop, o, ptyp, 0),
       ost(origSt),
       vstIdx(vidx),
-      defBy(kDefByNo) {
+      defBy(kDefByNo),
+      escStatus(NoEsc) {
     def.defStmt = nullptr;
   }
 
@@ -189,7 +192,6 @@ class ScalarMeExpr : public MeExpr {
 class VarMeExpr : public ScalarMeExpr {
  public:
   TyIdx inferredTyIdx; /* Non zero if it has a known type (allocation type is seen). */
-  EscapeStatus escStatus : 3;  // used by escape analysis
   bool maybeNull : 1;             // false if definitely not null
   bool noDelegateRC : 1;          // true if this cannot be optimized by delegaterc
 
@@ -197,7 +199,6 @@ class VarMeExpr : public ScalarMeExpr {
   VarMeExpr(int32 exprid, OriginalSt *ost, uint32 vidx, PrimType ptyp)
     : ScalarMeExpr(exprid, ost, vidx, kMeOpVar, OP_dread, ptyp),
       inferredTyIdx(0),
-      escStatus(NoEsc),
       maybeNull(true),
       noDelegateRC(false) {}
   ~VarMeExpr() {}
@@ -470,6 +471,32 @@ class AddroffuncMeExpr : public MeExpr {
   }
 };
 
+class AddroflabelMeExpr : public MeExpr {
+ public:
+  LabelIdx labelIdx;
+
+  AddroflabelMeExpr(int32 exprid, LabelIdx lidx) : MeExpr(exprid, kMeOpAddroflabel, OP_addroflabel, PTY_ptr, 0), labelIdx(lidx) {}
+
+  ~AddroflabelMeExpr() {}
+
+  void Dump(IRMap *, int32 indent = 0);
+  bool IsIdentical(MeExpr *meexpr) {
+    if (meexpr->op != op) {
+      return false;
+    }
+    const AddroflabelMeExpr *x = static_cast<const AddroflabelMeExpr *>(meexpr);
+    if (labelIdx != x->labelIdx) {
+      return false;
+    }
+    return true;
+  }
+  BaseNode *EmitExpr(SSATab *);
+
+  size_t GetHashIndex() const {
+    return labelIdx << 4;
+  }
+};
+
 class GcmallocMeExpr : public MeExpr {
  public:
   TyIdx tyIdx;
@@ -575,7 +602,7 @@ class IvarMeExpr : public MeExpr {
   EscapeStatus escStatus : 3;
   bool maybeNull : 1;  // false if definitely not null
   bool volatileFromBaseSymbol : 1;  // volatile due to its base symbol being vol
-  VarMeExpr *mu;        // use of mu, only one for IvarMeExpr
+  ScalarMeExpr *mu;        // use of mu, only one for IvarMeExpr
 
   IvarMeExpr(int32 exprid, PrimType t, TyIdx tidx, FieldID fid)
     : MeExpr(exprid, kMeOpIvar, OP_iread, t, 1),
@@ -798,7 +825,7 @@ class MeStmt {
     return nullptr;
   }
 
-  virtual VarMeExpr *GetVarLhs() {
+  virtual ScalarMeExpr *GetVarLhs() {
     return nullptr;
   }
 
@@ -831,8 +858,8 @@ class MeStmt {
 
 class ChiMeNode {
  public:
-  VarMeExpr *rhs;
-  VarMeExpr *lhs;
+  ScalarMeExpr *rhs;
+  ScalarMeExpr *lhs;
   MeStmt *base;
   bool isLive;
 
@@ -1059,7 +1086,7 @@ class MaydassignMeStmt : public MeStmt {
   }
 
   VarMeExpr *GetVarLhs() {
-    return chiList.begin()->second->lhs;
+    return static_cast<VarMeExpr *>(chiList.begin()->second->lhs);
   }
 
   MeExpr *GetLhsRef(SSATab *ssaTab, bool excludelocalrefvar);
@@ -1182,7 +1209,7 @@ class NaryMeStmt : public MeStmt {
 
   void DumpOpnds(IRMap *);
   void Dump(IRMap *);
-  virtual MapleMap<OStIdx, VarMeExpr *> *GetMuList() {
+  virtual MapleMap<OStIdx, ScalarMeExpr *> *GetMuList() {
     return nullptr;
   }
 
@@ -1191,7 +1218,7 @@ class NaryMeStmt : public MeStmt {
 
 class MuChiMePart {
  public:
-  MapleMap<OStIdx, VarMeExpr *> muList;
+  MapleMap<OStIdx, ScalarMeExpr *> muList;
   MapleMap<OStIdx, ChiMeNode *> chiList;
 
   MuChiMePart(MapleAllocator *alloc)
@@ -1245,7 +1272,7 @@ class CallMeStmt : public NaryMeStmt, public MuChiMePart, public AssignedPart {
 
   void Dump(IRMap *);
 
-  MapleMap<OStIdx, VarMeExpr*> *GetMuList() {
+  MapleMap<OStIdx, ScalarMeExpr*> *GetMuList() {
     return &muList;
   }
 
@@ -1306,7 +1333,7 @@ public:
       stmtID(cstmt->stmtID) {}
   virtual ~IcallMeStmt() { }
   void Dump(IRMap *);
-  MapleMap<OStIdx, VarMeExpr*> *GetMuList() {
+  MapleMap<OStIdx, ScalarMeExpr*> *GetMuList() {
     return &muList;
   }
 
@@ -1366,7 +1393,7 @@ class IntrinsiccallMeStmt : public NaryMeStmt, public MuChiMePart, public Assign
 
   void Dump(IRMap *);
 
-  MapleMap<OStIdx, VarMeExpr*> *GetMuList() {
+  MapleMap<OStIdx, ScalarMeExpr*> *GetMuList() {
     return &muList;
   }
 
@@ -1408,7 +1435,7 @@ class IntrinsiccallMeStmt : public NaryMeStmt, public MuChiMePart, public Assign
 
 class RetMeStmt : public NaryMeStmt {
  public:
-  MapleMap<OStIdx, VarMeExpr *> muList;
+  MapleMap<OStIdx, ScalarMeExpr *> muList;
 
   RetMeStmt(MapleAllocator *alloc, const StmtNode *stt)
     : NaryMeStmt(alloc, stt), muList(std::less<OStIdx>(), alloc->Adapter()) {}
@@ -1416,12 +1443,12 @@ class RetMeStmt : public NaryMeStmt {
   ~RetMeStmt() {}
 
   void Dump(IRMap *);
-  MapleMap<OStIdx, VarMeExpr *> *GetMuList() {
+  MapleMap<OStIdx, ScalarMeExpr *> *GetMuList() {
     return &muList;
   }
 };
 
-// eval, free, decref, incref, assertnonnull
+// eval, free, decref, incref, assertnonnull, igoto
 class UnaryMeStmt : public MeStmt {
  public:
   MeExpr *opnd;
@@ -1571,7 +1598,7 @@ class CommentMeStmt : public MeStmt {
 
 class WithMuMeStmt : public MeStmt {
  public:
-  MapleMap<OStIdx, VarMeExpr *> muList;
+  MapleMap<OStIdx, ScalarMeExpr *> muList;
 
   WithMuMeStmt(MapleAllocator *alloc, const StmtNode *stt)
       : MeStmt(stt), muList(std::less<OStIdx>(), alloc->Adapter()) {}
@@ -1623,7 +1650,7 @@ class SyncMeStmt : public NaryMeStmt, public MuChiMePart {
   ~SyncMeStmt() {}
 
   void Dump(IRMap *);
-  MapleMap<OStIdx, VarMeExpr *> *GetMuList() {
+  MapleMap<OStIdx, ScalarMeExpr *> *GetMuList() {
     return &muList;
   }
 
@@ -1689,8 +1716,8 @@ class AssertMeStmt : public MeStmt {
   }
 };
 
-MapleMap<OStIdx, ChiMeNode *> *GenericGetChiListFromVarMeExpr(VarMeExpr *expr);
-void DumpMuList(IRMap *irMap, MapleMap<OStIdx, VarMeExpr *> &mulist, int32 indent);
+MapleMap<OStIdx, ChiMeNode *> *GenericGetChiListFromVarMeExpr(ScalarMeExpr *expr);
+void DumpMuList(IRMap *irMap, MapleMap<OStIdx, ScalarMeExpr *> &mulist, int32 indent);
 void DumpChiList(IRMap *irMap, MapleMap<OStIdx, ChiMeNode *> &chilist);
 
 class DumpOptions {

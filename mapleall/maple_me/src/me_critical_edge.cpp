@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #include <iostream>
@@ -126,7 +126,7 @@ AnalysisResult *MeDoSplitCEdge::Run(MeFunction *func, MeFuncResultMgr *m) {
     }
     /* current BB is a merge */
     for (BB *pred : preds) {
-      if (pred->kind == kBBGoto) {
+      if (pred->kind == kBBGoto || pred->kind == kBBIgoto) {
         continue;
       }
       if (pred->succ.size() > 1) {
@@ -137,7 +137,7 @@ AnalysisResult *MeDoSplitCEdge::Run(MeFunction *func, MeFuncResultMgr *m) {
   }
   // separate treatment for commonEntryBB's succ BBs
   for (BB *entrybb : func->commonEntryBB->succ) {
-    if (entrybb->pred.size() > 0) {
+    if (entrybb->pred.size() > 0 && !entrybb->IsCatch()) {
       criticaledge.push_back(std::make_pair(func->commonEntryBB, entrybb));
     }
   }

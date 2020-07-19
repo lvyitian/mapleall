@@ -1,22 +1,23 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
  *
- * OpenArkCompiler is licensed under the Mulan PSL v1.
- * You can use this software according to the terms and conditions of the Mulan PSL v1.
- * You may obtain a copy of Mulan PSL v1 at:
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
  *
- *     http://license.coscl.org.cn/MulanPSL
+ *   https://opensource.org/licenses/MulanPSL-2.0
  *
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
  * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v1 for more details.
+ * See the MulanPSL - 2.0 for more details.
  */
 
 #include <fstream>
 #include "muid_replacement.h"
 #include "vtable_analysis.h"
 #include "reflection_analysis.h"
+#include "name_mangler.h"
 
 namespace maple {
 
@@ -41,7 +42,7 @@ MUIDReplacement::MUIDReplacement(MIRModule *mod, KlassHierarchy *kh, bool dump) 
     dataUndefMap(less<MUID_t>()),
     defMuidIdxMap(less<MUID_t>()) {
   isLibcore =
-      (GlobalTables::GetGsymTable().GetSymbolFromStrIdx(GlobalTables::GetStrTable().GetStrIdxFromName(NameMangler::GetInternalNameLiteral("Ljava_2Flang_2FObject_3B"))) != nullptr);
+      (GlobalTables::GetGsymTable().GetSymbolFromStrIdx(GlobalTables::GetStrTable().GetStrIdxFromName(NameMangler::GetInternalNameLiteral(NameMangler::kJavaLangObjectStr))) != nullptr);
   GenTables();
 }
 
@@ -217,7 +218,7 @@ void MUIDReplacement::CollectImplicitUndefClassinfo(StmtNode *stmt) {
         if (ptype->typeKind == kTypeClass || ptype->typeKind == kTypeInterface) {
           classTyVec.push_back(static_cast<MIRStructType *>(ptype));
         } else if (ptype == GlobalTables::GetTypeTable().GetVoid()) {
-          Klass *objectKlass = klassHierarchy->GetKlassFromLiteral("Ljava_2Flang_2FObject_3B");
+          Klass *objectKlass = klassHierarchy->GetKlassFromLiteral(NameMangler::kJavaLangObjectStr);
           if (objectKlass) {
             classTyVec.push_back(objectKlass->GetMIRStructType());
           }
@@ -350,7 +351,12 @@ void MUIDReplacement::GenFuncDefTable() {
     // Create muidIdxTab to store the index in funcDefTab and funcDefMuidTab
     // With muidIdxTab, we can use index sorted by muid to find the index in funcDefTab and funcDefMuidTab
     // Use the left 1 bit of muidIdx to mark wether the function is weak or not. 1 is for weak
-    MIRIntConst *indexConst = module->memPool->New<MIRIntConst>(idx, GlobalTables::GetTypeTable().GetUInt32());
+    MIRIntConst *indexConst;
+    if (kReflectionlist.find(mirFunc->GetName()) != kReflectionlist.end()) {
+      indexConst = module->memPool->New<MIRIntConst>((1 << 31) | idx, GlobalTables::GetTypeTable().GetUInt32());
+    } else {
+      indexConst = module->memPool->New<MIRIntConst>(idx, GlobalTables::GetTypeTable().GetUInt32());
+    }
     uint32 muidIdx = iter->second.second;
     muidIdxTabConst->constVec[muidIdx] = indexConst;
     if(Options::profileFunc) {
@@ -878,8 +884,6 @@ void MUIDReplacement::ReplaceDirectInvokeOrAddroffunc(MIRFunction *curFunc, Stmt
   MIRArrayType *arrayType = nullptr;
   if (calleeFunc->body) {
     // Local function is accessed through funcDefTab
-    std::string moduleName = module->GetFileNameAsPostfix();
-    std::string baseName = calleeFunc->GetBaseClassName();
     baseExpr = builder->CreateExprAddrof(0, funcDefTabSym, module->memPool);
     index = FindIndexFromDefTable(calleeFunc->GetFuncSymbol(), true);
     arrayType = static_cast<MIRArrayType *>(funcDefTabSym->GetType());
