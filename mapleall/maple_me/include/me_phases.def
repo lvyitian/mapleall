@@ -1,0 +1,52 @@
+/*
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
+ *
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
+ *
+ *   https://opensource.org/licenses/MulanPSL-2.0
+ *
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
+ * FIT FOR A PARTICULAR PURPOSE.
+ * See the MulanPSL - 2.0 for more details.
+ */
+
+FUNCAPHASE(MeFuncPhase_DOMINANCE, MeDoDominance)
+FUNCAPHASE(MeFuncPhase_SSATAB, MeDoSSATab)
+FUNCAPHASE(MeFuncPhase_ALIASCLASS, MeDoAliasClass)
+FUNCAPHASE(MeFuncPhase_IRMAPBUILD, MeDoIrMapBuild)
+FUNCAPHASE(MeFuncPhase_PREDICT, MeDoPredict)
+FUNCAPHASE(MeFuncPhase_MELOOP, MeDoMeLoop)
+FUNCAPHASE(MeFuncPhase_MEBDCOPT, MeDoBDCOpt)
+FUNCAPHASE(MeFuncPhase_BBLAYOUT, MeDoBBLayout)
+FUNCAPHASE(MeFuncPhase_DELEGATERC, MeDoDelegateRC)
+FUNCAPHASE(MeFuncPhase_CONDBASEDNPC, MeDoCondBasedNPC)
+FUNCTPHASE(MeFuncPhase_CONDBASEDRC, MeDoCondBasedRC)
+FUNCTPHASE(MeFuncPhase_MAY2DASSIGN, MeDoMay2Dassign)
+FUNCTPHASE(MeFuncPhase_SSA, MeDoSSA)
+FUNCTPHASE(MeFuncPhase_LOOPCANON, MeDoLoopCanon)
+FUNCTPHASE(MeFuncPhase_SPLITCEDGE, MeDoSplitCEdge)
+FUNCTPHASE(MeFuncPhase_DSE, MeDoDSE)
+FUNCTPHASE(MeFuncPhase_TI, MeDohTI)
+FUNCTPHASE(MeFuncPhase_HPROP, MeDoMeProp)
+FUNCTPHASE(MeFuncPhase_HDSE, MeDohDSE)
+FUNCTPHASE(MeFuncPhase_CFGOPT, MeDoCfgOpt)
+FUNCTPHASE(MeFuncPhase_SSADEVIRT, MeDoSSADevirtual)
+FUNCTPHASE(MeFuncPhase_IPASIDEEFFECT, DoIpaSideEffect)
+FUNCTPHASE(MeFuncPhase_SSAEPRE, MeDoSSAEPre)
+FUNCTPHASE(MeFuncPhase_SSALPRE, MeDoSSALPre)
+FUNCTPHASE(MeFuncPhase_STOREPRE, MeDoStorePre)
+FUNCTPHASE(MeFuncPhase_STMTPRE, MeDoStmtPre)
+FUNCTPHASE(MeFuncPhase_SSARENAME2PREG, MeDoSSARename2Preg)
+FUNCTPHASE(MeFuncPhase_INTRACONSTPROP, MeDoIntraConstProp)
+FUNCTPHASE(MeFuncPhase_INTERCONSTPROP, MeDoInterConstProp)
+#if MIR_JAVA
+FUNCTPHASE(MeFuncPhase_SYNCSELECT, MeDoSyncSelect)
+#endif
+FUNCTPHASE(MeFuncPhase_EMIT, MeDoEmission)
+FUNCTPHASE(MeFuncPhase_ANALYZERC, MeDoAnalyzeRC)
+FUNCTPHASE(MeFuncPhase_RCLOWERING, MeDoRCLowering)
+FUNCTPHASE(MeFuncPhase_FSAA, MeDoFSAA)
+FUNCTPHASE(MeFuncPhase_SYMRENAME, MeDoSymRename)

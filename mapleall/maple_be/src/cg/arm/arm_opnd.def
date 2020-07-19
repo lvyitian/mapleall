@@ -1,0 +1,90 @@
+/*
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
+ *
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
+ *
+ *   https://opensource.org/licenses/MulanPSL-2.0
+ *
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
+ * FIT FOR A PARTICULAR PURPOSE.
+ * See the MulanPSL - 2.0 for more details.
+ */
+
+ArmOpndProp mopd_int32_reg_src = {Operand::Opd_Register, {kRegTyInt, MAXREGNUM, REGPROPUSE }, 32};
+ArmOpndProp mopd_int32_reg_dest = {Operand::Opd_Register, {kRegTyInt, MAXREGNUM, REGPROPDEF}, 32};
+ArmOpndProp mopd_int32_reg_dest_src = {Operand::Opd_Register, {kRegTyInt, MAXREGNUM, REGPROPDEF | REGPROPUSE}, 32};
+ArmOpndProp mopd_int64_reg_src = {Operand::Opd_Register, {kRegTyInt, MAXREGNUM, REGPROPUSE}, 64};
+ArmOpndProp mopd_int64_reg_dest = {Operand::Opd_Register, {kRegTyInt, MAXREGNUM, REGPROPDEF}, 64};
+ArmOpndProp mopd_int64_reg_src_hi = {Operand::Opd_Register, {kRegTyInt, MAXREGNUM, REGPROPUSE|REGHIGH}, 64};
+ArmOpndProp mopd_int64_reg_dest_hi = {Operand::Opd_Register, {kRegTyInt, MAXREGNUM, REGPROPDEF|REGHIGH}, 64};
+ArmOpndProp mopd_int64_reg_src_lo = {Operand::Opd_Register, {kRegTyInt, MAXREGNUM, REGPROPUSE|REGLOW}, 64};
+ArmOpndProp mopd_int64_reg_dest_lo = {Operand::Opd_Register, {kRegTyInt, MAXREGNUM, REGPROPDEF|REGLOW}, 64};
+ArmOpndProp mopd_int64_reg_dest_src_hi = {Operand::Opd_Register, {kRegTyInt, MAXREGNUM, REGPROPDEF | REGPROPUSE | REGHIGH}, 64};
+ArmOpndProp mopd_int64_reg_dest_src_lo = {Operand::Opd_Register, {kRegTyInt, MAXREGNUM, REGPROPDEF | REGPROPUSE | REGLOW}, 64};
+ArmOpndProp mopd_f32_reg_src = {Operand::Opd_Register, {kRegTyFloat, MAXREGNUM, REGPROPUSE}, 32};
+ArmOpndProp mopd_f32_reg_dest = {Operand::Opd_Register, {kRegTyFloat, MAXREGNUM, REGPROPDEF}, 32};
+ArmOpndProp mopd_f32_reg_dest_src = {Operand::Opd_Register, {kRegTyFloat, MAXREGNUM, REGPROPDEF | REGPROPUSE}, 32};
+ArmOpndProp mopd_f64_reg_src = {Operand::Opd_Register, {kRegTyFloat, MAXREGNUM, REGPROPUSE}, 64};
+ArmOpndProp mopd_f64_reg_dest = {Operand::Opd_Register, {kRegTyFloat, MAXREGNUM, REGPROPDEF}, 64};
+ArmOpndProp mopd_f64_reg_dest_src = {Operand::Opd_Register, {kRegTyFloat, MAXREGNUM, REGPROPDEF | REGPROPUSE}, 64};
+ArmOpndProp mopd_int32_imm_src = {Operand::Opd_Immediate, {kRegTyUndef, MAXREGNUM, REGPROPUSE}, 32};
+ArmOpndProp mopd_int16_imm_src = {Operand::Opd_Immediate, {kRegTyUndef, MAXREGNUM, REGPROPUSE}, 16};
+ArmOpndProp mopd_int12_imm_src = {Operand::Opd_Immediate, {kRegTyUndef, MAXREGNUM, REGPROPUSE}, 12};
+ArmOpndProp mopd_int8_imm_src = {Operand::Opd_Immediate, {kRegTyUndef, MAXREGNUM, REGPROPUSE}, 8};
+ArmOpndProp mopd_int64_imm_src = {Operand::Opd_Immediate, {kRegTyUndef, MAXREGNUM, REGPROPUSE}, 64};
+ArmOpndProp mopd_mem8_src = {Operand::Opd_Mem, {kRegTyUndef, MAXREGNUM, REGPROPUSE}, 8};
+ArmOpndProp mopd_mem16_src = {Operand::Opd_Mem, {kRegTyUndef, MAXREGNUM, REGPROPUSE}, 16};
+ArmOpndProp mopd_mem32_src = {Operand::Opd_Mem, {kRegTyUndef, MAXREGNUM, REGPROPUSE}, 32};
+ArmOpndProp mopd_mem32_src_h = {Operand::Opd_Mem, {kRegTyUndef, MAXREGNUM, MEMHIGH16}, 16};
+ArmOpndProp mopd_mem32_src_l = {Operand::Opd_Mem, {kRegTyUndef, MAXREGNUM, MEMLOW16}, 16};
+ArmOpndProp mopd_mem64_src = {Operand::Opd_Mem, {kRegTyUndef, MAXREGNUM, REGPROPUSE}, 64};
+ArmOpndProp mopd_lbl64_src = {Operand::Opd_BbAddress, {kRegTyUndef,MAXREGNUM, REGPROPUSE}, 64};
+ArmOpndProp mopd_list_src = {Operand::Opd_List, {kRegTyUndef, MAXREGNUM, REGPROPUSE}, 1};
+ArmOpndProp mopd_cc_reg_src = {Operand::Opd_Register, {kRegTyCc, MAXREGNUM, REGPROPUSE}, 1};
+ArmOpndProp mopd_cc_reg_dest = {Operand::Opd_Register, {kRegTyCc, MAXREGNUM, REGPROPDEF}, 1};
+ArmOpndProp mopd_cc_reg_dest_src = {Operand::Opd_Register, {kRegTyCc, MAXREGNUM, REGPROPDEF | REGPROPUSE}, 1};
+ArmOpndProp mopd_sp_reg_dest = {Operand::Opd_Register, {kRegTyInt, RSP, REGPROPDEF}, 32};
+
+// physical register
+
+ArmOpndProp *MOPD_Reg = &mopd_int32_reg_src;
+// in MOPD_Reg32IS, Reg means register, 32 means 32-bits, I means integer(F means float), S means source, D means dest, H means high harf bits, L means low harf bits
+ArmOpndProp *MOPD_Reg32IS = &mopd_int32_reg_src;
+ArmOpndProp *MOPD_Reg32ID = &mopd_int32_reg_dest;
+ArmOpndProp *MOPD_Reg32IDS = &mopd_int32_reg_dest_src;
+ArmOpndProp *MOPD_Reg64IS = &mopd_int64_reg_src;
+ArmOpndProp *MOPD_Reg64ID = &mopd_int64_reg_dest;
+ArmOpndProp *MOPD_Reg64ISH = &mopd_int64_reg_src_hi;
+ArmOpndProp *MOPD_Reg64IDH = &mopd_int64_reg_dest_hi;
+ArmOpndProp *MOPD_Reg64ISL = &mopd_int64_reg_src_lo;
+ArmOpndProp *MOPD_Reg64IDL = &mopd_int64_reg_dest_lo;
+ArmOpndProp *MOPD_Reg64IDSH = &mopd_int64_reg_dest_src_hi;
+ArmOpndProp *MOPD_Reg64IDSL = &mopd_int64_reg_dest_src_lo;
+ArmOpndProp *MOPD_Reg32FS = &mopd_f32_reg_src;
+ArmOpndProp *MOPD_Reg32FD = &mopd_f32_reg_dest;
+ArmOpndProp *MOPD_Reg32FDS = &mopd_f32_reg_dest_src;
+ArmOpndProp *MOPD_Reg64FS = &mopd_f64_reg_src;
+ArmOpndProp *MOPD_Reg64FD = &mopd_f64_reg_dest;
+ArmOpndProp *MOPD_Reg64FDS = &mopd_f64_reg_dest_src;
+ArmOpndProp *MOPD_Mem = &mopd_mem32_src;
+ArmOpndProp *MOPD_Mem8S = &mopd_mem8_src;
+ArmOpndProp *MOPD_Mem16S = &mopd_mem16_src;
+ArmOpndProp *MOPD_Mem32S = &mopd_mem32_src;
+ArmOpndProp *MOPD_Mem32SL = &mopd_mem32_src_l;
+ArmOpndProp *MOPD_Mem32SH = &mopd_mem32_src_h;
+ArmOpndProp *MOPD_Mem64S = &mopd_mem64_src;
+ArmOpndProp *MOPD_Imm32 = &mopd_int32_imm_src;
+ArmOpndProp *MOPD_Imm16 = &mopd_int16_imm_src;
+ArmOpndProp *MOPD_Imm12 = &mopd_int12_imm_src;
+ArmOpndProp *MOPD_Imm8 = &mopd_int8_imm_src;
+ArmOpndProp *MOPD_Imm64 = &mopd_int64_imm_src;
+ArmOpndProp *MOPD_Label = &mopd_lbl64_src;
+ArmOpndProp *MOPD_RegCCS = &mopd_cc_reg_src;
+ArmOpndProp *MOPD_RegCCD = &mopd_cc_reg_dest;
+ArmOpndProp *MOPD_RegCCDS = &mopd_cc_reg_dest_src;
+ArmOpndProp *MOPD_RSPD = &mopd_sp_reg_dest;
+ArmOpndProp *MOPD_LISTS = &mopd_list_src;
+ArmOpndProp *MOPD_Undef = nullptr;

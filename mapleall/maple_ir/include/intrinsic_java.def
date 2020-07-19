@@ -1,0 +1,57 @@
+/*
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
+ *
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
+ *
+ *   https://opensource.org/licenses/MulanPSL-2.0
+ *
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
+ * FIT FOR A PARTICULAR PURPOSE.
+ * See the MulanPSL - 2.0 for more details.
+ */
+
+// DEF_MIR_INTRINSIC(STR, NAME, INTRN_CLASS, RETURN_TYPE, ARG0, ARG1, ARG2, ARG3, ARG4, ARG5)
+DEF_MIR_INTRINSIC(JAVA_ARRAY_LENGTH,\
+                  MCC_JavaArrayLength, INTRNISJAVA | INTRNNOSIDEEFFECT | INTRNISPURE, kArgTyI32, kArgTyDynany, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JAVA_ARRAY_FILL,\
+                  MCC_JavaArrayFill, INTRNISJAVA, kArgTyVoid, kArgTyDynany, kArgTyDynany, kArgTyI32, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JAVA_FILL_NEW_ARRAY,\
+                  __java_fill_new_array, INTRNISJAVA, kArgTyRef, kArgTyI32, kArgTyDynany, kArgTyDynany, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JAVA_CHECK_CAST,\
+                  MCC_JavaCheckCast, INTRNISJAVA | INTRNNOSIDEEFFECT, kArgTyDynany, kArgTyDynany, kArgTyDynany, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JAVA_CONST_CLASS,\
+                  MCC_GetReferenceToClass, INTRNISJAVA, kArgTyDynany, kArgTyDynany, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JAVA_INSTANCE_OF,\
+                  MCC_JavaInstanceOf, INTRNISJAVA, kArgTyU1, kArgTyDynany, kArgTyDynany, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JAVA_MERGE,\
+                  __java_merge, INTRNISJAVA, kArgTyPtr, kArgTyDynany, kArgTyDynany, kArgTyDynany, kArgTyDynany, kArgTyDynany, kArgTyUndef)
+DEF_MIR_INTRINSIC(JAVA_STR_TO_JSTR,\
+                  __java_str_to_jstr, INTRNISJAVA, kArgTyPtr, kArgTyPtr, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JAVA_PRINT,\
+                  printf, INTRNISJAVA, kArgTyVoid, kArgTyDynany, kArgTyDynany, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JAVA_INTERFACE_CALL,\
+                  MCC_JavaInterfaceCall, INTRNISJAVA, kArgTyDynany, kArgTyDynany, kArgTyDynany, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JAVA_CLINIT_CHECK,\
+                  __java_clinit_check, INTRNISJAVA | INTRNNOSIDEEFFECT, kArgTyVoid, kArgTyDynany, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JAVA_CLINIT_CHECK_SGET,\
+                  __java_clinit_check_sget, INTRNISJAVA, kArgTyVoid, kArgTyDynany, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JAVA_CLINIT_CHECK_SPUT,\
+                  __java__clinit_check_sput, INTRNISJAVA, kArgTyVoid, kArgTyDynany, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JAVA_CLINIT_CHECK_NEW,\
+                  __java_clinit_check_new, INTRNISJAVA, kArgTyVoid, kArgTyDynany, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JAVA_POLYMORPHIC_CALL,\
+                  MCC_JavaPolymorphicCall, INTRNISJAVA, kArgTyDynany, kArgTyDynany, kArgTyDynany, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+// __java_random is used to generate a random value used in callback cfg
+DEF_MIR_INTRINSIC(JAVA_RANDOM,\
+                  __java_random, INTRNISJAVA | INTRNNOSIDEEFFECT, kArgTyI32, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JAVA_GET_CLASS,\
+                 MCC_GetClass, INTRNISJAVA | INTRNNOSIDEEFFECT, kArgTyPtr, kArgTyPtr, kArgTyPtr, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JAVA_THROW_ARITHMETIC,\
+                  MCC_ThrowArithmeticException, INTRNISJAVA | INTRNNEVERRETURN, kArgTyVoid, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JAVA_THROW_CLASSCAST,\
+                  MCC_ThrowClassCastException, INTRNISJAVA | INTRNNEVERRETURN, kArgTyVoid, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JAVA_BEGIN_CATCH,\
+                  MCC_JavaBeginCatch, INTRNISJAVA | INTRNNOSIDEEFFECT, kArgTyA64, kArgTyA64)

@@ -1,0 +1,36 @@
+/*
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
+ *
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
+ *
+ *   https://opensource.org/licenses/MulanPSL-2.0
+ *
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
+ * FIT FOR A PARTICULAR PURPOSE.
+ * See the MulanPSL - 2.0 for more details.
+ */
+
+//   name                                pure   use    def    object exception
+  {"MCC_LoadRefField",                   true,  true , false, false, false},
+  {"MCC_LoadRefStatic",                  true,  true , false, false, false},
+  {"MCC_LoadVolatileField",              true,  true , false, false, false},
+  {"MCC_LoadVolatileStaticField",        true,  true , false, false, false},
+  {"MCC_LoadRefField_NaiveRCFast",       true,  true , false, false, false},
+  {"MCC_LoadWeakField",                  true,  true , false, false, false},
+  {"MCC_WriteRefField",                  true,  false, true , false, false},
+  {"MCC_WriteRefFieldNoRC",              true,  false, true , false, false},
+  {"MCC_WriteRefFieldNoDec",             true,  false, true , false, false},
+  {"MCC_WriteRefFieldNoInc",             true,  false, true , false, false},
+  {"MCC_WriteRefFieldStatic",            true,  false, true , false, false},
+  {"MCC_WriteRefFieldStaticNoInc",       true,  false, true , false, false},
+  {"MCC_WriteVolatileField",             true,  false, true , false, false},
+  {"MCC_WriteVolatileFieldNoInc",        true,  false, true , false, false},
+  {"MCC_WriteVolatileStaticField",       true,  false, true , false, false},
+  {"MCC_WriteVolatileStaticFieldNoInc",  true,  false, true , false, false},
+  {"MCC_WriteWeakField",                 true,  false, true , false, false},
+  {"MCC_WriteRefVar",                    true,  false, true , false, false},
+  {"MCC_WriteRefVarNoInc",               true,  false, true , false, false},
+  {"MCC_GetOrInsertLiteral",              true,  false, false, true , false},

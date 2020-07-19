@@ -1,0 +1,1429 @@
+/*
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
+ *
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
+ *
+ *   https://opensource.org/licenses/MulanPSL-2.0
+ *
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
+ * FIT FOR A PARTICULAR PURPOSE.
+ * See the MulanPSL - 2.0 for more details.
+ */
+
+// MOP_undef,
+{MOP_undef, {MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,kLtUndef,"","", 0, 0},
+
+// # Definitions
+
+// AARCH64 MOVES
+// MOP_xmovrr
+{MOP_xmovrr, {MOPD_Reg64ID,MOPD_Reg64IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISMOVE,kLtAlu,"mov","0,1", 1, 1},
+// MOP_wmovrr
+{MOP_wmovrr, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISMOVE,kLtAlu,"mov","0,1", 1, 1},
+// MOP_xmovri32
+{MOP_xmovri32, {MOPD_Reg32ID,MOPD_Imm32,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISMOVE,kLtAlu,"mov","0,1", 1, 1},
+// MOP_xmovri64
+{MOP_xmovri64, {MOPD_Reg64ID,MOPD_Imm64,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISMOVE,kLtAlu,"mov","0,1", 1, 1},
+
+// MOP_xvmovsr
+{MOP_xvmovsr, {MOPD_Reg32FD,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISMOVE,kLtR2f,"fmov","0,1", 1, 1},
+// MOP_xvmovdr
+{MOP_xvmovdr, {MOPD_Reg64FD,MOPD_Reg64IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISMOVE,kLtR2f,"fmov","0,1", 1, 1},
+// MOP_xvmovrs
+{MOP_xvmovrs, {MOPD_Reg32ID,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISMOVE,kLtF2r,"fmov","0,1", 1, 1},
+// MOP_xvmovrd
+{MOP_xvmovrd, {MOPD_Reg64ID,MOPD_Reg64FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISMOVE,kLtF2r,"fmov","0,1", 1, 1},
+// MOP_xvmovs
+{MOP_xvmovs, {MOPD_Reg32FD,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISMOVE,kLtFpalu,"fmov","0,1", 1, 1},
+// MOP_xvmovd
+{MOP_xvmovd, {MOPD_Reg64FD,MOPD_Reg64FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISMOVE,kLtFpalu,"fmov","0,1", 1, 1},
+
+// Vector SIMD mov
+// MOP_vmovrr
+{MOP_vmovrr, {MOPD_Reg128FD,MOPD_Reg128FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISMOVE,kLtFpalu,"mov","0,1", 1, 1},
+// Vector SIMD dup
+{MOP_vdupi32, {MOPD_Reg128FD,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISMOVE,kLtFpalu,"dup","0,1", 1, 1},
+{MOP_vdupi64, {MOPD_Reg128FD,MOPD_Reg64IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISMOVE,kLtFpalu,"dup","0,1", 1, 1},
+{MOP_vdupf32, {MOPD_Reg128FD,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISMOVE,kLtFpalu,"dup","0,1", 1, 1},
+{MOP_vdupf64, {MOPD_Reg128FD,MOPD_Reg64FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISMOVE,kLtFpalu,"dup","0,1", 1, 1},
+
+
+// MOP_xvmovvv
+{MOP_xvmovvv, {MOPD_Reg32FD,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISMOVE,kLtFpalu,"mov","0,1", 1, 1},
+// MOP_xmovvr
+{MOP_xvmovvr, {MOPD_Reg32FD,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISMOVE,kLtR2f,"mov","0,1", 1, 1},
+// MOP_xmovrv
+{MOP_xvmovrv, {MOPD_Reg32ID,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISMOVE,kLtF2r,"mov","0,1", 1, 1},
+
+// MOP_xadrp
+{MOP_xadrp, {MOPD_Reg64ID,MOPD_Literal,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOADADDR,kLtShift,"adrp","0,1", 1, 1},
+// MOP_xadr
+{MOP_xadri64, {MOPD_Reg64ID,MOPD_Imm64,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOADADDR,kLtShift,"adr","0,1", 1, 1},
+// MOP_xadrpl12
+{MOP_xadrpl12, {MOPD_Reg64ID,MOPD_Reg64IS,MOPD_Literal_L12,MOPD_Undef,MOPD_Undef},0,kLtAlu,"add","0,1,2", 1, 2},
+
+// MOP_xaddrrr	AARCH64 Arithmetic: add
+{MOP_xaddrrr, {MOPD_Reg64ID,MOPD_Reg64IS,MOPD_Reg64IS,MOPD_Undef,MOPD_Undef},0,kLtAlu,"add","0,1,2", 1, 2},
+// MOP_xaddrrrs
+{MOP_xaddrrrs, {MOPD_Reg64ID,MOPD_Reg64IS,MOPD_Reg64IS,MOPD_BitShift64,MOPD_Undef},0,kLtAluShift,"add","0,1,2,3", 1, 3},
+
+// Vector SIMD add
+// MOP_vaddf32rrr	AARCH64 Arithmetic: add
+{MOP_vaddf32rrr, {MOPD_Reg128FD, MOPD_Reg128FS, MOPD_Reg128FS,MOPD_Undef,MOPD_Undef},0,kLtAlu,"fadd","0,1,2", 1, 2},
+// MOP_vaddf64rrr	AARCH64 Arithmetic: add
+{MOP_vaddf64rrr, {MOPD_Reg128FD, MOPD_Reg128FS, MOPD_Reg128FS,MOPD_Undef,MOPD_Undef},0,kLtAlu,"fadd","0,1,2", 1, 2},
+// MOP_vadd32rrr	AARCH64 Arithmetic: add
+{MOP_vadd32rrr, {MOPD_Reg128ID,MOPD_Reg128IS,MOPD_Reg128IS,MOPD_Undef,MOPD_Undef},0,kLtAlu,"add","0,1,2", 1, 2},
+// MOP_vadd64rrr	AARCH64 Arithmetic: add
+{MOP_vadd64rrr, {MOPD_Reg128LD,MOPD_Reg128LS,MOPD_Reg128LS,MOPD_Undef,MOPD_Undef},0,kLtAlu,"add","0,1,2", 1, 2},
+
+
+// MOP_xxwaddrrre
+{MOP_xxwaddrrre, {MOPD_Reg64ID,MOPD_Reg64IS,MOPD_Reg32IS,MOPD_ExtendShift64,MOPD_Undef},0,kLtAluShift,"add","0,1,2,3", 1, 3},
+// MOP_xaddrri24
+
+{MOP_xaddrri24, {MOPD_Reg64ID,MOPD_Reg64IS,MOPD_Imm12,MOPD_LSL12,MOPD_Undef},0,kLtShift,"add","0,1,2,3", 1, 3},
+// MOP_xaddrri12
+{MOP_xaddrri12, {MOPD_Reg64ID,MOPD_Reg64IS,MOPD_Imm12,MOPD_Undef,MOPD_Undef},0,kLtAlu,"add","0,1,2", 1, 2},
+// MOP_waddrrr
+{MOP_waddrrr, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,kLtAlu,"add","0,1,2", 1, 2},
+// MOP_waddrrrs
+{MOP_waddrrrs, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_BitShift32,MOPD_Undef},0,kLtAluShift,"add","0,1,2,3", 1, 3},
+// MOP_waddrri24
+{MOP_waddrri24, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Imm12,MOPD_LSL12,MOPD_Undef},0,kLtAluShift,"add","0,1,2,3", 1, 3},
+// MOP_waddrri12
+{MOP_waddrri12, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Imm12,MOPD_Undef,MOPD_Undef},0,kLtAlu,"add","0,1,2", 1, 2},
+// MOP_dadd
+{MOP_dadd, {MOPD_Reg64FD,MOPD_Reg64FS,MOPD_Reg64FS,MOPD_Undef,MOPD_Undef},0,kLtFpalu,"fadd","0,1,2", 1, 2},
+// MOP_sadd
+{MOP_sadd, {MOPD_Reg32FD,MOPD_Reg32FS,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef},0,kLtFpalu,"fadd","0,1,2", 1, 2},
+
+// MOP_xsubrrr	AARCH64 Arithmetic: sub
+{MOP_xsubrrr, {MOPD_Reg64ID,MOPD_Reg64IS,MOPD_Reg64IS,MOPD_Undef,MOPD_Undef},0,kLtAlu,"sub","0,1,2", 1, 2},
+// MOP_xsubrrrs
+{MOP_xsubrrrs, {MOPD_Reg64ID,MOPD_Reg64IS,MOPD_Reg64IS,MOPD_BitShift64,MOPD_Undef},0,kLtAluShift,"sub","0,1,2,3", 1, 3},
+// MOP_xsubrri24
+{MOP_xsubrri24, {MOPD_Reg64ID,MOPD_Reg64IS,MOPD_Imm12,MOPD_LSL12,MOPD_Undef},0,kLtAluShift,"sub","0,1,2,3", 1, 3},
+// MOP_xsubrri12
+{MOP_xsubrri12, {MOPD_Reg64ID,MOPD_Reg64IS,MOPD_Imm12,MOPD_Undef,MOPD_Undef},0,kLtAlu,"sub","0,1,2", 1, 2},
+// MOP_wsubrrr
+{MOP_wsubrrr, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,kLtAlu,"sub","0,1,2", 1, 2},
+// MOP_wsubrrrs
+{MOP_wsubrrrs, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_BitShift32,MOPD_Undef},0,kLtAluShift,"sub","0,1,2,3", 1, 3},
+// MOP_wsubrri24
+{MOP_wsubrri24, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Imm12,MOPD_LSL12,MOPD_Undef},0,kLtAluShift,"sub","0,1,2,3", 1, 3},
+// MOP_wsubrri12
+{MOP_wsubrri12, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Imm12,MOPD_Undef,MOPD_Undef},0,kLtAlu,"sub","0,1,2", 1, 2},
+// MOP_dsub
+{MOP_dsub, {MOPD_Reg64FD,MOPD_Reg64FS,MOPD_Reg64FS,MOPD_Undef,MOPD_Undef},0,kLtFpalu,"fsub","0,1,2", 1, 2},
+// MOP_ssub
+{MOP_ssub, {MOPD_Reg32FD,MOPD_Reg32FS,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef},0,kLtFpalu,"fsub","0,1,2", 1, 2},
+
+// AARCH64 Arithmetic: multiply
+// MOP_Tbxmulrrr
+{MOP_xmulrrr, {MOPD_Reg64ID,MOPD_Reg64IS,MOPD_Reg64IS,MOPD_Undef,MOPD_Undef},0,kLtMul,"mul","0,1,2", 1, 2},
+// MOP_wmulrrr
+{MOP_wmulrrr, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,kLtMul,"mul","0,1,2", 1, 2},
+// MOP_Tbxvmuls
+{MOP_xvmuls, {MOPD_Reg32FD,MOPD_Reg32FS,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef},0,kLtFpmul,"fmul","0,1,2", 1, 2},
+// MOP_Tbxvmuld
+{MOP_xvmuld, {MOPD_Reg64FD,MOPD_Reg64FS,MOPD_Reg64FS,MOPD_Undef,MOPD_Undef},0,kLtFpmul,"fmul","0,1,2", 1, 2},
+//MOP_xsmullrrr
+{MOP_xsmullrrr, {MOPD_Reg64ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,kLtMul,"smull","0,1,2", 1, 2},
+
+// AARCH64 Conversions
+// MOP_xsxtb32
+{MOP_xsxtb32, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISCONVERSION,kLtAluShift,"sxtb","0,1", 1, 1},
+// MOP_xsxtb64
+{MOP_xsxtb64, {MOPD_Reg64ID,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISCONVERSION,kLtAluShift,"sxtb","0,1", 1, 1},
+// MOP_xsxth32
+{MOP_xsxth32, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISCONVERSION,kLtAluShift,"sxth","0,1", 1, 1},
+// MOP_xsxth64
+{MOP_xsxth64, {MOPD_Reg64ID,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISCONVERSION,kLtAluShift,"sxth","0,1", 1, 1},
+// MOP_xsxtw64
+{MOP_xsxtw64, {MOPD_Reg64ID,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISCONVERSION,kLtAluShift,"sxtw","0,1", 1, 1},
+
+// MOP_xuxtb32
+{MOP_xuxtb32, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISCONVERSION,kLtAluShift,"uxtb","0,1", 1, 1},
+// MOP_xuxth32
+{MOP_xuxth32, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISCONVERSION,kLtAluShift,"uxth","0,1", 1, 1},
+// MOP_xuxtw64	Same as mov w0,w0
+{MOP_xuxtw64, {MOPD_Reg64ID,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISCONVERSION,kLtAluShift,"uxtw","0,1", 1, 1},
+
+// MOP_xvcvtfd
+{MOP_xvcvtfd, {MOPD_Reg32FD,MOPD_Reg64FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISCONVERSION,kLtFpalu,"fcvt","0,1", 1, 1},
+// MOP_xvcvtdf
+{MOP_xvcvtdf, {MOPD_Reg64FD,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISCONVERSION,kLtFpalu,"fcvt","0,1", 1, 1},
+
+// MOP_vcvtrf		fcvtzs w,s
+{MOP_vcvtrf, {MOPD_Reg32ID,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISCONVERSION,kLtF2rCvt,"fcvtzs","0,1", 1, 1},
+// MOP_xvcvtrf	fcvtzs x,s
+{MOP_xvcvtrf, {MOPD_Reg64ID,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISCONVERSION,kLtF2rCvt,"fcvtzs","0,1", 1, 1},
+// MOP_vcvturf	fcvtzu w,s
+{MOP_vcvturf, {MOPD_Reg32ID,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISCONVERSION,kLtF2rCvt,"fcvtzu","0,1", 1, 1},
+// MOP_xvcvturf	fcvtzu x,s
+{MOP_xvcvturf, {MOPD_Reg64ID,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISCONVERSION,kLtF2rCvt,"fcvtzu","0,1", 1, 1},
+
+// MOP_vcvtas         fcvtas w,s (for round)
+{MOP_vcvtas, {MOPD_Reg32ID,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISCONVERSION,kLtF2rCvt,"fcvtas","0,1", 1, 1},
+// MOP_xvcvtas        fcvtas x,s
+{MOP_xvcvtas, {MOPD_Reg64ID,MOPD_Reg64FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISCONVERSION,kLtF2rCvt,"fcvtas","0,1", 1, 1},
+// MOP_vcvtms         fcvtms w,s (for floor)
+{MOP_vcvtms, {MOPD_Reg32ID,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISCONVERSION,kLtF2rCvt,"fcvtms","0,1", 1, 1},
+// MOP_xvcvtms        fcvtms x,s
+{MOP_xvcvtms, {MOPD_Reg64ID,MOPD_Reg64FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISCONVERSION,kLtF2rCvt,"fcvtms","0,1", 1, 1},
+// MOP_vcvtps        fcvtps w,s (for ceil)
+{MOP_vcvtps, {MOPD_Reg32ID,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISCONVERSION,kLtF2rCvt,"fcvtps","0,1", 1, 1},
+// MOP_xvcvtps       fcvtps x,d
+{MOP_xvcvtps, {MOPD_Reg64ID,MOPD_Reg64FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISCONVERSION,kLtF2rCvt,"fcvtps","0,1", 1, 1},
+
+// MOP_vcvtrd		fcvtzs w,d
+{MOP_vcvtrd, {MOPD_Reg32ID,MOPD_Reg64FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISCONVERSION,kLtF2rCvt,"fcvtzs","0,1", 1, 1},
+// MOP_xvcvtrd	fcvtzs x,d
+{MOP_xvcvtrd, {MOPD_Reg64ID,MOPD_Reg64FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISCONVERSION,kLtF2rCvt,"fcvtzs","0,1", 1, 1},
+// MOP_vcvturd	fcvtzu w,d
+{MOP_vcvturd, {MOPD_Reg32ID,MOPD_Reg64FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISCONVERSION,kLtF2rCvt,"fcvtzu","0,1", 1, 1},
+// MOP_xvcvturd	fcvtzu x,d
+{MOP_xvcvturd, {MOPD_Reg64ID,MOPD_Reg64FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISCONVERSION,kLtF2rCvt,"fcvtzu","0,1", 1, 1},
+
+// MOP_vcvtfr		scvtf s,w
+{MOP_vcvtfr, {MOPD_Reg32FD,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISCONVERSION,kLtR2fCvt,"scvtf","0,1", 1, 1},
+// MOP_xvcvtfr	scvtf s,x
+{MOP_xvcvtfr, {MOPD_Reg32FD,MOPD_Reg64IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISCONVERSION,kLtR2fCvt,"scvtf","0,1", 1, 1},
+// MOP_vcvtufr	ucvtf s,w
+{MOP_vcvtufr, {MOPD_Reg32FD,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISCONVERSION,kLtR2fCvt,"ucvtf","0,1", 1, 1},
+// MOP_xvcvtufr	ucvtf s,x
+{MOP_xvcvtufr, {MOPD_Reg32FD,MOPD_Reg64IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISCONVERSION,kLtR2fCvt,"ucvtf","0,1", 1, 1},
+
+// MOP_vcvtdr		scvtf d,w
+{MOP_vcvtdr, {MOPD_Reg64FD,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISCONVERSION,kLtR2fCvt,"scvtf","0,1", 1, 1},
+// MOP_xvcvtdr	scvtf d,x
+{MOP_xvcvtdr, {MOPD_Reg64FD,MOPD_Reg64IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISCONVERSION,kLtR2fCvt,"scvtf","0,1", 1, 1},
+// MOP_vcvtudr	ucvtf d,w
+{MOP_vcvtudr, {MOPD_Reg64FD,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISCONVERSION,kLtR2fCvt,"ucvtf","0,1", 1, 1},
+// MOP_xvcvtudr	ucvtf d,x
+{MOP_xvcvtudr, {MOPD_Reg64FD,MOPD_Reg64IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISCONVERSION,kLtR2fCvt,"ucvtf","0,1", 1, 1},
+
+// MOP_xcsel
+{MOP_wcselrrrc, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Cond,MOPD_Undef},ISCONDDEF,kLtAlu,"csel","0,1,2,3", 1, 3},
+{MOP_xcselrrrc, {MOPD_Reg64ID,MOPD_Reg64IS,MOPD_Reg64IS,MOPD_Cond,MOPD_Undef},ISCONDDEF,kLtAlu,"csel","0,1,2,3", 1, 3},
+
+// MOP_xcset -- all conditions minus AL & NV
+{MOP_wcsetrc, {MOPD_Reg32ID,MOPD_Cond,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISCONDSET | ISCONDDEF,kLtAlu,"cset","0,1", 1, 1},
+{MOP_xcsetrc, {MOPD_Reg64ID,MOPD_Cond,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISCONDSET | ISCONDDEF,kLtAlu,"cset","0,1", 1, 1},
+
+// MOP_xcsinc
+{MOP_wcsincrrrc, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Cond,MOPD_Undef},ISCONDDEF,kLtAlu,"csinc","0,1,2,3", 1, 3},
+{MOP_xcsincrrrc, {MOPD_Reg64ID,MOPD_Reg64IS,MOPD_Reg64IS,MOPD_Cond,MOPD_Undef},ISCONDDEF,kLtAlu,"csinc","0,1,2,3", 1, 3},
+
+// MOP_xcsinv
+{MOP_wcsinvrrrc, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Cond,MOPD_Undef},ISCONDDEF,kLtAlu,"csinv","0,1,2,3", 1, 3},
+{MOP_xcsinvrrrc, {MOPD_Reg64ID,MOPD_Reg64IS,MOPD_Reg64IS,MOPD_Cond,MOPD_Undef},ISCONDDEF,kLtAlu,"csinv","0,1,2,3", 1, 3},
+
+// MOP_xandrrr
+{MOP_xandrrr, {MOPD_Reg64ID,MOPD_Reg64IS,MOPD_Reg64IS,MOPD_Undef,MOPD_Undef},0,kLtAlu,"and","0,1,2", 1, 2},
+// MOP_xandrrrs
+{MOP_xandrrrs, {MOPD_Reg64ID,MOPD_Reg64IS,MOPD_Reg64IS,MOPD_BitShift64,MOPD_Undef},0,kLtAluShift,"and","0,1,2,3", 1, 3},
+// MOP_xandrri13
+{MOP_xandrri13, {MOPD_Reg64ID,MOPD_Reg64IS,MOPD_Imm13,MOPD_Undef,MOPD_Undef},0,kLtAlu,"and","0,1,2", 1, 2},
+// MOP_wandrrr
+{MOP_wandrrr, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,kLtAlu,"and","0,1,2", 1, 2},
+// MOP_wandrrrs
+{MOP_wandrrrs, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_BitShift32,MOPD_Undef},0,kLtAluShift,"and","0,1,2,3", 1, 3},
+// MOP_wandrri12
+{MOP_wandrri12, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Imm12,MOPD_Undef,MOPD_Undef},0,kLtAlu,"and","0,1,2", 1, 2},
+
+// MOP_xiorrrr
+{MOP_xiorrrr, {MOPD_Reg64ID,MOPD_Reg64IS,MOPD_Reg64IS,MOPD_Undef,MOPD_Undef},0,kLtAlu,"orr","0,1,2", 1, 2},
+// MOP_xiorrrrs
+{MOP_xiorrrrs, {MOPD_Reg64ID,MOPD_Reg64IS,MOPD_Reg64IS,MOPD_BitShift64,MOPD_Undef},0,kLtAlu,"orr","0,1,2,3", 1, 3},
+// MOP_xiorrri13
+{MOP_xiorrri13, {MOPD_Reg64ID,MOPD_Reg64IS,MOPD_Imm13,MOPD_Undef,MOPD_Undef},0,kLtAlu,"orr","0,1,2", 1, 2},
+// MOP_wiorrrr
+{MOP_wiorrrr, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,kLtAlu,"orr","0,1,2", 1, 2},
+// MOP_wiorrrrs
+{MOP_wiorrrrs, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_BitShift32,MOPD_Undef},0,kLtAlu,"orr","0,1,2,3", 1, 3},
+// MOP_wiorrri12
+{MOP_wiorrri12, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Imm12,MOPD_Undef,MOPD_Undef},0,kLtAlu,"orr","0,1,2", 1, 2},
+
+// MOP_xiorri13r
+{MOP_xiorri13r, {MOPD_Reg64ID,MOPD_Imm13,MOPD_Reg64IS,MOPD_Undef,MOPD_Undef},0,kLtAlu,"orr","0,2,1", 1, 2},
+// MOP_wiorri12r
+{MOP_wiorri12r, {MOPD_Reg32ID,MOPD_Imm12,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,kLtAlu,"orr","0,2,1", 1, 2},
+
+// MOP_xeorrrr
+{MOP_xeorrrr, {MOPD_Reg64ID,MOPD_Reg64IS,MOPD_Reg64IS,MOPD_Undef,MOPD_Undef},0,kLtAlu,"eor","0,1,2", 1, 2},
+// MOP_xeorrrrs
+{MOP_xeorrrrs, {MOPD_Reg64ID,MOPD_Reg64IS,MOPD_Reg64IS,MOPD_BitShift64,MOPD_Undef},0,kLtAlu,"eor","0,1,2,3", 1, 3},
+// MOP_xeorrri13
+{MOP_xeorrri13, {MOPD_Reg64ID,MOPD_Reg64IS,MOPD_Imm13,MOPD_Undef,MOPD_Undef},0,kLtAlu,"eor","0,1,2", 1, 2},
+// MOP_weorrrr
+{MOP_weorrrr, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,kLtAlu,"eor","0,1,2", 1, 2},
+// MOP_weorrrrs
+{MOP_weorrrrs, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_BitShift32,MOPD_Undef},0,kLtAlu,"eor","0,1,2,3", 1, 3},
+// MOP_weorrri12
+{MOP_weorrri12, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Imm12,MOPD_Undef,MOPD_Undef},0,kLtAlu,"eor","0,1,2", 1, 2},
+
+// MOP_weorrri8m
+{MOP_weorrri8m, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Imm8,MOPD_Undef,MOPD_Undef},0,kLtAlu,"eor","0,1,2", 1, 2},
+
+// MOP_xnotrr
+{MOP_xnotrr, {MOPD_Reg64ID,MOPD_Reg64IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,kLtAlu,"mvn","0,1", 1, 1},
+// MOP_wnotrr
+{MOP_wnotrr, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,kLtAlu,"mvn","0,1", 1, 1},
+
+// MOP_wfmaxrrr
+{MOP_wfmaxrrr, {MOPD_Reg32FD,MOPD_Reg32FS,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef},0,kLtFpalu,"fmax","0,1,2", 1, 2},
+// MOP_xfmaxrrr
+{MOP_xfmaxrrr, {MOPD_Reg64FD,MOPD_Reg64FS,MOPD_Reg64FS,MOPD_Undef,MOPD_Undef},0,kLtFpalu,"fmax","0,1,2", 1, 2},
+// MOP_wfminrrr
+{MOP_wfminrrr, {MOPD_Reg32FD,MOPD_Reg32FS,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef},0,kLtFpalu,"fmin","0,1,2", 1, 2},
+// MOP_xfminrrr
+{MOP_xfminrrr, {MOPD_Reg64FD,MOPD_Reg64FS,MOPD_Reg64FS,MOPD_Undef,MOPD_Undef},0,kLtFpalu,"fmin","0,1,2", 1, 2},
+
+// MOP_wsdivrrr
+{MOP_wsdivrrr, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},CANTHROW,kLtDiv,"sdiv","0,1,2", 1, 2},
+// MOP_xsdivrrr
+{MOP_xsdivrrr, {MOPD_Reg64ID,MOPD_Reg64IS,MOPD_Reg64IS,MOPD_Undef,MOPD_Undef},CANTHROW,kLtDiv,"sdiv","0,1,2", 1, 2},
+// MOP_wudivrrr
+{MOP_wudivrrr, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},CANTHROW,kLtDiv,"udiv","0,1,2", 1, 2},
+// MOP_xudivrrr
+{MOP_xudivrrr, {MOPD_Reg64ID,MOPD_Reg64IS,MOPD_Reg64IS,MOPD_Undef,MOPD_Undef},CANTHROW,kLtDiv,"udiv","0,1,2", 1, 2},
+
+// MOP_wmsubrrrr
+{MOP_wmsubrrrr, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef},0,kLtMul,"msub","0,1,2,3", 1, 3},
+// MOP_xmsubrrrr
+{MOP_xmsubrrrr, {MOPD_Reg64ID,MOPD_Reg64IS,MOPD_Reg64IS,MOPD_Reg64IS,MOPD_Undef},0,kLtMul,"msub","0,1,2,3", 1, 3},
+
+// MPO_wubfxrri5i5
+{MOP_wubfxrri5i5, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Imm5,MOPD_Imm5,MOPD_Undef},0,kLtAluShift,"ubfx","0,1,2,3", 1, 3},
+// MPO_xubfxrri6i6
+{MOP_xubfxrri6i6, {MOPD_Reg64ID,MOPD_Reg64IS,MOPD_Imm6,MOPD_Imm6,MOPD_Undef},0,kLtAluShift,"ubfx","0,1,2,3", 1, 3},
+
+// MPO_wsbfxrri5i5 -- Signed Bitfield Extract
+{MOP_wsbfxrri5i5, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Imm5,MOPD_Imm5,MOPD_Undef},0,kLtAluShift,"sbfx","0,1,2,3", 1, 3},
+// MPO_xsbfxrri6i6
+{MOP_xsbfxrri6i6, {MOPD_Reg64ID,MOPD_Reg64IS,MOPD_Imm6,MOPD_Imm6,MOPD_Undef},0,kLtAluShift,"sbfx","0,1,2,3", 1, 3},
+
+// MPO_wubfizrri5i5 -- Unsigned Bitfield Insert in Zero
+{MOP_wubfizrri5i5, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Imm5,MOPD_Imm5,MOPD_Undef},0,kLtAluShift,"ubfiz","0,1,2,3", 1, 3},
+// MPO_xubfizrri6i6
+{MOP_xubfizrri6i6, {MOPD_Reg64ID,MOPD_Reg64IS,MOPD_Imm6,MOPD_Imm6,MOPD_Undef},0,kLtAluShift,"ubfiz","0,1,2,3", 1, 3},
+
+// MPO_wbfirri5i5 -- Bitfield Insert
+{MPO_wbfirri5i5, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Imm5,MOPD_Imm5,MOPD_Undef},0,kLtAluShift,"bfi","0,1,2,3", 1, 3},
+// MPO_xbfirri6i6
+{MPO_xbfirri6i6, {MOPD_Reg64ID,MOPD_Reg64IS,MOPD_Imm6,MOPD_Imm6,MOPD_Undef},0,kLtAluShift,"bfi","0,1,2,3", 1, 3},
+
+
+// MOP_xlslrri6,--- Logical Shift Left
+{MOP_xlslrri6, {MOPD_Reg64ID,MOPD_Reg64IS,MOPD_Imm6,MOPD_Undef,MOPD_Undef},0,kLtAluShift,"lsl","0,1,2", 1, 2},
+// MOP_wlslrri5
+{MOP_wlslrri5, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Imm8,MOPD_Undef,MOPD_Undef},0,kLtAluShift,"lsl","0,1,2", 1, 2},
+// MOP_xasrrri6,
+{MOP_xasrrri6, {MOPD_Reg64ID,MOPD_Reg64IS,MOPD_Imm6,MOPD_Undef,MOPD_Undef},0,kLtAluShift,"asr","0,1,2", 1, 2},
+// MOP_wasrrri5
+{MOP_wasrrri5, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Imm8,MOPD_Undef,MOPD_Undef},0,kLtAluShift,"asr","0,1,2", 1, 2},
+// MOP_xlsrrri6,
+{MOP_xlsrrri6, {MOPD_Reg64ID,MOPD_Reg64IS,MOPD_Imm6,MOPD_Undef,MOPD_Undef},0,kLtAluShift,"lsr","0,1,2", 1, 2},
+// MOP_wlsrrri5
+{MOP_wlsrrri5, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Imm8,MOPD_Undef,MOPD_Undef},0,kLtAluShift,"lsr","0,1,2", 1, 2},
+// MOP_xlslrrr,
+{MOP_xlslrrr, {MOPD_Reg64ID,MOPD_Reg64IS,MOPD_Reg64IS,MOPD_Undef,MOPD_Undef},0,kLtAluShiftReg,"lsl","0,1,2", 1, 2},
+// MOP_wlslrrr
+{MOP_wlslrrr, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,kLtAluShiftReg,"lsl","0,1,2", 1, 2},
+// MOP_xasrrrr,
+{MOP_xasrrrr, {MOPD_Reg64ID,MOPD_Reg64IS,MOPD_Reg64IS,MOPD_Undef,MOPD_Undef},0,kLtAluShiftReg,"asr","0,1,2", 1, 2},
+// MOP_wasrrrr
+{MOP_wasrrrr, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,kLtAluShiftReg,"asr","0,1,2", 1, 2},
+// MOP_xlsrrrr,
+{MOP_xlsrrrr, {MOPD_Reg64ID,MOPD_Reg64IS,MOPD_Reg64IS,MOPD_Undef,MOPD_Undef},0,kLtAluShiftReg,"lsr","0,1,2", 1, 2},
+// MOP_wlsrrrr
+{MOP_wlsrrrr, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,kLtAluShiftReg,"lsr","0,1,2", 1, 2},
+
+// MOP_wsfmovrr w->s
+{MOP_wsfmovrr, {MOPD_Reg32FD,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISMOVE,kLtR2f,"fmov","0,1", 1, 1},
+// MOP_wsfmovri imm8->s
+{MOP_wsfmovri, {MOPD_Reg32FD,MOPD_Imm8,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISMOVE,kLtFconst,"fmov","0,1", 1, 1},
+// MOP_swfmovrr s->w
+{MOP_swfmovrr, {MOPD_Reg32ID,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISMOVE,kLtF2r,"fmov","0,1", 1, 1},
+// MOP_xdfmovrr x->d
+{MOP_xdfmovrr, {MOPD_Reg64FD,MOPD_Reg64IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISMOVE,kLtR2f,"fmov","0,1", 1, 1},
+// MOP_xdfmovri imm8->d
+{MOP_xdfmovri, {MOPD_Reg64FD,MOPD_Imm8,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISMOVE,kLtFconst,"fmov","0,1", 1, 1},
+// MOP_dxfmovrr d->x
+{MOP_dxfmovrr, {MOPD_Reg64ID,MOPD_Reg64FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISMOVE,kLtF2r,"fmov","0,1", 1, 1},
+
+// MOP_xcsneg -- Conditional Select Negation
+{MOP_wcsnegrrrc, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Cond,MOPD_Undef},ISCONDDEF,kLtAlu,"csneg","0,1,2,3", 1, 3},
+{MOP_xcsnegrrrc, {MOPD_Reg64ID,MOPD_Reg64IS,MOPD_Reg64IS,MOPD_Cond,MOPD_Undef},ISCONDDEF,kLtAlu,"csneg","0,1,2,3", 1, 3},
+
+// MOP_habsrr
+{MOP_habsrr, {MOPD_Reg16FD,MOPD_Reg16FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,kLtFpalu,"fabs","0,1", 1, 1},
+// MOP_sabsrr
+{MOP_sabsrr, {MOPD_Reg32FD,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,kLtFpalu,"fabs","0,1", 1, 1},
+// MOP_dabsrr
+{MOP_dabsrr, {MOPD_Reg64FD,MOPD_Reg64FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,kLtFpalu,"fabs","0,1", 1, 1},
+
+// neg i32
+{MOP_winegrr, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,kLtAlu,"neg","0,1", 1, 1},
+// neg i64
+{MOP_xinegrr, {MOPD_Reg64ID,MOPD_Reg64IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,kLtAlu,"neg","0,1", 1, 1},
+// neg f32
+{MOP_wfnegrr, {MOPD_Reg32FD,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,kLtFpalu,"fneg","0,1", 1, 1},
+// neg f64
+{MOP_xfnegrr, {MOPD_Reg64FD,MOPD_Reg64FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,kLtFpalu,"fneg","0,1", 1, 1},
+
+// MOP_hdivrrr
+{MOP_hdivrrr, {MOPD_Reg16FD,MOPD_Reg16FS,MOPD_Reg16FS,MOPD_Undef,MOPD_Undef},CANTHROW,kLtAdvsimdDivS,"fdiv","0,1,2", 1, 2},
+// MOP_sdivrrr
+{MOP_sdivrrr, {MOPD_Reg32FD,MOPD_Reg32FS,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef},CANTHROW,kLtAdvsimdDivS,"fdiv","0,1,2", 1, 2},
+// MOP_ddivrrr
+{MOP_ddivrrr, {MOPD_Reg64FD,MOPD_Reg64FS,MOPD_Reg64FS,MOPD_Undef,MOPD_Undef},CANTHROW,kLtAdvsimdDivD,"fdiv","0,1,2", 1, 2},
+
+// MOP_hcselrrrc --- Floating-point Conditional Select
+{MOP_hcselrrrc, {MOPD_Reg16FD,MOPD_Reg16FS,MOPD_Reg16FS,MOPD_Cond,MOPD_Undef},ISCONDDEF,kLtFpalu,"fcsel","0,1,2,3", 1, 3},
+// MOP_scselrrrc
+{MOP_scselrrrc, {MOPD_Reg32FD,MOPD_Reg32FS,MOPD_Reg32FS,MOPD_Cond,MOPD_Undef},ISCONDDEF,kLtFpalu,"fcsel","0,1,2,3", 1, 3},
+// MOP_dcselrrrc
+{MOP_dcselrrrc, {MOPD_Reg64FD,MOPD_Reg64FS,MOPD_Reg64FS,MOPD_Cond,MOPD_Undef},ISCONDDEF,kLtFpalu,"fcsel","0,1,2,3", 1, 3},
+
+// MOP_wldli -- load 32-bit literal
+{MOP_wldli, {MOPD_Reg32ID,MOPD_Imm32LI,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD|CANTHROW,kLtLoad2,"ldr","0,1", 1, 1},
+// MOP_xldli -- load 64-bit literal
+{MOP_xldli, {MOPD_Reg64ID,MOPD_Imm64LI,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD|CANTHROW,kLtLoad2,"ldr","0,1", 1, 1},
+// MOP_sldli -- load 32-bit literal
+{MOP_sldli, {MOPD_Reg32FD,MOPD_Imm32LI,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD|CANTHROW,kLtLoad2,"ldr","0,1", 1, 1},
+// MOP_dldli -- load 64-bit literal
+{MOP_dldli, {MOPD_Reg64FD,MOPD_Imm64LI,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD|CANTHROW,kLtLoad2,"ldr","0,1", 1, 1},
+
+// AArch64 branches/calls
+// MOP_xbl -- branch with link (call); this is a special definition
+{MOP_xbl,  {MOPD_FuncName,MOPD_LISTS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISCALL|CANTHROW,kLtBranch,"bl","0", 0, 2},
+// MOP_xblr -- branch with link (call) to register; this is a special definition
+{MOP_xblr, {MOPD_Reg64IS,MOPD_LISTS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISCALL|CANTHROW,kLtBranch,"blr","0", 0, 2},
+
+// AARCH64 LOADS
+// MOP_wldrsb --- Load Register Signed Byte
+{MOP_wldrsb, {MOPD_Reg32ID,MOPD_Mem8S,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD|CANTHROW,kLtLoad1,"ldrsb","0,1", 1, 1},
+// MOP_wldrb
+{MOP_wldrb, {MOPD_Reg32ID,MOPD_Mem8S,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD|CANTHROW,kLtLoad1,"ldrb","0,1", 1, 1},
+// MOP_wldrsh  --- Load Register Signed Halfword
+{MOP_wldrsh, {MOPD_Reg32ID,MOPD_Mem16S,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD|CANTHROW,kLtLoad1,"ldrsh","0,1", 1, 1},
+// MOP_wldrh
+{MOP_wldrh, {MOPD_Reg32ID, MOPD_Mem16S, MOPD_Undef, MOPD_Undef,MOPD_Undef},ISLOAD|CANTHROW,kLtLoad1,"ldrh","0,1", 1, 1},
+// MOP_wldr
+{MOP_wldr, {MOPD_Reg32ID,MOPD_Mem32S,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD|CANTHROW,kLtLoad1,"ldr","0,1", 1, 1},
+// MOP_xldr
+{MOP_xldr, {MOPD_Reg64ID,MOPD_Mem64S,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD|CANTHROW,kLtLoad2,"ldr","0,1", 1, 1},
+// MOP_bldr
+{MOP_bldr, {MOPD_Reg8FD,MOPD_Mem8S,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD|CANTHROW,kLtFLoad64,"ldr","0,1", 1, 1},
+// MOP_hldr
+{MOP_hldr, {MOPD_Reg16FD,MOPD_Mem16S,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD|CANTHROW,kLtFLoad64,"ldr","0,1", 1, 1},
+// MOP_sldr
+{MOP_sldr, {MOPD_Reg32FD,MOPD_Mem32S,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD|CANTHROW,kLtFLoadMany,"ldr","0,1", 1, 1},
+// MOP_dldr
+{MOP_dldr, {MOPD_Reg64FD,MOPD_Mem64S,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD|CANTHROW,kLtFLoadMany,"ldr","0,1", 1, 1},
+// MOP_vldr
+{MOP_vldr, {MOPD_Reg128FD,MOPD_Mem128S,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD|CANTHROW,kLtFLoadMany,"ldr","0,1", 1, 1},
+
+// AArch64 LDP/LDPSW
+// MOP_wldp
+{MOP_wldp, {MOPD_Reg32ID,MOPD_Reg32ID,MOPD_Mem32S,MOPD_Undef,MOPD_Undef},ISLOAD|ISLOADPAIR|CANTHROW,kLtLoad2,"ldp","0,1,2", 2, 1},
+// MOP_xldp
+{MOP_xldp, {MOPD_Reg64ID,MOPD_Reg64ID,MOPD_Mem64S,MOPD_Undef,MOPD_Undef},ISLOAD|ISLOADPAIR|CANTHROW,kLtLoad3plus,"ldp","0,1,2", 2, 1},
+// MOP_xldpsw
+{MOP_xldpsw, {MOPD_Reg64ID,MOPD_Reg64ID,MOPD_Mem32S,MOPD_Undef,MOPD_Undef},ISLOAD|ISLOADPAIR|CANTHROW,kLtLoad2,"ldpsw","0,1,2", 2, 1},
+// MOP_sldp
+{MOP_sldp, {MOPD_Reg32FD,MOPD_Reg32FD,MOPD_Mem32S,MOPD_Undef,MOPD_Undef},ISLOAD|ISLOADPAIR|CANTHROW,kLtFLoad64,"ldp","0,1,2", 2, 1},
+// MOP_dldp
+{MOP_dldp, {MOPD_Reg64FD,MOPD_Reg64FD,MOPD_Mem64S,MOPD_Undef,MOPD_Undef},ISLOAD|ISLOADPAIR|CANTHROW,kLtFLoadMany,"ldp","0,1,2", 2, 1},
+
+// AARCH64 Load with Acquire semantics
+// MOP_wldarb
+{MOP_wldarb, {MOPD_Reg32ID,MOPD_Mem8S,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD|HASACQUIRE|CANTHROW,kLtUndef,"ldarb","0,1", 1, 1},
+// MOP_wldarh
+{MOP_wldarh, {MOPD_Reg32ID, MOPD_Mem16S, MOPD_Undef, MOPD_Undef,MOPD_Undef},ISLOAD|HASACQUIRE|CANTHROW,kLtUndef,"ldarh","0,1", 1, 1},
+// MOP_wldar
+{MOP_wldar, {MOPD_Reg32ID,MOPD_Mem32S,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD|HASACQUIRE|CANTHROW,kLtUndef,"ldar","0,1", 1, 1},
+// MOP_xldar
+{MOP_xldar, {MOPD_Reg64ID,MOPD_Mem64S,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD|HASACQUIRE|CANTHROW,kLtUndef,"ldar","0,1", 1, 1},
+
+// AARCH64 Load with LOAcquire semantics
+// MOP_wldlarb
+{MOP_wldlarb, {MOPD_Reg32ID,MOPD_Mem8S,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD|HASLOACQUIRE|CANTHROW,kLtUndef,"ldlarb","0,1", 1, 1},
+// MOP_wldlarh
+{MOP_wldlarh, {MOPD_Reg32ID, MOPD_Mem16S, MOPD_Undef, MOPD_Undef,MOPD_Undef},ISLOAD|HASLOACQUIRE|CANTHROW,kLtUndef,"ldlarh","0,1", 1, 1},
+// MOP_wldlar
+{MOP_wldlar, {MOPD_Reg32ID,MOPD_Mem32S,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD|HASLOACQUIRE|CANTHROW,kLtUndef,"ldlar","0,1", 1, 1},
+// MOP_xldlar
+{MOP_xldlar, {MOPD_Reg64ID,MOPD_Mem64S,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD|HASLOACQUIRE|CANTHROW,kLtUndef,"ldlar","0,1", 1, 1},
+
+// AARCH64 Load with Acquire RCpc semantics
+// MOP_wldaprb
+{MOP_wldaprb, {MOPD_Reg32ID,MOPD_Mem8S,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD|HASACQUIRERCPC|CANTHROW,kLtUndef,"ldaprb","0,1", 1, 1},
+// MOP_wldaprh
+{MOP_wldaprh, {MOPD_Reg32ID, MOPD_Mem16S, MOPD_Undef, MOPD_Undef,MOPD_Undef},ISLOAD|HASACQUIRERCPC|CANTHROW,kLtUndef,"ldaprh","0,1", 1, 1},
+// MOP_wldapr
+{MOP_wldapr, {MOPD_Reg32ID,MOPD_Mem32S,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD|HASACQUIRERCPC|CANTHROW,kLtUndef,"ldapr","0,1", 1, 1},
+// MOP_xldapr
+{MOP_xldapr, {MOPD_Reg64ID,MOPD_Mem64S,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD|HASACQUIRERCPC|CANTHROW,kLtUndef,"ldapr","0,1", 1, 1},
+
+// MOP_wmovkri16 -- LSL4/LSL6 is not encoding LSL per se. For the moment assumes it is LSL only.
+{MOP_wmovkri16, {MOPD_Reg32IDS,MOPD_Imm16,MOPD_LSL4,MOPD_Undef,MOPD_Undef},ISMOVE|ISPARTDEF,kLtShift,"movk","0,1,2", 1, 3},
+// MOP_xmovkri16
+{MOP_xmovkri16, {MOPD_Reg64IDS,MOPD_Imm16,MOPD_LSL6,MOPD_Undef,MOPD_Undef},ISMOVE|ISPARTDEF,kLtShift,"movk","0,1,2", 1, 3},
+
+// MOP_wmovzri16
+{MOP_wmovzri16, {MOPD_Reg32ID,MOPD_Imm16,MOPD_LSL4,MOPD_Undef,MOPD_Undef},ISMOVE|ISPARTDEF,kLtShift,"movz","0,1,2", 1, 2},
+// MOP_xmovzri16
+{MOP_xmovzri16, {MOPD_Reg64ID,MOPD_Imm16,MOPD_LSL6,MOPD_Undef,MOPD_Undef},ISMOVE|ISPARTDEF,kLtShift,"movz","0,1,2", 1, 2},
+
+// MOP_wmovnri16
+{MOP_wmovnri16, {MOPD_Reg32ID,MOPD_Imm16,MOPD_LSL4,MOPD_Undef,MOPD_Undef},ISMOVE|ISPARTDEF,kLtShift,"movn","0,1,2", 1, 2},
+// MOP_xmovnri16
+{MOP_xmovnri16, {MOPD_Reg64ID,MOPD_Imm16,MOPD_LSL6,MOPD_Undef,MOPD_Undef},ISMOVE|ISPARTDEF,kLtShift,"movn","0,1,2", 1, 2},
+
+// AARCH64 Load exclusive with/without acquire semantics
+{MOP_wldxrb, {MOPD_Reg32ID,MOPD_Mem8S, MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD|ISATOMIC|CANTHROW,kLtUndef,"ldxrb","0,1", 1, 1},
+{MOP_wldxrh, {MOPD_Reg32ID,MOPD_Mem16S,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD|ISATOMIC|CANTHROW,kLtUndef,"ldxrh","0,1", 1, 1},
+{MOP_wldxr,  {MOPD_Reg32ID,MOPD_Mem32S,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD|ISATOMIC|CANTHROW,kLtUndef,"ldxr","0,1", 1, 1},
+{MOP_xldxr,  {MOPD_Reg64ID,MOPD_Mem64S,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD|ISATOMIC|CANTHROW,kLtUndef,"ldxr","0,1", 1, 1},
+
+{MOP_wldaxrb,{MOPD_Reg32ID,MOPD_Mem8S, MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD|ISATOMIC|HASACQUIRE|CANTHROW,kLtUndef,"ldaxrb","0,1", 1, 1},
+{MOP_wldaxrh,{MOPD_Reg32ID,MOPD_Mem16S,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD|ISATOMIC|HASACQUIRE|CANTHROW,kLtUndef,"ldaxrh","0,1", 1, 1},
+{MOP_wldaxr, {MOPD_Reg32ID,MOPD_Mem32S,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD|ISATOMIC|HASACQUIRE|CANTHROW,kLtUndef,"ldaxr","0,1", 1, 1},
+{MOP_xldaxr, {MOPD_Reg64ID,MOPD_Mem64S,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD|ISATOMIC|HASACQUIRE|CANTHROW,kLtUndef,"ldaxr","0,1", 1, 1},
+
+{MOP_wldaxp, {MOPD_Reg32ID,MOPD_Reg32ID,MOPD_Mem32S,MOPD_Undef,MOPD_Undef},ISLOAD|ISLOADPAIR|ISATOMIC|HASACQUIRE|CANTHROW,kLtUndef,"ldaxp","0,1,2", 2, 1},
+{MOP_xldaxp, {MOPD_Reg64ID,MOPD_Reg64ID,MOPD_Mem64S,MOPD_Undef,MOPD_Undef},ISLOAD|ISLOADPAIR|ISATOMIC|HASACQUIRE|CANTHROW,kLtUndef,"ldaxp","0,1,2", 2, 1},
+
+// MOP_vsqrts
+{MOP_vsqrts, {MOPD_Reg32FD,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},CANTHROW,kLtAdvsimdDivS,"fsqrt","0,1", 1, 1},
+// MOP_vsqrtd
+{MOP_vsqrtd, {MOPD_Reg64FD,MOPD_Reg64FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},CANTHROW,kLtAdvsimdDivD,"fsqrt","0,1", 1, 1},
+
+
+// # Non Definitions
+// # As far as register allocation is concerned, the instructions below are non-definitions.
+
+// MOP_beq
+{MOP_beq, {MOPD_RegCCS,MOPD_Label,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISBRANCH,kLtBranch,"beq","1", 0, 2},
+// MOP_bne
+{MOP_bne, {MOPD_RegCCS,MOPD_Label,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISBRANCH,kLtBranch,"bne","1", 0, 2},
+// MOP_blt
+{MOP_blt, {MOPD_RegCCS,MOPD_Label,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISBRANCH,kLtBranch,"blt","1", 0, 2},
+// MOP_ble
+{MOP_ble, {MOPD_RegCCS,MOPD_Label,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISBRANCH,kLtBranch,"ble","1", 0, 2},
+// MOP_bgt
+{MOP_bgt, {MOPD_RegCCS,MOPD_Label,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISBRANCH,kLtBranch,"bgt","1", 0, 2},
+// MOP_bge
+{MOP_bge, {MOPD_RegCCS,MOPD_Label,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISBRANCH,kLtBranch,"bge","1", 0, 2},
+// MOP_blo equal to MOP_blt for unsigned comparison
+{MOP_blo, {MOPD_RegCCS,MOPD_Label,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISBRANCH,kLtBranch,"blo","1", 0, 2},
+// MOP_bls equal to MOP_bls for unsigned comparison
+{MOP_bls, {MOPD_RegCCS,MOPD_Label,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISBRANCH,kLtBranch,"bls","1", 0, 2},
+// MOP_bhs equal to MOP_bge for unsigned comparison
+{MOP_bhs, {MOPD_RegCCS,MOPD_Label,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISBRANCH,kLtBranch,"bhs","1", 0, 2},
+// MOP_bhi equal to MOP_bgt for float comparison
+{MOP_bhi, {MOPD_RegCCS,MOPD_Label,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISBRANCH,kLtBranch,"bhi","1", 0, 2},
+// MOP_bpl equal to MOP_bge for float comparison
+{MOP_bpl, {MOPD_RegCCS,MOPD_Label,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISBRANCH,kLtBranch,"bpl","1", 0, 2},
+{MOP_bmi, {MOPD_RegCCS,MOPD_Label,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISBRANCH,kLtBranch,"bmi","1", 0, 2},
+{MOP_bvc, {MOPD_RegCCS,MOPD_Label,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISBRANCH,kLtBranch,"bvc","1", 0, 2},
+{MOP_bvs, {MOPD_RegCCS,MOPD_Label,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISBRANCH,kLtBranch,"bvs","1", 0, 2},
+{MOP_bal, {MOPD_RegCCS,MOPD_Label,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISBRANCH,kLtBranch,"bal","1", 0, 2},
+
+// MOP_xret		AARCH64 Specific
+{MOP_xret, {MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},CANTHROW,kLtBranch,"ret","", 0, 0},
+
+// AARCH64 Floating-Point COMPARES signaling versions
+// MOP_hcmperi -- AArch64 cmp has no dest operand
+{MOP_hcmperi, {MOPD_RegCCD, MOPD_Reg16FS,MOPD_FPZeroImm8,MOPD_Undef,MOPD_Undef},0,kLtFpalu,"fcmpe","1,2", 1, 2},
+// MOP_hcmperr -- register, shifted register, AArch64 cmp has no dest operand
+{MOP_hcmperr, {MOPD_RegCCD, MOPD_Reg16FS,MOPD_Reg16FS,MOPD_Undef,MOPD_Undef},0,kLtFpalu,"fcmpe","1,2", 1, 2},
+
+// MOP_scmperi -- AArch64 cmp has no dest operand
+{MOP_scmperi, {MOPD_RegCCD, MOPD_Reg32FS,MOPD_FPZeroImm8,MOPD_Undef,MOPD_Undef},0,kLtFpalu,"fcmpe","1,2", 1, 2},
+// MOP_scmperr
+{MOP_scmperr, {MOPD_RegCCD, MOPD_Reg32FS,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef},0,kLtFpalu,"fcmpe","1,2", 1, 2},
+
+// MOP_dcmperi -- AArch64 cmp has no dest operand
+{MOP_dcmperi, {MOPD_RegCCD, MOPD_Reg64FS,MOPD_FPZeroImm8,MOPD_Undef,MOPD_Undef},0,kLtFpalu,"fcmpe","1,2", 1, 2},
+// MOP_dcmperr
+{MOP_dcmperr, {MOPD_RegCCD, MOPD_Reg64FS,MOPD_Reg64FS,MOPD_Undef,MOPD_Undef},0,kLtFpalu,"fcmpe","1,2", 1, 2},
+
+// AARCH64 Floating-Point COMPARES non-signaling (quiet) versions
+// MOP_hcmpqri -- AArch64 cmp has no dest operand
+{MOP_hcmpqri, {MOPD_RegCCD, MOPD_Reg16FS,MOPD_FPZeroImm8,MOPD_Undef,MOPD_Undef},0,kLtFpalu,"fcmp","1,2", 1, 2},
+// MOP_hcmpqrr -- register, shifted register, AArch64 cmp has no dest operand
+{MOP_hcmpqrr, {MOPD_RegCCD, MOPD_Reg16FS,MOPD_Reg16FS,MOPD_Undef,MOPD_Undef},0,kLtFpalu,"fcmp","1,2", 1, 2},
+
+// MOP_scmpqri -- AArch64 cmp has no dest operand
+{MOP_scmpqri, {MOPD_RegCCD, MOPD_Reg32FS,MOPD_FPZeroImm8,MOPD_Undef,MOPD_Undef},0,kLtFpalu,"fcmp","1,2", 1, 2},
+// MOP_scmpqrr
+{MOP_scmpqrr, {MOPD_RegCCD, MOPD_Reg32FS,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef},0,kLtFpalu,"fcmp","1,2", 1, 2},
+
+// MOP_dcmpqri -- AArch64 cmp has no dest operand
+{MOP_dcmpqri, {MOPD_RegCCD, MOPD_Reg64FS,MOPD_FPZeroImm8,MOPD_Undef,MOPD_Undef},0,kLtFpalu,"fcmp","1,2", 1, 2},
+// MOP_dcmpqrr
+{MOP_dcmpqrr, {MOPD_RegCCD, MOPD_Reg64FS,MOPD_Reg64FS,MOPD_Undef,MOPD_Undef},0,kLtFpalu,"fcmp","1,2", 1, 2},
+
+// AARCH64 Integer COMPARES
+// MOP_wcmpri -- AArch64 cmp has no dest operand
+{MOP_wcmpri, {MOPD_RegCCD, MOPD_Reg32IS,MOPD_Imm12,MOPD_Undef,MOPD_Undef},0,kLtAlu,"cmp","1,2", 1, 2},
+// MOP_wcmprr -- register, shifted register, AArch64 cmp has no dest operand
+{MOP_wcmprr, {MOPD_RegCCD, MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,kLtAlu,"cmp","1,2", 1, 2},
+// MOP_xcmpri -- AArch64 cmp has no dest operand
+{MOP_xcmpri, {MOPD_RegCCD, MOPD_Reg64IS,MOPD_Imm12,MOPD_Undef,MOPD_Undef},0,kLtAlu,"cmp","1,2", 1, 2},
+// MOP_xcmprr -- register, shifted register, AArch64 cmp has no dest operand
+{MOP_xcmprr, {MOPD_RegCCD, MOPD_Reg64IS,MOPD_Reg64IS,MOPD_Undef,MOPD_Undef},0,kLtAlu,"cmp","1,2", 1, 2},
+
+// MOP_wccmpriic -- AArch64 cmp has no dest operand
+{MOP_wccmpriic, {MOPD_RegCCD, MOPD_Reg32IS,MOPD_Imm5,MOPD_Imm4,MOPD_Cond},0,kLtAlu,"ccmp","1,2,3,4", 1, 4},
+// MOP_wccmprric -- register, shifted register, AArch64 cmp has no dest operand
+{MOP_wccmprric, {MOPD_RegCCD, MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Imm4,MOPD_Cond},0,kLtAlu,"ccmp","1,2,3,4", 1, 4},
+// MOP_xccmpriic -- AArch64 cmp has no dest operand
+{MOP_xccmpriic, {MOPD_RegCCD, MOPD_Reg64IS,MOPD_Imm5,MOPD_Imm4,MOPD_Cond},0,kLtAlu,"ccmp","1,2,3,4", 1, 4},
+// MOP_xccmprric -- register, shifted register, AArch64 cmp has no dest operand
+{MOP_xccmprric, {MOPD_RegCCD, MOPD_Reg64IS,MOPD_Reg64IS,MOPD_Imm4,MOPD_Cond},0,kLtAlu,"ccmp","1,2,3,4", 1, 4},
+
+// MOP_wcmnri -- AArch64 cmp has no dest operand
+{MOP_wcmnri, {MOPD_RegCCD, MOPD_Reg32IS,MOPD_Imm12,MOPD_Undef,MOPD_Undef},0,kLtAlu,"cmn","1,2", 1, 2},
+// MOP_wcmnrr -- register, shifted register, AArch64 cmp has no dest operand
+{MOP_wcmnrr, {MOPD_RegCCD, MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,kLtAlu,"cmn","1,2", 1, 2},
+// MOP_xcmnri -- AArch64 cmp has no dest operand
+{MOP_xcmnri, {MOPD_RegCCD, MOPD_Reg64IS,MOPD_Imm12,MOPD_Undef,MOPD_Undef},0,kLtAlu,"cmn","1,2", 1, 2},
+// MOP_xcmnrr -- register, shifted register, AArch64 cmp has no dest operand
+{MOP_xcmnrr, {MOPD_RegCCD, MOPD_Reg64IS,MOPD_Reg64IS,MOPD_Undef,MOPD_Undef},0,kLtAlu,"cmn","1,2", 1, 2},
+
+// AArch64 branches
+// MOP_xbr -- branch to register
+{MOP_xbr, {MOPD_Reg64IS,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISBRANCH,kLtBranch,"br","0", 0, 1},
+// MOP_Tbbuncond
+{MOP_xuncond, {MOPD_Label,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISBRANCH,kLtBranch,"b","0", 0, 1},
+
+// MOP_wcbnz --- Compare and Branch on Nonzero
+{MOP_wcbnz, {MOPD_Reg32IS,MOPD_Label,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISBRANCH,kLtBranch,"cbnz","0,1", 0, 2},
+// MOP_xcbnz
+{MOP_xcbnz, {MOPD_Reg64IS,MOPD_Label,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISBRANCH,kLtBranch,"cbnz","0,1", 0, 2},
+// MOP_wcbz --- Compare and Branch on zero
+{MOP_wcbz, {MOPD_Reg32IS,MOPD_Label,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISBRANCH,kLtBranch,"cbz","0,1", 0, 2},
+// MOP_xcbz
+{MOP_xcbz, {MOPD_Reg64IS,MOPD_Label,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISBRANCH,kLtBranch,"cbz","0,1", 0, 2},
+
+// MOP_wtbnz --- Test bit and Branch if Nonzero
+{MOP_wtbnz, {MOPD_Reg32IS,MOPD_Imm8,MOPD_Label,MOPD_Undef,MOPD_Undef},ISBRANCH,kLtBranch,"tbnz","0,1,2", 0, 3},
+// MOP_xtbnz
+{MOP_xtbnz, {MOPD_Reg64IS,MOPD_Imm8,MOPD_Label,MOPD_Undef,MOPD_Undef},ISBRANCH,kLtBranch,"tbnz","0,1,2", 0, 3},
+// MOP_wtbz --- Test bit and Branch if Zero
+{MOP_wtbz, {MOPD_Reg32IS,MOPD_Imm8,MOPD_Label,MOPD_Undef,MOPD_Undef},ISBRANCH,kLtBranch,"tbz","0,1,2", 0, 3},
+// MOP_xtbz
+{MOP_xtbz, {MOPD_Reg64IS,MOPD_Imm8,MOPD_Label,MOPD_Undef,MOPD_Undef},ISBRANCH,kLtBranch,"tbz","0,1,2", 0, 3},
+
+// AARCH64 STORES
+// MOP_wstrb -- Store Register Byte
+{MOP_wstrb, {MOPD_Reg32IS,MOPD_Mem8D,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE|CANTHROW,kLtStore1,"strb","0,1", 1, 1},
+// MOP_wstrh -- Store Register Halfword
+{MOP_wstrh, {MOPD_Reg32IS,MOPD_Mem16D,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE|CANTHROW,kLtStore1,"strh","0,1", 1, 1},
+// MOP_wstr -- Store Register Word
+{MOP_wstr, {MOPD_Reg32IS,MOPD_Mem32D,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE|CANTHROW,kLtStore1,"str","0,1", 1, 1},
+// MOP_xstr -- Store Register Double word
+{MOP_xstr, {MOPD_Reg64IS,MOPD_Mem64D,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE|CANTHROW,kLtStore2,"str","0,1", 1, 1},
+
+// MOP_sstr -- Store Register SIMD/FP Float
+{MOP_sstr, {MOPD_Reg32FS,MOPD_Mem32D,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE|CANTHROW,kLtStore2,"str","0,1", 1, 1},
+// MOP_dstr -- Store Register SIMD/FP Double
+{MOP_dstr, {MOPD_Reg64FS,MOPD_Mem64D,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE|CANTHROW,kLtStore3plus,"str","0,1", 1, 1},
+
+// MOP_vstr -- Store Register SIMD
+{MOP_vstr, {MOPD_Reg128FS,MOPD_Mem128D,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE|CANTHROW,kLtStore2,"str","0,1", 1, 1},
+
+// AArch64 STP.
+// MOP_wstp
+{MOP_wstp, {MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Mem32D,MOPD_Undef,MOPD_Undef},ISSTORE|ISSTOREPAIR|CANTHROW,kLtStore2,"stp","0,1,2", 1, 2},
+// MOP_xstp
+{MOP_xstp, {MOPD_Reg64IS,MOPD_Reg64IS,MOPD_Mem64D,MOPD_Undef,MOPD_Undef},ISSTORE|ISSTOREPAIR|CANTHROW,kLtStore3plus,"stp","0,1,2", 1, 2},
+// AArch64 does not define STPSW. It has no practical value.
+// MOP_sstp
+{MOP_sstp, {MOPD_Reg32FS,MOPD_Reg32FS,MOPD_Mem32D,MOPD_Undef,MOPD_Undef},ISSTORE|ISSTOREPAIR|CANTHROW,kLtAdvsimdMulQ,"stp","0,1,2", 1, 2},
+// MOP_dstp
+{MOP_dstp, {MOPD_Reg64FS,MOPD_Reg64FS,MOPD_Mem64D,MOPD_Undef,MOPD_Undef},ISSTORE|ISSTOREPAIR|CANTHROW,kLtAdvsimdMulQ,"stp","0,1,2", 1, 2},
+
+
+
+// AARCH64 Store with Release semantics
+// MOP_wstlrb -- Store-Release Register Byte
+{MOP_wstlrb, {MOPD_Reg32IS,MOPD_Mem8D,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE|HASRELEASE|CANTHROW,kLtUndef,"stlrb","0,1", 1, 1},
+// MOP_wstlrh -- Store-Release Register Halfword
+{MOP_wstlrh, {MOPD_Reg32IS,MOPD_Mem16D,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE|HASRELEASE|CANTHROW,kLtUndef,"stlrh","0,1", 1, 1},
+// MOP_wstlr -- Store-Release Register Word
+{MOP_wstlr, {MOPD_Reg32IS,MOPD_Mem32D,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE|HASRELEASE|CANTHROW,kLtUndef,"stlr","0,1", 1, 1},
+// MOP_xstlr -- Store-Release Register Double word
+{MOP_xstlr, {MOPD_Reg64IS,MOPD_Mem64D,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE|HASRELEASE|CANTHROW,kLtUndef,"stlr","0,1", 1, 1},
+
+// AARCH64 Store with LORelease semantics
+// MOP_wstllrb -- Store-LORelease Register Byte
+{MOP_wstllrb, {MOPD_Reg32IS,MOPD_Mem8D,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE|HASLORELEASE|CANTHROW,kLtUndef,"stllrb","0,1", 1, 1},
+// MOP_wstllrh -- Store-LORelease Register Halfword
+{MOP_wstllrh, {MOPD_Reg32IS,MOPD_Mem16D,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE|HASLORELEASE|CANTHROW,kLtUndef,"stllrh","0,1", 1, 1},
+// MOP_wstllr -- Store-LORelease Register Word
+{MOP_wstllr, {MOPD_Reg32IS,MOPD_Mem32D,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE|HASLORELEASE|CANTHROW,kLtUndef,"stllr","0,1", 1, 1},
+// MOP_xstllr -- Store-LORelease Register Double word
+{MOP_xstllr, {MOPD_Reg64IS,MOPD_Mem64D,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE|HASLORELEASE|CANTHROW,kLtUndef,"stllr","0,1", 1, 1},
+
+// AARCH64 Store exclusive with/without release semantics
+{MOP_wstxrb, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Mem8D, MOPD_Undef,MOPD_Undef},ISSTORE|ISATOMIC|CANTHROW,kLtUndef,"stxrb","0,1,2", 1, 2},
+{MOP_wstxrh, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Mem16D,MOPD_Undef,MOPD_Undef},ISSTORE|ISATOMIC|CANTHROW,kLtUndef,"stxrh","0,1,2", 1, 2},
+{MOP_wstxr,  {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Mem32D,MOPD_Undef,MOPD_Undef},ISSTORE|ISATOMIC|CANTHROW,kLtUndef,"stxr","0,1,2", 1, 2},
+{MOP_xstxr,  {MOPD_Reg32ID,MOPD_Reg64IS,MOPD_Mem64D,MOPD_Undef,MOPD_Undef},ISSTORE|ISATOMIC|CANTHROW,kLtUndef,"stxr","0,1,2", 1, 2},
+
+{MOP_wstlxrb,{MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Mem8D, MOPD_Undef,MOPD_Undef},ISSTORE|ISATOMIC|HASRELEASE|CANTHROW,kLtUndef,"stlxrb","0,1,2", 1, 2},
+{MOP_wstlxrh,{MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Mem16D,MOPD_Undef,MOPD_Undef},ISSTORE|ISATOMIC|HASRELEASE|CANTHROW,kLtUndef,"stlxrh","0,1,2", 1, 2},
+{MOP_wstlxr, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Mem32D,MOPD_Undef,MOPD_Undef},ISSTORE|ISATOMIC|HASRELEASE|CANTHROW,kLtUndef,"stlxr","0,1,2", 1, 2},
+{MOP_xstlxr, {MOPD_Reg32ID,MOPD_Reg64IS,MOPD_Mem64D,MOPD_Undef,MOPD_Undef},ISSTORE|ISATOMIC|HASRELEASE|CANTHROW,kLtUndef,"stlxr","0,1,2", 1, 2},
+
+{MOP_wstlxp, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Mem64D,MOPD_Undef},ISSTORE|ISSTOREPAIR|ISATOMIC|HASRELEASE|CANTHROW,kLtUndef,"stlxp","0,1,2,3", 1, 3},
+{MOP_xstlxp, {MOPD_Reg32ID,MOPD_Reg64IS,MOPD_Reg64IS,MOPD_Mem64D,MOPD_Undef},ISSTORE|ISSTOREPAIR|ISATOMIC|HASRELEASE|CANTHROW,kLtUndef,"stlxp","0,1,2,3", 1, 3},
+
+// Atomic add without release
+// MOP_wstaddb
+{MOP_wstaddb, {MOPD_Reg32IS,MOPD_Mem8D,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE|CANTHROW,kLtUndef,"staddb","0,1", 1, 1},
+// MOP_wstaddh
+{MOP_wstaddh, {MOPD_Reg32IS,MOPD_Mem16D,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE|CANTHROW,kLtUndef,"staddh","0,1", 1, 1},
+// MOP_wstadd
+{MOP_wstadd, {MOPD_Reg32IS,MOPD_Mem32D,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE|CANTHROW,kLtUndef,"stadd","0,1", 1, 1},
+// MOP_xstadd
+{MOP_xstadd, {MOPD_Reg64IS,MOPD_Mem64D,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE|CANTHROW,kLtUndef,"stadd","0,1", 1, 1},
+
+// Atomic add with release
+// MOP_wstaddlb
+{MOP_wstaddlb, {MOPD_Reg32IS,MOPD_Mem8D,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE|HASRELEASE|CANTHROW,kLtUndef,"staddlb","0,1", 1, 1},
+// MOP_wstaddlh
+{MOP_wstaddlh, {MOPD_Reg32IS,MOPD_Mem16D,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE|HASRELEASE|CANTHROW,kLtUndef,"staddlh","0,1", 1, 1},
+// MOP_wstaddl
+{MOP_wstaddl, {MOPD_Reg32IS,MOPD_Mem32D,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE|HASRELEASE|CANTHROW,kLtUndef,"staddl","0,1", 1, 1},
+// MOP_xstaddl
+{MOP_xstaddl, {MOPD_Reg64IS,MOPD_Mem64D,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE|HASRELEASE|CANTHROW,kLtUndef,"staddl","0,1", 1, 1},
+
+// Atomic bit clear
+// MOP_wstclrb
+{MOP_wstclrb, {MOPD_Reg32IS,MOPD_Mem8D,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE|CANTHROW,kLtUndef,"stclrb","0,1", 1, 1},
+// MOP_wstclrh
+{MOP_wstclrh, {MOPD_Reg32IS,MOPD_Mem16D,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE|CANTHROW,kLtUndef,"stclrh","0,1", 1, 1},
+// MOP_wstclr
+{MOP_wstclr, {MOPD_Reg32IS,MOPD_Mem32D,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE|CANTHROW,kLtUndef,"stclr","0,1", 1, 1},
+// MOP_xstclr
+{MOP_xstclr, {MOPD_Reg64IS,MOPD_Mem64D,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE|CANTHROW,kLtUndef,"stclr","0,1", 1, 1},
+
+// Atomic clr with release
+// MOP_wstclrlb
+{MOP_wstclrlb, {MOPD_Reg32IS,MOPD_Mem8D,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE|HASRELEASE|CANTHROW,kLtUndef,"stclrlb","0,1", 1, 1},
+// MOP_wstclrlh
+{MOP_wstclrlh, {MOPD_Reg32IS,MOPD_Mem16D,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE|HASRELEASE|CANTHROW,kLtUndef,"stclrlh","0,1", 1, 1},
+// MOP_wstclrl
+{MOP_wstclrl, {MOPD_Reg32IS,MOPD_Mem32D,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE|HASRELEASE|CANTHROW,kLtUndef,"stclrl","0,1", 1, 1},
+// MOP_xstclrl
+{MOP_xstclrl, {MOPD_Reg64IS,MOPD_Mem64D,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE|HASRELEASE|CANTHROW,kLtUndef,"stclrl","0,1", 1, 1},
+
+// Atomic XOR
+// MOP_wsteorb
+{MOP_wsteorb, {MOPD_Reg32IS,MOPD_Mem8D,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE|CANTHROW,kLtUndef,"steorb","0,1", 1, 1},
+// MOP_wsteorh
+{MOP_wsteorh, {MOPD_Reg32IS,MOPD_Mem16D,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE|CANTHROW,kLtUndef,"steorh","0,1", 1, 1},
+// MOP_wsteor
+{MOP_wsteor, {MOPD_Reg32IS,MOPD_Mem32D,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE|CANTHROW,kLtUndef,"steor","0,1", 1, 1},
+// MOP_xsteor
+{MOP_xsteor, {MOPD_Reg64IS,MOPD_Mem64D,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE|CANTHROW,kLtUndef,"steor","0,1", 1, 1},
+
+// Atomic eor with release
+// MOP_wsteorlb
+{MOP_wsteorlb, {MOPD_Reg32IS,MOPD_Mem8D,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE|HASRELEASE|CANTHROW,kLtUndef,"steorlb","0,1", 1, 1},
+// MOP_wsteorlh
+{MOP_wsteorlh, {MOPD_Reg32IS,MOPD_Mem16D,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE|HASRELEASE|CANTHROW,kLtUndef,"steorlh","0,1", 1, 1},
+// MOP_wsteorl
+{MOP_wsteorl, {MOPD_Reg32IS,MOPD_Mem32D,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE|HASRELEASE|CANTHROW,kLtUndef,"steorl","0,1", 1, 1},
+// MOP_xsteorl
+{MOP_xsteorl, {MOPD_Reg64IS,MOPD_Mem64D,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE|HASRELEASE|CANTHROW,kLtUndef,"steorl","0,1", 1, 1},
+
+// Memory barriers
+// MOP_dmb_ishld
+{MOP_dmb_ishld, {MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef}, HASACQUIRE|ISDMB,kLtBranch, "dmb	ishld", "", 0, 0},
+// MOP_dmb_ishst
+{MOP_dmb_ishst, {MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef}, HASRELEASE|ISDMB,kLtBranch, "dmb	ishst", "", 0, 0},
+// MOP_dmb_ish
+{MOP_dmb_ish,   {MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef}, HASACQUIRE|HASRELEASE|ISDMB,kLtBranch, "dmb ish", "", 0, 0},
+
+// MOP_clinit
+// will be emit to four instructions in a row:
+// adrp  xd, :got:__classinfo__Ljava_2Futil_2Fconcurrent_2Fatomic_2FAtomicInteger_3B
+//  ldr xd, [xd,#:got_lo12:__classinfo__Ljava_2Futil_2Fconcurrent_2Fatomic_2FAtomicInteger_3B]
+//  ldr xd, [xd,#112]
+//   ldr wzr, [xd]
+{MOP_clinit, {MOPD_Reg64ID,MOPD_Literal,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISATOMIC|CANTHROW,kLtLoad1,"intrinsic_clinit","0,1", 1, 1},
+
+// will be emit to two instructions in a row:
+//  adrp    xd, _PTR__cinf_Ljava_2Flang_2FSystem_3B
+//  ldr     xd, [xd, #:lo12:_PTR__cinf_Ljava_2Flang_2FSystem_3B]
+//MOP_adrp_ldr
+{MOP_adrp_ldr, {MOPD_Reg64ID, MOPD_Literal,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISATOMIC|CANTHROW,kLtLoad1,"intrinsic_adrpldr","0,1", 1, 1},
+
+// will be emit to two instructions in a row:
+//  adrp    xd, label
+//  add     xd, xd, #:lo12:label
+//MOP_adrp_label
+{MOP_adrp_label, {MOPD_Reg64ID,MOPD_Imm64,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,kLtAlu,"intrinsic_adrplabel","0,1", 1, 1},
+
+//  ldr x17, [xs,#112]
+//   ldr wzr, [x17]
+{MOP_clinit_tail, {MOPD_Reg64IS,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISATOMIC|CANTHROW,kLtLoad1,"intrinsic_clinit_tail","0", 0, 1},
+
+
+// MOP_tail_call_opt_xbl -- branch without link (call); this is a special definition
+{MOP_tail_call_opt_xbl,  {MOPD_FuncName,MOPD_LISTS,MOPD_Undef,MOPD_Undef,MOPD_Undef},CANTHROW,kLtBranch,"b","0", 0, 2},
+// MOP_tail_call_opt_xblr -- branch without link (call) to register; this is a special definition
+{MOP_tail_call_opt_xblr, {MOPD_Reg64IS,MOPD_LISTS,MOPD_Undef,MOPD_Undef,MOPD_Undef},CANTHROW,kLtBranch,"br","0", 0, 2},
+
+// MOP_pseudo_param_def_x,
+{MOP_pseudo_param_def_x, {MOPD_Reg64ID,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,kLtUndef,"//MOP_pseudo_param_def","0", 1, 0},
+
+// MOP_pseudo_param_def_w,
+{MOP_pseudo_param_def_w, {MOPD_Reg32ID,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,kLtUndef,"//MOP_pseudo_param_def","0", 1, 0},
+
+// MOP_pseudo_param_def_d,
+{MOP_pseudo_param_def_d, {MOPD_Reg64FD,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,kLtUndef,"//MOP_pseudo_param_def","0", 1, 0},
+
+// MOP_pseudo_param_def_s,
+{MOP_pseudo_param_def_s, {MOPD_Reg32FD,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,kLtUndef,"//MOP_pseudo_param_def","0", 1, 0},
+
+// MOP_pseudo_param_store_x,
+{MOP_pseudo_param_store_x, {MOPD_Mem64D,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,kLtUndef,"//MOP_pseudo_param_store_x","0", 1, 0},
+
+// MOP_pseudo_param_store_w,
+{MOP_pseudo_param_store_w, {MOPD_Mem32D,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,kLtUndef,"//MOP_pseudo_param_store_w","0", 1, 0},
+
+// MOP_pseudo_ref_init_x,
+{MOP_pseudo_ref_init_x, {MOPD_Mem64D,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,kLtUndef,"//MOP_pseudo_ref_init_x","0", 1, 0},
+
+// MOP_pseudo_ret_int,
+{MOP_pseudo_ret_int, {MOPD_Reg64IS,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,kLtUndef,"//MOP_pseudo_ret_int","", 0, 1},
+
+// MOP_pseudo_ret_float,
+{MOP_pseudo_ret_float, {MOPD_Reg64FS,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,kLtUndef,"//MOP_pseudo_ret_float","", 0, 1},
+
+// When exception occurs, R0 and R1 may be defined by runtime code.
+// MOP_pseudo_eh_def_x,
+{MOP_pseudo_eh_def_x, {MOPD_Reg64ID,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,kLtUndef,"//MOP_pseudo_eh_def_x","0", 1, 0},
+
+// for comments
+// MOP_comment
+{MOP_comment, {MOPD_STRING,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,kLtUndef,"//","0", 0, 0},
+//MOP_nop
+{MOP_nop, {MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,kLtAlu,"nop","", 0, 0},
+
+
+// A pseudo instruction that used for seperating dependence graph.
+// MOP_pseudo_dependence_seperator,
+{MOP_pseudo_dependence_seperator, {MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,kLtUndef,"//MOP_pseudo_dependence_seperator","0", 0, 0},
+
+
+// A pseudo instruction that used for replacing MOP_clinit_tail after clinit merge in scheduling.
+// MOP_pseudo_none,
+{MOP_pseudo_none, {MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,kLtUndef,"//MOP_pseudo_none","0", 0, 0},
+
+
+// end of AArch64 instructions
+
+
+
+
+
+
+
+
+
+
+//// MOP_Tbadcrrr
+//{MOP_Tbadcrrr, {MOPD_Reg32IDS,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_RegCCS,MOPD_Undef},0,"adc","0,1,2"},
+//// MOP_Tbaddrri8
+//{MOP_Tbaddrri8, {MOPD_Reg32ID,MOPD_Reg32IS, MOPD_Imm8,MOPD_Undef,MOPD_Undef},0,"add","0,1,2"},
+//// MOP_Tbaddrri3s
+//{MOP_Tbaddrri3s, {MOPD_RegCCD,MOPD_Reg32ID,MOPD_Reg32IS, MOPD_Imm32,MOPD_Undef},0,"adds","1,2,3"},
+//// MOP_Tbaddri8
+//{MOP_Tbaddri8, {MOPD_RegCCD,MOPD_Reg32IDS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"adds",""},
+//// MOP_Tbaddrrr
+//{MOP_Tbaddrrr, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,"add","0,1,2"},
+//// MOP_Tbadd64rrrs
+//{MOP_Tbadd64rrrs, {MOPD_RegCCD,MOPD_Reg64IDL,MOPD_Reg64ISL,MOPD_Reg64ISL,MOPD_Undef},0,"adds","1,2,3"},
+//{MOP_Tbadd64rris, {MOPD_RegCCD,MOPD_Reg64IDL,MOPD_Reg64ISL,MOPD_Imm12,MOPD_Undef},0,"adds","1,2,3"},
+//// MOP_Tbaddrrlh
+//{MOP_Tbaddrrlh, {MOPD_Reg32IDS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"add",""},
+//// MOP_Tbaddrrhl
+//{MOP_Tbaddrrhl, {MOPD_Reg32IDS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"add",""},
+//// MOP_Tbaddrrhh
+//{MOP_Tbaddrrhh, {MOPD_Reg32IDS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"add",""},
+//// MOP_Tbaddpcrel
+//{MOP_Tbaddpcrel, {MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISBRANCH,"add",""},
+//// MOP_Tbaddsprel
+//{MOP_Tbaddsprel, {MOPD_Reg32ID,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"add",""},
+//// MOP_Tbaddspi7
+//{MOP_Tbaddspi7, {MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"add",""},
+//// MOP_Tbandrr
+//{MOP_Tbandrr, {MOPD_RegCCD,MOPD_Reg32IDS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,"ands",""},
+//// MOP_Tbasrrri5
+//{MOP_Tbasrrri5, {MOPD_RegCCD,MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,"asrs",""},
+//// MOP_Tbasrsrrr
+//{MOP_Tbasrsrrr, {MOPD_RegCCD,MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef},0,"asrs","1,2,3"},
+//// MOP_Tbbcond
+//{MOP_Tbbcond, {MOPD_RegCCS,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISBRANCH,"b!1c",""},
+//// MOP_Tbbicrr
+//{MOP_Tbbicrr, {MOPD_RegCCD,MOPD_Reg32IDS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,"bics",""},
+//// MOP_Tbbkpt
+//{MOP_Tbbkpt, {MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISBRANCH,"bkpt",""},
+//// MOP_Tbblx2
+//{MOP_Tbblx2, {MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISBRANCH,"blx_2",""},
+//// MOP_Tbbl1
+//{MOP_Tbbl1, {MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISBRANCH,"bl_1",""},
+//// MOP_Tbbl2
+//{MOP_Tbbl2, {MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISBRANCH,"bl_2",""},
+//// MOP_Tbblxr
+//{MOP_Tbblxr, {MOPD_Reg32IS,MOPD_LISTS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISBRANCH,"blx","0"},
+//// MOP_Tbbx
+//{MOP_Tbbx, {MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISBRANCH,"bx","0"},
+//// MOP_Tbcmnrr
+//{MOP_Tbcmnrr, {MOPD_RegCCD,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,"cmn",""},
+
+//// MOP_Tbcmpri8			TBD:Delete
+//{MOP_Tbcmpri8, {MOPD_RegCCD,MOPD_Reg32IS,MOPD_Imm32,MOPD_Undef,MOPD_Undef},0,"cmp","1,2"},
+//// MOP_Tbcmprr			TBD:Delete
+//{MOP_Tbcmprr, {MOPD_RegCCD,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,"cmp","1,2"},
+//// MOP_Tbcmplh			TBD:Delete
+//{MOP_Tbcmplh, {MOPD_RegCCD,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,"cmp",""},
+//// MOP_Tbcmphl			TBD:Delete
+//{MOP_Tbcmphl, {MOPD_RegCCD,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,"cmp",""},
+//// MOP_Tbcmphh			TBD:Delete
+//{MOP_Tbcmphh, {MOPD_RegCCD,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,"cmp",""},
+//// MOP_Tbeorrr
+//{MOP_Tbeorrr, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,"eors",""},
+//// MOP_Tbldmia
+//{MOP_Tbldmia, {MOPD_Reg32IDS,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD,"ldmia",""},
+//// MOP_Tbldwb
+//{MOP_Tbldwb, {MOPD_Reg32ID, MOPD_Reg32ID, MOPD_Mem32S,MOPD_Undef,MOPD_Undef},ISLOAD,"ldr","0, 2"},
+//// MOP_Tbld64l
+//{MOP_Tbld64l, {MOPD_Reg64IDL,MOPD_Mem32S,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD,"ldr","0, 1"},
+//// MOP_Tbld64h
+//{MOP_Tbld64h, {MOPD_Reg64IDSH,MOPD_Mem32S,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD,"ldr","0, 1"},
+//// MOP_Tbldrbrri5
+//{MOP_Tbldrbrri5, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD,"ldrb",""},
+//// MOP_Tbldrhrri5
+//{MOP_Tbldrhrri5, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD,"ldrh",""},
+
+
+//// MOP_Tblslrri5
+//{MOP_Tblslrri5, {MOPD_RegCCD,MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,"lsls",""},
+//// MOP_Tblslsrrr
+//{MOP_Tblslsrrr, {MOPD_RegCCD,MOPD_Reg32IDS,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef},0,"lsls","1,2,3"},
+//// MOP_Tblsrrri5
+//{MOP_Tblsrrri5, {MOPD_RegCCD,MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,"lsrs",""},
+//// MOP_Tblsrsrrr
+//{MOP_Tblsrsrrr, {MOPD_RegCCD,MOPD_Reg32IDS,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef},0,"lsrs","1,2,3"},
+//// MOP_Tbmovimm8
+//{MOP_Tbmovimm8, {MOPD_RegCCD,MOPD_Reg32ID,MOPD_Imm8,MOPD_Undef,MOPD_Undef},0,"movs","1,2"},
+//// MOP_Tbmovrr
+//{MOP_Tbmovrr, {MOPD_RegCCD,MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},ISMOVE,"movs",""},
+//// MOP_Tbmovrr_h2h
+//{MOP_Tbmovrr_h2h, {MOPD_Reg64IDSH,MOPD_Reg64ISH,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"mov","0,1"},
+//// MOP_Tbmovrr_l2l
+//{MOP_Tbmovrr_l2l, {MOPD_Reg64IDL,MOPD_Reg64ISL,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"mov","0,1"},
+//// MOP_Tbmovrr_l2h
+//{MOP_Tbmovrr_l2h, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISMOVE,"mov",""},
+//// MOP_Tbmov64ri12h
+//{MOP_Tbmov64ri12h, {MOPD_Reg64IDSH,MOPD_Imm12,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"mov","0,1"},
+//// MOP_Tbmov64ri12l
+//{MOP_Tbmov64ri12l, {MOPD_Reg64IDL,MOPD_Imm12,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"mov","0,1"},
+//// MOP_Tbmul
+//{MOP_Tbmul, {MOPD_RegCCD,MOPD_Reg32IDS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,"muls",""},
+//// MOP_Tbmvn
+//{MOP_Tbmvn, {MOPD_RegCCD,MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,"mvns",""},
+//// MOP_Tbmvn64i12l
+//{MOP_Tbmvn64i12l, {MOPD_Reg64IDL,MOPD_Imm12,MOPD_Undef,MOPD_Undef},0,"mvn","0,1"},
+//// MOP_Tbmvn64i12h
+//{MOP_Tbmvn64i12h, {MOPD_Reg64IDSH,MOPD_Imm12,MOPD_Undef,MOPD_Undef},0,"mvn","0,1"},
+//// MOP_Tborr
+//{MOP_Tborr, {MOPD_RegCCD,MOPD_Reg32IDS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,"orrs",""},
+//// MOP_Tbpop
+//{MOP_Tbpop, {MOPD_RSPD,MOPD_LISTS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD,"pop","1"},
+//// MOP_Tbpush
+//{MOP_Tbpush, {MOPD_RSPD,MOPD_LISTS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE,"push","1"},
+//// MOP_Tbrev
+//{MOP_Tbrev, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"rev",""},
+//// MOP_Tbrevsh
+//{MOP_Tbrevsh, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"rev",""},
+//// MOP_Tbrorrr
+//{MOP_Tbrorrr, {MOPD_RegCCD,MOPD_Reg32IDS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,"rors",""},
+//// MOP_Tbsbc
+//{MOP_Tbsbc, {MOPD_RegCCDS,MOPD_Reg32IDS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,"sbcs",""},
+//// MOP_Tbstmia
+//{MOP_Tbstmia, {MOPD_Reg32IDS,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE,"stmia",""},
+//// MOP_Tbstr
+//{MOP_Tbstr, {MOPD_Reg32IS,MOPD_Mem32D,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE,"str","0,1"},
+//// MOP_Tbstrsprel
+//{MOP_Tbstrsprel, {MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE,"str",""},
+//// MOP_Tbstrbrri5
+//{MOP_Tbstrbrri5, {MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE,"strb",""},
+//// MOP_Tbstrhrri5
+//{MOP_Tbstrhrri5, {MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE,"strh",""},
+//// MOP_Tbsubrri3
+//{MOP_Tbsubrri3, {MOPD_RegCCD,MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,"subs",""},
+//// MOP_Tbsubri8
+//{MOP_Tbsubri8, {MOPD_RegCCD,MOPD_Reg32IDS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"subs",""},
+//// MOP_Tbsubspi7
+//{MOP_Tbsubspi7, {MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"sub",""},
+//// MOP_Tbswi
+//{MOP_Tbswi, {MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISBRANCH,"swi",""},
+//// MOP_Tbtst
+//{MOP_Tbtst, {MOPD_RegCCD,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,"tst",""},
+//// MOP_Tb2vldrs
+//{MOP_Tb2vldrs, {MOPD_Reg32FD,MOPD_Mem32S,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD,"flds","0,1"},
+//// MOP_Tb2vldrd
+//{MOP_Tb2vldrd, {MOPD_Reg64FD,MOPD_Mem64S,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD,"fldd","0,1"},
+//// MOP_Tb2vmuls			TBD:Delete
+//{MOP_Tb2vmuls, {MOPD_Reg32FD,MOPD_Reg32FS,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef},0,"fmuls","0,1,2"},
+//// MOP_Tb2vmuld			TBD:Delete
+//{MOP_Tb2vmuld, {MOPD_Reg64FD,MOPD_Reg64FS,MOPD_Reg64FS,MOPD_Undef,MOPD_Undef},0,"fmuld","0,1,2"},
+//// MOP_Tb2vmlas			TBD:Delete
+//{MOP_Tb2vmlas, {MOPD_Reg32FDS,MOPD_Reg32FS,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef},0,"vmlas",""},
+//// MOP_Tb2vmlad			TBD:Delete
+//{MOP_Tb2vmlad, {MOPD_Reg64FDS,MOPD_Reg64FS,MOPD_Reg64FS,MOPD_Undef,MOPD_Undef},0,"vmlad",""},
+//// MOP_Tb2vmlss			TBL:Delete
+//{MOP_Tb2vmlss, {MOPD_Reg32FDS,MOPD_Reg32FS,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef},0,"vmlss",""},
+//// MOP_Tb2vmlsd			TBD:Delete
+//{MOP_Tb2vmlsd, {MOPD_Reg64FDS,MOPD_Reg64FS,MOPD_Reg64FS,MOPD_Undef,MOPD_Undef},0,"vmlsd",""},
+//// MOP_Tb2vstrs			TBD:Delete
+//{MOP_Tb2vstrs, {MOPD_Reg32FS,MOPD_Mem32S,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE,"fsts","0,1"},
+//// MOP_Tb2vstrd			TBD:Delete
+//{MOP_Tb2vstrd, {MOPD_Reg64FS,MOPD_Mem64S,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE,"fstd","0,1"},
+//// MOP_Tb2vsubs			TBD:Delete
+//{MOP_Tb2vsubs, {MOPD_Reg32FD,MOPD_Reg32FS,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef},0,"fsubs","0,1,2"},
+//// MOP_Tb2vsubd			TBD:Delete
+//{MOP_Tb2vsubd, {MOPD_Reg64FD,MOPD_Reg64FS,MOPD_Reg64FS,MOPD_Undef,MOPD_Undef},0,"fsubd","0,1,2"},
+//// MOP_Tb2vadds			TBD:Delete
+//{MOP_Tb2vadds, {MOPD_Reg32FD,MOPD_Reg32FS,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef},0,"fadds","0,1,2"},
+//// MOP_Tb2vaddd			TBD:Delete
+//{MOP_Tb2vaddd, {MOPD_Reg64FD,MOPD_Reg64FS,MOPD_Reg64FS,MOPD_Undef,MOPD_Undef},0,"faddd","0,1,2"},
+//// MOP_Tb2vdivs
+//{MOP_Tb2vdivs, {MOPD_Reg32FD,MOPD_Reg32FS,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef},0,"fdivs","0,1,2"},
+//// MOP_Tb2vdivd
+//{MOP_Tb2vdivd, {MOPD_Reg64FD,MOPD_Reg64FS,MOPD_Reg64FS,MOPD_Undef,MOPD_Undef},0,"fdivd","0,1,2"},
+//// MOP_Tb2vmlaf64
+//{MOP_Tb2vmlaf64, {MOPD_Reg64FDS,MOPD_Reg64FS,MOPD_Reg64FS,MOPD_Undef,MOPD_Undef},0,"vmla",""},
+//// MOP_Tb2vcvtif
+//{MOP_Tb2vcvtif, {MOPD_Reg32FD,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"ftosizs","0,1"},
+//// MOP_Tb2vcvtuf
+//{MOP_Tb2vcvtuf, {MOPD_Reg32FD,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"ftouizs","0,1"},
+//// MOP_Tb2vcvtid
+//{MOP_Tb2vcvtid, {MOPD_Reg32FD,MOPD_Reg64FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"ftosizd","0,1"},
+//// MOP_Tb2vcvtud
+//{MOP_Tb2vcvtud, {MOPD_Reg32FD,MOPD_Reg64FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"ftouizd","0,1"},
+//// MOP_Tb2vcvtfi
+//{MOP_Tb2vcvtfi, {MOPD_Reg32FD,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"fsitos","0,1"},
+//// MOP_Tb2vcvtfu
+//{MOP_Tb2vcvtfu, {MOPD_Reg32FD,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"fuitos","0,1"},
+//// MOP_Tb2vcvtdi
+//{MOP_Tb2vcvtdi, {MOPD_Reg64FD,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"fsitod","0,1"},
+//// MOP_Tb2vcvtdu
+//{MOP_Tb2vcvtdu, {MOPD_Reg64FD,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"fuitod","0,1"},
+//// MOP_Tb2vcvtfd		TBD:Delete
+//{MOP_Tb2vcvtfd, {MOPD_Reg32FD,MOPD_Reg64FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"fcvtsd","0,1"},
+//// MOP_Tb2vcvtdf		TBD:Delete
+//{MOP_Tb2vcvtdf, {MOPD_Reg64FD,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"fcvtds","0,1"},
+//// MOP_Tb2vcvtf64s32
+//{MOP_Tb2vcvtf64s32, {MOPD_Reg64FD,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"vcvt.f64.s32 ",""},
+//// MOP_Tb2vcvtf64u32
+//{MOP_Tb2vcvtf64u32, {MOPD_Reg64FD,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"vcvt.f64.u32 ",""},
+
+//{MOP_Tb2movimm8, {MOPD_Reg32ID,MOPD_Imm8,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"mov","0,1"},
+//// MOP_Tb2movi8m
+//{MOP_Tb2movi8m, {MOPD_Reg32ID,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"mov",""},
+//// MOP_Tb2movimm12
+//{MOP_Tb2movimm12, {MOPD_Reg32ID,MOPD_Imm12,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"mov","0,1"},
+//// MOP_Tb2strrri12
+//{MOP_Tb2strrri12, {MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE,"str",""},
+//// MOP_Tb2ldrrri12
+//{MOP_Tb2ldrrri12, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD,"ldr",""},
+//// MOP_Tb2strrri8predec
+//{MOP_Tb2strrri8predec, {MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE,"str",""},
+//// MOP_Tb2ldrrri8predec
+//{MOP_Tb2ldrrri8predec, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD,"ldr",""},
+//// MOP_Tb2cbz
+//{MOP_Tb2cbz, {MOPD_Reg32IS,MOPD_Label,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISBRANCH,"cbz","0,1"},
+//// MOP_Tb2addrri12		TBD:Delete
+//{MOP_Tb2addrri12, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Imm12,MOPD_Undef,MOPD_Undef},0,"addw","0,1,2"},
+//// MOP_Tb2vmovs
+//{MOP_Tb2vmovs, {MOPD_Reg32FD,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISMOVE,"fcpys","0,1"},
+//// MOP_Tb2vmovd
+//{MOP_Tb2vmovd, {MOPD_Reg64FD,MOPD_Reg64FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISMOVE,"fcpyd","0,1"},
+//// MOP_Tb2vmovsc
+//{MOP_Tb2vmovsc, {MOPD_Reg32FD,MOPD_Reg32FS,MOPD_RegCCS,MOPD_Undef,MOPD_Undef},0,"fcpyseq","0,1"},
+//// MOP_Tb2vmovdc
+//{MOP_Tb2vmovdc, {MOPD_Reg64FD,MOPD_Reg64FS,MOPD_RegCCS,MOPD_Undef,MOPD_Undef},0,"fcpydeq","0,1"},
+//// MOP_Tb2ldmia
+//{MOP_Tb2ldmia, {MOPD_Reg32IDS,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD,"ldmia",""},
+//// MOP_Tb2stmia
+//{MOP_Tb2stmia, {MOPD_Reg32IDS,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE,"stmia",""},
+//// MOP_Tb2addrrr
+//{MOP_Tb2addrrr, {MOPD_RegCCD,MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef},0,"adds","1,2,3"},
+//// MOP_Tb2subrrr
+//{MOP_Tb2subrrr, {MOPD_RegCCD,MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef},0,"subs","1,2,3"},
+//// MOP_Tb2sbcrrr
+//{MOP_Tb2sbcrrr, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS, MOPD_RegCCS, MOPD_Undef},0,"sbc","0,1,2"},
+//// MOP_Tb2cmprr
+//{MOP_Tb2cmprr, {MOPD_RegCCD,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,"cmp",""},
+//// MOP_Tb2subrri12
+//{MOP_Tb2subrri12, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Imm12,MOPD_Undef,MOPD_Undef},0,"sub","0,1,2"},
+//// MOP_Tb2mvni12
+//{MOP_Tb2mvni12, {MOPD_Reg32ID,MOPD_Imm12,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"mvn","0,1"},
+//// MOP_Tb2sel
+//{MOP_Tb2sel, {MOPD_RegCCS,MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef},0,"sel",""},
+//// MOP_Tb2ubfx
+//{MOP_Tb2ubfx, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"ubfx",""},
+//// MOP_Tb2sbfx
+//{MOP_Tb2sbfx, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"sbfx",""},
+//// MOP_Tb2ldrrrr
+//{MOP_Tb2ldrrrr, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},ISLOAD,"ldr",""},
+//// MOP_Tb2ldrhrrr
+//{MOP_Tb2ldrhrrr, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},ISLOAD,"ldrh",""},
+//// MOP_Tb2ldrsh
+//{MOP_Tb2ldrsh, {MOPD_Reg32ID,MOPD_Mem16S, MOPD_Undef, MOPD_Undef,MOPD_Undef},ISLOAD,"ldrsh","0,1"},
+//// MOP_Tb2ldrbrrr
+//{MOP_Tb2ldrbrrr, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},ISLOAD,"ldrb",""},
+//// MOP_Tb2ldrsbrrr
+//{MOP_Tb2ldrsbrrr, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},ISLOAD,"ldrsb",""},
+//// MOP_Tb2strrrr
+//{MOP_Tb2strrrr, {MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},ISSTORE,"str",""},
+//// MOP_Tb2strh
+////{MOP_Tb2strh, {MOPD_Reg32IS,MOPD_Mem32D,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE,"strh",""},
+//// MOP_Tb2strb
+////{MOP_Tb2strb, {MOPD_Reg32IS,MOPD_Mem32D,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE,"strb","0,1"},
+//// MOP_Tb2ldrhrri12
+//{MOP_Tb2ldrhrri12, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD,"ldrh",""},
+//// MOP_Tb2ldrshrri12
+//{MOP_Tb2ldrshrri12, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD,"ldrsh",""},
+//// MOP_Tb2ldrbrri12
+//{MOP_Tb2ldrbrri12, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD,"ldrb",""},
+//// MOP_Tb2ldrsbrri12
+//{MOP_Tb2ldrsbrri12, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD,"ldrsb",""},
+//// MOP_Tb2strhrri12
+//{MOP_Tb2strhrri12, {MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE,"strh",""},
+//// MOP_Tb2strbrri12
+//{MOP_Tb2strbrri12, {MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE,"strb",""},
+//// MOP_Tb2pop
+//{MOP_Tb2pop, {MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD,"pop",""},
+//// MOP_Tb2push
+//{MOP_Tb2push, {MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE,"push",""},
+//// MOP_Tb2cmpri8m
+//{MOP_Tb2cmpri8m, {MOPD_RegCCD,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"cmp",""},
+//// MOP_Tb2cmnri8m
+//{MOP_Tb2cmnri8m, {MOPD_RegCCD,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"cmn",""},
+//// MOP_Tb2adc64rrr
+//{MOP_Tb2adc64rrr, {MOPD_Reg64IDSH,MOPD_Reg64ISH,MOPD_Reg64ISH,MOPD_RegCCD,MOPD_Undef},0,"adc","0,1,2"},
+//// MOP_Tb2adc64rri
+//{MOP_Tb2adc64rri, {MOPD_Reg64IDSH,MOPD_Reg64ISH,MOPD_Imm8,MOPD_RegCCD,MOPD_Undef},0,"adc","0,1,2"},
+//// MOP_Tb2orr64lrrr
+//{MOP_Tb2orr64lrrr,{MOPD_Reg64ISL,MOPD_Reg64ISL,MOPD_Reg64ISL,MOPD_Undef,MOPD_Undef},0,"orr","0,1,2"},
+//// MOP_Tb2orr64hrrr
+//{MOP_Tb2orr64hrrr, {MOPD_Reg64IDSH,MOPD_Reg64ISH,MOPD_Reg64ISH,MOPD_Undef,MOPD_Undef},0,"orr","0,1,2"},
+//// MOP_Tb2and64lrrr
+//{MOP_Tb2and64lrrr,{MOPD_Reg64ISL,MOPD_Reg64ISL,MOPD_Reg64ISL,MOPD_Undef,MOPD_Undef},0,"and","0,1,2"},
+//// MOP_Tb2and64hrrr
+//{MOP_Tb2and64hrrr, {MOPD_Reg64IDSH,MOPD_Reg64ISH,MOPD_Reg64ISH,MOPD_Undef,MOPD_Undef},0,"and","0,1,2"},
+//// MOP_Tb2bicrrr
+//{MOP_Tb2bicrrr, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,"bic",""},
+//// MOP_Tb2cmnrr
+//{MOP_Tb2cmnrr, {MOPD_RegCCD,MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,"cmn",""},
+//// MOP_Tb2sdivrrr
+//{MOP_Tb2sdivrrr, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,"sdiv",""},
+//// MOP_Tb2udivrrr
+//{MOP_Tb2udivrrr, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,"udiv",""},
+//// MOP_Tb2rsubrri8
+//{MOP_Tb2rsubrri8, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Imm8,MOPD_Undef,MOPD_Undef},0,"rsb","0,1,2"},
+//// MOP_Tb2rsubsrri8
+//{MOP_Tb2rsubsrri8, {MOPD_RegCCD, MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Imm8,MOPD_Undef},0,"rsbs","1,2,3"},
+//// MOP_Tb2tstrr
+//{MOP_Tb2tstrr, {MOPD_RegCCD,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,"tst",""},
+//// MOP_Tb2rorrrr
+//{MOP_Tb2rorrrr, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,"ror","0,1,2"},
+//// MOP_Tb2rorrri5
+//{MOP_Tb2rorrri5, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Imm8,MOPD_Undef,MOPD_Undef},0,"ror","0,1,2"},
+//// MOP_Tb2bicrri8m
+//{MOP_Tb2bicrri8m, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"bic",""},
+//// MOP_Tbandrri8
+//{MOP_Tbandrri8, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Imm8,MOPD_Undef,MOPD_Undef},0,"and","0,1,2"},
+//// MOP_Tbandrri8l
+//{MOP_Tbandrri8l, {MOPD_Reg64ISL,MOPD_Reg64ISL,MOPD_Imm8,MOPD_Undef,MOPD_Undef},0,"and","0,1,2"},
+//// MOP_Tbandrri8h
+//{MOP_Tbandrri8h, {MOPD_Reg64ISH,MOPD_Reg64ISH,MOPD_Imm8,MOPD_Undef,MOPD_Undef},0,"and","0,1,2"},
+//// MOP_Tb2andrri8m
+//{MOP_Tb2andrri8m, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"and",""},
+//// MOP_Tborrri8l
+//{MOP_Tborrri8l, {MOPD_Reg64ISL,MOPD_Reg64ISL,MOPD_Imm8,MOPD_Undef,MOPD_Undef},0,"orr","0,1,2"},
+//// MOP_Tborrri8h
+//{MOP_Tborrri8h, {MOPD_Reg64ISH,MOPD_Reg64ISH,MOPD_Imm8,MOPD_Undef,MOPD_Undef},0,"orr","0,1,2"},
+//// MOP_Tborrri8
+//{MOP_Tborrri8, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Imm8,MOPD_Undef,MOPD_Undef},0,"orr","0,1,2"},
+//// MOP_Tb2orrrri8m
+//{MOP_Tb2orrrri8m, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"orr",""},
+//// MOP_Tb2addrri8m
+//{MOP_Tb2addrri8m, {MOPD_RegCCD,MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,"adds",""},
+//// MOP_Tb2adcrri8m
+//{MOP_Tb2adcrri8m, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Imm12, MOPD_RegCCS,MOPD_Undef},0,"adc","0,1,2"},
+//// MOP_Tb2subsrri8
+//{MOP_Tb2subsrri8, {MOPD_RegCCD,MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Imm8,MOPD_Undef},0,"subs","1,2,3"},
+//// MOP_Tb2sbcrri8m
+//{MOP_Tb2sbcrri8m, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Imm8,MOPD_RegCCS,MOPD_Undef},0,"sbc","0,1,2"},
+//// MOP_Tb2revrr
+//{MOP_Tb2revrr, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,"rev",""},
+//// MOP_Tb2revshrr
+//{MOP_Tb2revshrr, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,"revsh",""},
+//// MOP_Tb2it
+//{MOP_Tb2it, {MOPD_RegCCS,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"it:!1b",""},
+//// MOP_Tb2fmstat
+//{MOP_Tb2fmstat, {MOPD_RegCCDS,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"fmstat",""},
+//// MOP_Tb2vcmpd
+//{MOP_Tb2vcmpd, {MOPD_RegCCD,MOPD_Reg64FS,MOPD_Reg64FS,MOPD_Undef,MOPD_Undef},0,"fcmped","1,2"},
+//// MOP_Tb2vcmps
+//{MOP_Tb2vcmps, {MOPD_RegCCD,MOPD_Reg32FS,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef},0,"fcmpes","1,2"},
+//// MOP_Tb2ldrpcrel12
+//{MOP_Tb2ldrpcrel12, {MOPD_Reg32ID,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD,"ldr",""},
+//// MOP_Tb2bcond
+//{MOP_Tb2bcond, {MOPD_RegCCS,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISBRANCH,"b!1c",""},
+//// MOP_Tb2fmrs
+//{MOP_Tb2fmrs, {MOPD_Reg32ID,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"fmrs","0,1"},
+//// MOP_Tb2fmsr
+//{MOP_Tb2fmsr, {MOPD_Reg32FD,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"fmsr","0,1"},
+//// MOP_Tb2fmrrd
+//{MOP_Tb2fmrrd, {MOPD_Reg32ID,MOPD_Reg32ID,MOPD_Reg64FS,MOPD_Undef,MOPD_Undef},0,"fmrrd","0,1,2"},
+//// MOP_Tb2fmdrr
+//{MOP_Tb2fmdrr, {MOPD_Reg64FD,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,"fmdrr","0,1,2"},
+//// MOP_Tb2vabsd
+//{MOP_Tb2vabsd, {MOPD_Reg64FD,MOPD_Reg64FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"fabsd","0,1"},
+//// MOP_Tb2vabss
+//{MOP_Tb2vabss, {MOPD_Reg32FD,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"fabss","0,1"},
+//// MOP_Tb2vmovs_imm8
+//{MOP_Tb2vmovs_imm8, {MOPD_Reg32FD,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"vmov.f32",""},
+//// MOP_Tb2vmovd_imm8
+//{MOP_Tb2vmovd_imm8, {MOPD_Reg64FD,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"vmov.f64",""},
+//// MOP_Tb2mla
+//{MOP_Tb2mla, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef},0,"mla","0,1,2,3"},
+//// MOP_Tb2mls
+//{MOP_Tb2mls, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef},0,"mls",""},
+//// MOP_Tb2umull
+//{MOP_Tb2umull, {MOPD_Reg32ID,MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef},0,"umull","0,1,2,3"},
+//// MOP_Tb2ldrex
+//{MOP_Tb2ldrex, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD,"ldrex",""},
+//// MOP_Tb2ldrexd
+//{MOP_Tb2ldrexd, {MOPD_Reg32ID,MOPD_Undef,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},ISLOAD,"ldrexd",""},
+//// MOP_Tb2strex
+//{MOP_Tb2strex, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},ISSTORE,"strex",""},
+//// MOP_Tb2strexd
+//{MOP_Tb2strexd, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef},ISSTORE,"strexd",""},
+//// MOP_Tb2clrex
+//{MOP_Tb2clrex, {MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"clrex",""},
+//// MOP_Tb2bfi
+//{MOP_Tb2bfi, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"bfi",""},
+//// MOP_Tb2bfc
+//{MOP_Tb2bfc, {MOPD_Reg32ID,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"bfc",""},
+//// MOP_Tb2dmb
+//{MOP_Tb2dmb, {MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"dmb",""},
+//// MOP_Tb2ldrpcreln12
+//{MOP_Tb2ldrpcreln12, {MOPD_Reg32ID,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD,"ldr",""},
+//// MOP_Tb2stm
+//{MOP_Tb2stm, {MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE,"stm",""},
+//// MOP_Tbundefined
+//{MOP_Tbundefined, {MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"undefined",""},
+//// MOP_Tb2vpopcs
+//{MOP_Tb2vpopcs, {MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD,"vpop",""},
+//// MOP_Tb2vpushcs
+//{MOP_Tb2vpushcs, {MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE,"vpush",""},
+//// MOP_Tb2vldms
+//{MOP_Tb2vldms, {MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD,"vldms",""},
+//// MOP_Tb2vstms
+//{MOP_Tb2vstms, {MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE,"vstms",""},
+//// MOP_Tb2buncond
+//{MOP_Tb2buncond, {MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISBRANCH,"b",""},
+//// MOP_Tb2movimm16h
+//{MOP_Tb2movimm16h, {MOPD_Reg32IDS,MOPD_Imm16,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"movt","0,1"},
+//// MOP_Tb2movimm16l
+//{MOP_Tb2movimm16l, {MOPD_Reg32ID,MOPD_Imm16,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"movw","0,1"},
+//// MOP_Tb2addpcr
+//{MOP_Tb2addpcr, {MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISBRANCH,"add",""},
+//// MOP_Tb2adr
+//{MOP_Tb2adr, {MOPD_Reg32ID,MOPD_Mem32S,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"adr","0,1"},
+//// MOP_Tb2movimm16lst			TBD:Delete
+//{MOP_Tb2movimm16lst, {MOPD_Reg32ID,MOPD_Mem32SL,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"movw","0,1"},
+//// MOP_Tb2movimm16hst			TBD:Delete
+//{MOP_Tb2movimm16hst, {MOPD_Reg32IDS,MOPD_Mem32SH,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"movt","0,1"},
+//// MOP_Tb2ldmiawb
+//{MOP_Tb2ldmiawb, {MOPD_Reg32IDS,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD,"ldmia",""},
+//// MOP_Tb2orrsrrr
+//{MOP_Tb2orrsrrr, {MOPD_RegCCD,MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef},0,"orrs","1,2,3"},
+//// MOP_Tb2push1
+//{MOP_Tb2push1, {MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE,"push1",""},
+//// MOP_Tb2pop1
+//{MOP_Tb2pop1, {MOPD_Reg32ID,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD,"pop1",""},
+//// MOP_Tb2rsubrrr
+//{MOP_Tb2rsubrrr, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,"rsb","0,1,2"},
+//// MOP_Tb2smull
+//{MOP_Tb2smull, {MOPD_Reg32ID,MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef},0,"smull",""},
+//// MOP_Tb2ldrd
+//{MOP_Tb2ldrd, {MOPD_Reg64ID,MOPD_Mem64S,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD,"ldrd","0,1"},
+//// MOP_Tb2strd
+//{MOP_Tb2strd, {MOPD_Reg64IS,MOPD_Mem64S,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE,"strd","0,1"},
+
+//// MOP_Tb2mul64rlh
+//{MOP_Tb2mul64rlh, {MOPD_Reg32ID,MOPD_Reg64ISL,MOPD_Reg64ISH,MOPD_Undef, MOPD_Undef},0,"mul","0,1,2"},
+//// MOP_Tb2mla64rhlr
+//{MOP_Tb2mla64rhlr, {MOPD_Reg32ID,MOPD_Reg64ISH,MOPD_Reg64ISL,MOPD_Reg32IS, MOPD_Undef},0,"mla","0,1,2,3"},
+//// MOP_Tb2umull64rrll
+//{MOP_Tb2umull64rrll, {MOPD_Reg32ID,MOPD_Reg32ID,MOPD_Reg64ISL, MOPD_Reg64ISL,MOPD_Undef},0,"umull","0,1,2,3"},
+//// MOP_Tb2mov64lr
+//{MOP_Tb2mov64lr, {MOPD_Reg64IDL,MOPD_Reg32IS, MOPD_Undef, MOPD_Undef,MOPD_Undef},0,"mov","0,1"},
+//// MOP_Tb2add64hrr
+//{MOP_Tb2add64hrr, {MOPD_Reg64IDH,MOPD_Reg32IS,MOPD_Reg32IS, MOPD_Undef,MOPD_Undef},0,"add","0,1,2"},
+//// MOP_Tbrsbmiri
+//{MOP_Tbrsbmiri, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Imm8, MOPD_RegCCS,MOPD_Undef},0,"rsbmi","0,1,2"},
+//// MOP_Tbitle
+//{MOP_Tbitle, {MOPD_Undef,MOPD_Undef,MOPD_Undef, MOPD_Undef,MOPD_Undef},0,"it le",""},
+//// MOP_Tbitls
+//{MOP_Tbitls, {MOPD_Undef,MOPD_Undef,MOPD_Undef, MOPD_Undef,MOPD_Undef},0,"it ls",""},
+//// MOP_Tbitlt
+//{MOP_Tbitlt, {MOPD_Undef,MOPD_Undef,MOPD_Undef, MOPD_Undef,MOPD_Undef},0,"it lt",""},
+//// MOP_Tbitcc
+//{MOP_Tbitcc, {MOPD_Undef,MOPD_Undef,MOPD_Undef, MOPD_Undef,MOPD_Undef},0,"it cc",""},
+//// MOP_Tbitge
+//{MOP_Tbitge, {MOPD_Undef,MOPD_Undef,MOPD_Undef, MOPD_Undef,MOPD_Undef},0,"it ge",""},
+//// MOP_Tbitcs
+//{MOP_Tbitcs, {MOPD_Undef,MOPD_Undef,MOPD_Undef, MOPD_Undef,MOPD_Undef},0,"it cs",""},
+//// MOP_Tbitgt
+//{MOP_Tbitgt, {MOPD_Undef,MOPD_Undef,MOPD_Undef, MOPD_Undef,MOPD_Undef},0,"it gt",""},
+//// MOP_Tbithi
+//{MOP_Tbithi, {MOPD_Undef,MOPD_Undef,MOPD_Undef, MOPD_Undef,MOPD_Undef},0,"it hi",""},
+//// MOP_Tbitmi
+//{MOP_Tbitmi, {MOPD_Undef,MOPD_Undef,MOPD_Undef, MOPD_Undef,MOPD_Undef},0,"it mi",""},
+//// MOP_Tbiteq
+//{MOP_Tbiteq, {MOPD_Undef,MOPD_Undef,MOPD_Undef, MOPD_Undef,MOPD_Undef},0,"it eq",""},
+//// MOP_Tbitne
+//{MOP_Tbitne, {MOPD_Undef,MOPD_Undef,MOPD_Undef, MOPD_Undef,MOPD_Undef},0,"it ne",""},
+//// MOP_Tbitpl
+//{MOP_Tbitpl, {MOPD_Undef,MOPD_Undef,MOPD_Undef, MOPD_Undef,MOPD_Undef},0,"it pl",""},
+//// MOP_Tbittpl
+//{MOP_Tbittpl, {MOPD_RegCCD,MOPD_Undef,MOPD_Undef, MOPD_Undef,MOPD_Undef},0,"itt pl",""},
+//// MOP_Tbitele
+//{MOP_Tbitele, {MOPD_Undef,MOPD_Undef,MOPD_Undef, MOPD_Undef,MOPD_Undef},0,"ite le",""},
+//// MOP_Tbitels
+//{MOP_Tbitels, {MOPD_Undef,MOPD_Undef,MOPD_Undef, MOPD_Undef,MOPD_Undef},0,"ite ls",""},
+//// MOP_Tbitelt
+//{MOP_Tbitelt, {MOPD_Undef,MOPD_Undef,MOPD_Undef, MOPD_Undef,MOPD_Undef},0,"ite lt",""},
+//// MOP_Tbitecc
+//{MOP_Tbitecc, {MOPD_Undef,MOPD_Undef,MOPD_Undef, MOPD_Undef,MOPD_Undef},0,"ite cc",""},
+//// MOP_Tbitege
+//{MOP_Tbitege, {MOPD_Undef,MOPD_Undef,MOPD_Undef, MOPD_Undef,MOPD_Undef},0,"ite ge",""},
+//// MOP_Tbitecs
+//{MOP_Tbitecs, {MOPD_Undef,MOPD_Undef,MOPD_Undef, MOPD_Undef,MOPD_Undef},0,"ite cs",""},
+//// MOP_Tbitegt
+//{MOP_Tbitegt, {MOPD_Undef,MOPD_Undef,MOPD_Undef, MOPD_Undef,MOPD_Undef},0,"ite gt",""},
+//// MOP_Tbitehi
+//{MOP_Tbitehi, {MOPD_Undef,MOPD_Undef,MOPD_Undef, MOPD_Undef,MOPD_Undef},0,"ite hi",""},
+//// MOP_Tbitemi
+//{MOP_Tbitemi, {MOPD_Undef,MOPD_Undef,MOPD_Undef, MOPD_Undef,MOPD_Undef},0,"ite mi",""},
+//// MOP_Tbiteeq
+//{MOP_Tbiteeq, {MOPD_Undef,MOPD_Undef,MOPD_Undef, MOPD_Undef,MOPD_Undef},0,"ite eq",""},
+//// MOP_Tbitene
+//{MOP_Tbitene, {MOPD_Undef,MOPD_Undef,MOPD_Undef, MOPD_Undef,MOPD_Undef},0,"ite ne",""},
+//// MOP_Tbitepl
+//{MOP_Tbitepl, {MOPD_Undef,MOPD_Undef,MOPD_Undef, MOPD_Undef,MOPD_Undef},0,"ite pl",""},
+//// MOP_Tb2asrplrrr
+//{MOP_Tb2asrplrrr, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_RegCCS,MOPD_Undef},0,"asrpl","0,1,2"},
+//// MOP_Tb2orrplrrr
+//{MOP_Tb2orrplrrr, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_RegCCS,MOPD_Undef},0,"orrpl","0,1,2"},
+//// MOP_Tb2moveqimm12
+//{MOP_Tb2moveqimm12, {MOPD_Reg32ID,MOPD_Imm12,MOPD_RegCCS,MOPD_Undef,MOPD_Undef},0,"moveq","0,1"},
+//// MOP_Tb2movneimm12
+//{MOP_Tb2movneimm12, {MOPD_Reg32ID,MOPD_Imm12,MOPD_RegCCS,MOPD_Undef,MOPD_Undef},0,"movne","0,1"},
+//// MOP_Tb2movleimm12
+//{MOP_Tb2movleimm12, {MOPD_Reg32ID,MOPD_Imm12,MOPD_RegCCS,MOPD_Undef,MOPD_Undef},0,"movle","0,1"},
+//// MOP_Tb2movlsimm12
+//{MOP_Tb2movlsimm12, {MOPD_Reg32ID,MOPD_Imm12,MOPD_RegCCS,MOPD_Undef,MOPD_Undef},0,"movls","0,1"},
+//// MOP_Tb2movltimm12
+//{MOP_Tb2movltimm12, {MOPD_Reg32ID,MOPD_Imm12,MOPD_RegCCS,MOPD_Undef,MOPD_Undef},0,"movlt","0,1"},
+//// MOP_Tb2movccimm12
+//{MOP_Tb2movccimm12, {MOPD_Reg32ID,MOPD_Imm12,MOPD_RegCCS,MOPD_Undef,MOPD_Undef},0,"movcc","0,1"},
+//// MOP_Tb2movgeimm12
+//{MOP_Tb2movgeimm12, {MOPD_Reg32ID,MOPD_Imm12,MOPD_RegCCS,MOPD_Undef,MOPD_Undef},0,"movge","0,1"},
+//// MOP_Tb2movcsimm12
+//{MOP_Tb2movcsimm12, {MOPD_Reg32ID,MOPD_Imm12,MOPD_RegCCS,MOPD_Undef,MOPD_Undef},0,"movcs","0,1"},
+//// MOP_Tb2movgtimm12
+//{MOP_Tb2movgtimm12, {MOPD_Reg32ID,MOPD_Imm12,MOPD_RegCCS,MOPD_Undef,MOPD_Undef},0,"movgt","0,1"},
+//// MOP_Tb2movhiimm12
+//{MOP_Tb2movhiimm12, {MOPD_Reg32ID,MOPD_Imm12,MOPD_RegCCS,MOPD_Undef,MOPD_Undef},0,"movhi","0,1"},
+//// MOP_Tb2movmiimm12
+//{MOP_Tb2movmiimm12, {MOPD_Reg32ID,MOPD_Imm12,MOPD_RegCCS,MOPD_Undef,MOPD_Undef},0,"movmi","0,1"},
+//// MOP_Tb2movplimm12
+//{MOP_Tb2movplimm12, {MOPD_Reg32ID,MOPD_Imm12,MOPD_RegCCS,MOPD_Undef,MOPD_Undef},0,"movpl","0,1"},
+//{MOP_Tb2moveqrr, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_RegCCS,MOPD_Undef,MOPD_Undef},0,"moveq","0,1"},
+//// MOP_Tb2fconsts
+//{MOP_Tb2fconsts, {MOPD_Reg32FD,MOPD_Imm8,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"fconsts","0,1"},
+//// MOP_Tb2fconstd
+//{MOP_Tb2fconstd, {MOPD_Reg64FD,MOPD_Imm8,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"fconstd","0,1"},
+
+
+//// MOP_Tbxpush          AARCH64 PUSH/POP	push single 32-bit int
+////{MOP_Tbxpush, {MOPD_Reg32IS,MOPD_Mem32SPRE,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE,"str","0,1"},
+//// MOP_Tbxpushl		push single 64-bit int
+////{MOP_Tbxpushl, {MOPD_Reg64IS,MOPD_Mem64SPRE,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE,"str","0,1"},
+//// MOP_Tbxpushf		push single 32-bit float
+////{MOP_Tbxpushf, {MOPD_Reg32FS,MOPD_Mem32SPRE,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE,"str","0,1"},
+//// MOP_Tbxpushd		push single 64-bit double
+////{MOP_Tbxpushd, {MOPD_Reg64FS,MOPD_Mem64SPRE,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE,"str","0,1"},
+//
+//// MOP_Tbxpushp		push pair 32-bit ints
+////{MOP_Tbxpushp, {MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Mem32SPRE,MOPD_Undef,MOPD_Undef},ISSTORE,"stp","0,1,2"},
+//// MOP_Tbxpushpl	push pair 64-bit ints
+////{MOP_Tbxpushpl, {MOPD_Reg64IS,MOPD_Reg64IS,MOPD_Mem64SPRE,MOPD_Undef,MOPD_Undef},ISSTORE,"stp","0,1,2"},
+//// MOP_Tbxpushpf	push pair 32-bit floats
+////{MOP_Tbxpushpf, {MOPD_Reg64FS,MOPD_Reg64FS,MOPD_Mem32SPRE,MOPD_Undef,MOPD_Undef},ISSTORE,"stp","0,1,2"},
+//// MOP_Tbxpushpd	push pair 64-bit double
+////{MOP_Tbxpushpd, {MOPD_Reg64FS,MOPD_Reg64FS,MOPD_Mem64SPRE,MOPD_Undef,MOPD_Undef},ISSTORE,"stp","0,1,2"},
+//
+//// MOP_Tbxpop		pop single 32-bit int
+////{MOP_Tbxpop, {MOPD_Reg32IS,MOPD_Mem32SPOST,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD,"ldr","0,1"},
+//// MOP_Tbxpopl		pop single 64-bit int
+////{MOP_Tbxpopl, {MOPD_Reg64IS,MOPD_Mem64SPOST,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD,"ldr","0,1"},
+//// MOP_Tbxpopf		pop single 32-bit float
+////{MOP_Tbxpopf, {MOPD_Reg32FS,MOPD_Mem32SPOST,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD,"ldr","0,1"},
+//// MOP_Tbxpopd		pop single 64-bit double
+////{MOP_Tbxpopd, {MOPD_Reg64FS,MOPD_Mem64SPOST,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD,"ldr","0,1"},
+//
+//// MOP_Tbxpopp		pop pair 32-bit ints
+////{MOP_Tbxpopp, {MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Mem32SPOST,MOPD_Undef,MOPD_Undef},ISLOAD,"ldp","0,1,2"},
+//// MOP_Tbxpoppl		pop pair 64-bit ints
+////{MOP_Tbxpoppl, {MOPD_Reg64IS,MOPD_Reg64IS,MOPD_Mem64SPOST,MOPD_Undef,MOPD_Undef},ISLOAD,"ldp","0,1,2"},
+//// MOP_Tbxpoppf		pop pair 32-bit floats
+////{MOP_Tbxpoppf, {MOPD_Reg32FS,MOPD_Reg32FS,MOPD_Mem32SPOST,MOPD_Undef,MOPD_Undef},ISLOAD,"ldp","0,1,2"},
+//// MOP_Tbxpoppd		pop pair 64-bit double
+////{MOP_Tbxpoppd, {MOPD_Reg64FS,MOPD_Reg64FS,MOPD_Mem64SPOST,MOPD_Undef,MOPD_Undef},ISLOAD,"ldp","0,1,2"},
+
+
+////// MOP_wldrmemli
+////{MOP_wldrmemli, {MOPD_Reg32ID,MOPD_Mem32LiteralS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD,"ldr","0,1"},
+//// MOP_xldrmemli
+////{MOP_xldrmemli, {MOPD_Reg64ID,MOPD_Mem64LiteralS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD,"ldr","0,1"},
+
+// MOP_wstrmemli
+//{MOP_wstrmemli, {MOPD_Reg32IS,MOPD_Mem32LiteralS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE,"str","0,1"},
+// MOP_xstrmemli
+////{MOP_xstrmemli, {MOPD_Reg64IS,MOPD_Mem64LiteralS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE,"str","0,1"},
+

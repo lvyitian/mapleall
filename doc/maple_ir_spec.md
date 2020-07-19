@@ -1,17 +1,19 @@
+```
 #
-# Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+# Copyright (C) [2020] Futurewei Technologies, Inc. All rights reverved.
 #
-# OpenArkCompiler is licensed under the Mulan PSL v1.
-# You can use this software according to the terms and conditions of the Mulan PSL v1.
-# You may obtain a copy of Mulan PSL v1 at:
+# Licensed under the Mulan Permissive Software License v2.
+# You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+# You may obtain a copy of MulanPSL - 2.0 at:
 #
-#     http://license.coscl.org.cn/MulanPSL
+#   https://opensource.org/licenses/MulanPSL-2.0
 #
 # THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
 # EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
 # FIT FOR A PARTICULAR PURPOSE.
-# See the Mulan PSL v1 for more details.
+# See the MulanPSL - 2.0 for more details.
 #
+```
 
 MAPLE IR Specification
 ======================
@@ -21,8 +23,7 @@ Contents {#contents .TOC-Heading}
 
 [1 Introduction 7](#introduction)
 
-[2 Program Representation in MAPLE IR
-8](#program-representation-in-maple-ir)
+[2 Program Representation in MAPLE IR 8](#program-representation-in-maple-ir)
 
 [2.1 Symbol Tables 9](#symbol-tables)
 
@@ -114,8 +115,7 @@ Contents {#contents .TOC-Heading}
 
 [3.3.10 zext 17](#zext)
 
-[3.4 Type Conversion Expression Opcodes
-18](#type-conversion-expression-opcodes)
+[3.4 Type Conversion Expression Opcodes 18](#type-conversion-expression-opcodes)
 
 [3.4.1 ceil 18](#ceil)
 
@@ -123,7 +123,7 @@ Contents {#contents .TOC-Heading}
 
 [3.4.3 floor 18](#floor)
 
-[3.4.4 Retype 18](#retype)
+[3.4.4 retype 18](#retype)
 
 [3.4.5 round 18](#round)
 
@@ -199,8 +199,7 @@ Contents {#contents .TOC-Heading}
 
 [3.8 Control Flow Statements 22](#control-flow-statements)
 
-[3.8.1 Hierarchical control flow statements
-22](#hierarchical-control-flow-statements)
+[3.8.1 Hierarchical control flow statements 22](#hierarchical-control-flow-statements)
 
 [3.8.1.1 doloop 23](#doloop)
 
@@ -220,15 +219,17 @@ Contents {#contents .TOC-Heading}
 
 [3.8.2.3 goto 24](#goto)
 
-[3.8.2.4 multiway 24](#multiway)
+[3.8.2.4 igoto 24](#igoto)
 
-[3.8.2.5 return 24](#return)
+[3.8.2.5 multiway 24](#multiway)
 
-[3.8.2.6 switch 24](#switch)
+[3.8.2.6 return 24](#return)
 
-[3.8.2.7 rangegoto 25](#rangegoto)
+[3.8.2.7 switch 24](#switch)
 
-[3.8.2.8 indexgoto 25](#indexgoto)
+[3.8.2.8 rangegoto 25](#rangegoto)
+
+[3.8.2.9 indexgoto 25](#indexgoto)
 
 [3.9 Call Statements 25](#call-statements)
 
@@ -252,8 +253,7 @@ Contents {#contents .TOC-Heading}
 
 [3.10.3 interfacecall 26](#interfacecall)
 
-[3.11 Calls with Return Values Assigned
-27](#calls-with-return-values-assigned)
+[3.11 Calls with Return Values Assigned 27](#calls-with-return-values-assigned)
 
 [3.11.1 callassigned 27](#callassigned)
 
@@ -283,8 +283,7 @@ Contents {#contents .TOC-Heading}
 
 [3.12.12 retsub 30](#retsub)
 
-[3.13 Memory Allocation and Deallocation
-30](#memory-allocation-and-deallocation)
+[3.13 Memory Allocation and Deallocation 30](#memory-allocation-and-deallocation)
 
 [3.13.1 alloca 30](#alloca)
 
@@ -366,8 +365,7 @@ Contents {#contents .TOC-Heading}
 
 [4.5 Type Declaration 37](#type-declaration)
 
-[4.6 Java Class and Interface Declaration
-38](#java-class-and-interface-declaration)
+[4.6 Java Class and Interface Declaration 38](#java-class-and-interface-declaration)
 
 [4.7 Function Declaration 39](#function-declaration)
 
@@ -1495,6 +1493,12 @@ syntax: goto \<label\>
 
 Transfer control unconditionally to \<label\>.
 
+#### igoto
+
+syntax: igoto (\<opnd0\>)
+
+\<opnd0\> must evaluate to the address of a label.  Transfer control unconditionally to the evaluated label address.
+
 #### multiway
 
 syntax:
@@ -1856,7 +1860,7 @@ will pass to the next javacatch.
 
 ### cppcatch
 
-syntax: \<handler-label\> javacatch \<type1\>
+syntax: \<handler-label\> cppcatch \<type1\>
 
 This marks the start of a catch block in C++, in which each catch block
 can only be matched by one type of thrown value. If specified type does
@@ -2527,25 +2531,22 @@ listed one by one, and nested brackets must be used to correspond to
 elements in each lower-order dimension.
 
 In specifying the initializations for a struct, inside the brackets,
-field-ID followed by \'=\' must be used to specify the value for each
+field number followed by \'=\' must be used to specify the value for each
 field explicitly. The fields\' initialization values can be listed in
-arbitrary order. For nested structs, the usage of nested brackets is
-optional, because field-IDs at the top level can uniquely specify fields
-in nested structs. But if nested brackets are used, then field-ID usage
-within the nested brackets is relative to that corresponding level of
-sub-struct. Example:
+arbitrary order. For nested structs, nested brackets must be used according
+to the nesting relationship. Because a bracket is used for each sub-struct in
+the nesting, the field number usage is relative to the sub-struct, and starts
+at 1 for the first field of the sub-struct.  Example:
 ```
     type %SS <struct { @g1 f64, @g2 f64 }>
     var %s struct{@f1 i32,
                   @f2 <%SS>,
                   @f3:4 i32} = [
-        1 = 99,
-        2 = [1= 10.0], # field f2.g1 has field ID 1 in struct %SS and
-                       # is initialized to 10.0
-        4 = 22.2,      # field f2.g2 has field ID 4 in struct %s and
-                       # is initialized to 22.2
-        5 = 15 ]       # field f3 (4 bits in size) has field ID 5 in struct %s
-                       # and is initialized to 15
+        1 = 99,        # field f1 is initialized to 99
+        2 = [1= 10.0, 2=22.2], # fields f2.g1 and f2.g2 initialized to 10 and
+                       # 22.2 respectively
+        3 = 15 ]       # field f3 (4 bits in size) has field number 3 in
+                       # struct %s and is initialized to 15
 ```
  Type Parameters
 ---------------

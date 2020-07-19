@@ -1,0 +1,168 @@
+/*
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
+ *
+ * Licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
+ *
+ *     https://opensource.org/licenses/MulanPSL-2.0
+ *
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
+ * FIT FOR A PARTICULAR PURPOSE.
+ * See the MulanPSL - 2.0 for more details.
+ */
+
+In C and C++ programming, efficient usage of dynammic (heap) memory is the
+responsibility of the programmer.  After allocating memory via calls to malloc
+in C and new in C++, the programmer is responsible for releasing back un-used
+dynamic memory via calls to free in C and delete in C++.  Otherwise, as the
+program continues to run, memory consumption will continuously increase,
+resulting in memory thrashing that slows down the execution, and eventually
+crashing the program due to running out of memory.  For long-running programs
+that repeatedly allocate and release heap memory blocks, memory fragmentation
+is another consequence that slows down performance.
+
+This Mempool package provides a memory allocation and deallocation facility
+different from that of malloc/free of C and new/delete of C++.  In the standard
+model of C/C++, memory is released only via calls to free/delete.  The work
+performed by free/delete is not trivial as it updates the allocator's records to
+keep track of the allocated but unused memory, which becomes more and more
+fragmented as execution continues.  Mempool provides a different memory
+management interface so as to remove the overhead brought about by free and
+delete and their numerous invocations.
+
+Mempool assumes the memory usage model to be stack-like, or first-in first-out.
+Under this model, memory allocation and deallocation is managed according to
+a stack of memory markers.  There is no need for any free or delete operation.
+In place of free/delete, Mempool's interface provides the push and pop
+operations.  A push operation pushes a new marker to mark the current state of
+memory allocation.  The user program then embarks on a new phase that requires
+new memory allocation.  After the phase is done, a pop operation will free up
+all memory allocated since the last push.  All program operations that fit this
+stack-like memory usage pattern will benefit from Mempool's reduced memory
+management overhead while avoiding memory fragmentation.
+
+Since a program can be composed of multiple tasks with their separate stack-like
+usage patterns of different duration, Mempool allows the creation of multiple
+independent memory pools called "mempools".  Each mempool allocates and
+deallocates its memory usage in its own stack-like pattern independent of
+other mempools.  The management of mempools can be regarded as memory management
+at a much higher granularity, as mempools can be created and deleted by
+the program during execution. Deleted mempools with their associated memory
+blocks are automatically recycled for use.
+
+Mempool currently provides only C++ interface, represented by the
+externally visible contents of mempool.h.  The programmer needs to work with the
+following two C++ classes:
+
+A. MemPoolCtrler - There should only be one instance of MemPoolCtrler for each
+program execution.  It is responsible for providing all the Mempool-related
+services.
+
+B. MemPool - Each instance represents a memory pool used by the program.  Each
+MemPool has its own stack of memory markers.
+
+The following illustrates the usage interface of Mempool:
+
+MemPoolCtrler mpc;         // declare the single instance of MemPoolCtrler
+
+MemPool *mp1 = mpc.NewMemPool("my first mempool");  // create a new mempool
+
+MemPool *mp2 = mpc.NewMemPool("my second mempool");  // create another mempool
+
+mpc.DeleteMemPool(mp1);  // all memory allocation in mp1 is freed up;
+                         // after this point, mp1 can no longer be used
+
+mp1 = mpc.NewMemPool("my third mempool");  // mp1 is now a brand new mempool
+
+mp1->Push();  // push a new marker onto mp1's marker stack
+
+void *p = mp1->Malloc(72);  // allocate 72 bytes in mempool mp1
+
+p = mp2->Calloc(80);  // allocate 80 bytes of zero'ed memory in mempool mp2
+
+p = mp2->Realloc(p, 80, 120);  // increase the size of the block that p points
+                               // to by allocating a new block and copying the
+                               // contents of the old block over
+
+mp1->Pop();   // free up all memory allocated in mempool mp1 since its last push
+
+Note that the only way to free memory is by calls to either Pop() or
+DeleteMemPool().  If a memory pool is not needed any more, it must be explicitly
+deleted via the DeleteMemPool() call.  The memory owned by a mempool is not
+freed automatically when execution exits the scope of a MemPool.
+
+In C++, the use of Malloc(), Calloc() and Realloc() are not recommended as they
+do not call constructors.  Mempool provides an interface that corresponds to
+C++'s new operation, which implicitly includes the constructor call.
+
+class MyClass;
+
+MyClass *p = mp1->New<MyClass>();  // allocate memory for an instance of MyClass
+                                   // in mempool mp1 and call its constructor
+MyClass *q = mp1->NewArray<MyClass>(12);  // allocate memory for 12 instances of
+                                          // MyClass and call constructor
+
+In the case of constructor calls that take parameters, just provide the constructor parameters inside the parentheses.
+
+Mempool has the following additional limitations:
+
+1) Because freeing is not achieved by calling C++'s delete, and because C++'s
+delete will automatically call the destructor, if a data structure requires
+the clean-up done by its destructor, then it is not suitable for using this
+Mempool package.
+
+2) It cannot handle allocation of block size that exceeds the 32 bits range (i.e. > 4G bytes)
+
+3) The Realloc() call:
+
+      (Type *)Realloc(Type *p, int oldSize, int newSize)
+
+requires the specification of the old size.  The systems' realloc() does not
+need the old-size argument as it is tracked internally.  Mempool does not track
+the sizes of individual allocations in order to incur less overhead.
+
+4) Some usage errors are probably not yet caught.
+
+5) The testing coverage is probably not 100%.
+
+6) Run valgrind --tool=memcheck --leak-check=full ./MemPool to see the results.
+
+The C++ Standard Template Library (STL) provides many useful constructs and
+utilities for increasing programming productivity in C++.  These constructs
+require their own memory allocation, and rely on destructor calls to free
+the memory.  Because of limitation 1), generic STL types must not be contained
+in data structures allocated by this Mempool package.  Fortunately, STL's
+implemenation provides a mechanism for passing in custom memory allocators.
+For this purpose, we provide this third C++ class:
+
+C. class MapleAllocator - For interfacing with dynamic data types in STL.  Its
+constructor takes a single argument which is the pointer to MemPool (B above).
+When its member function Adapter() is provided as constructor argument in
+constructing our customized STL types, the constructed object will use the
+corresponding mempool for memory allocation.
+
+We provide the following customized STL types whose constructors take
+MapleAllocator as argument:
+
+- MapleVector
+- MapleList
+- MapleDeque
+- MapleQueue
+- MapleSet
+- MapleMap
+- MapleString
+
+Example:
+
+MemPoolCtrler mpc;         // declare the single instance of MemPoolCtrler
+
+MemPool *mp1 = mpc.NewMemPool("my first mempool");  // create a new mempool
+
+MapleAllocator allocator1(mp1);  // an allocator that uses mp1 for allocation
+
+MapleVector<int> myvector(allocator1.Adapter()); // an STL int vector
+                                                 // allocated in mp1
+
+MapleString mystring(allocator1.Adapter()); // an STL string allocated in mp1

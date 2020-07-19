@@ -1,0 +1,223 @@
+/*
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
+ *
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
+ *
+ *   https://opensource.org/licenses/MulanPSL-2.0
+ *
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
+ * FIT FOR A PARTICULAR PURPOSE.
+ * See the MulanPSL - 2.0 for more details.
+ */
+
+#ifdef MPLAD_CORTEX_A55
+// cortex_a55 function units definition:
+Unit *unitInstanceSlot0 = new A55Unit(kUnitIdSlot0);
+if(unitInstanceSlot0 == nullptr) {
+  cout << "Unit allocation for kUnitIdSlot0 failed." << endl;
+}
+CG_ASSERT(unitInstanceSlot0, "Unit allocation for kUnitIdSlot0 failed.");
+
+Unit *unitInstanceSlot1 = new A55Unit(kUnitIdSlot1);
+if(unitInstanceSlot1 == nullptr) {
+  cout << "Unit allocation for kUnitIdSlot1 failed." << endl;
+}
+CG_ASSERT(unitInstanceSlot1, "Unit allocation for kUnitIdSlot1 failed.");
+
+Unit *unitInstanceAgen = new A55Unit(kUnitIdAgen);
+if(unitInstanceAgen == nullptr) {
+  cout << "Unit allocation for kUnitIdAgen failed." << endl;
+}
+CG_ASSERT(unitInstanceAgen, "Unit allocation for kUnitIdAgen failed.");
+
+Unit *unitInstanceHazard = new A55Unit(kUnitIdHazard);
+if(unitInstanceHazard == nullptr) {
+  cout << "Unit allocation for kUnitIdHazard failed." << endl;
+}
+CG_ASSERT(unitInstanceHazard, "Unit allocation for kUnitIdHazard failed.");
+
+Unit *unitInstanceCrypto = new A55Unit(kUnitIdCrypto);
+if(unitInstanceCrypto == nullptr) {
+  cout << "Unit allocation for kUnitIdCrypto failed." << endl;
+}
+CG_ASSERT(unitInstanceCrypto, "Unit allocation for kUnitIdCrypto failed.");
+
+Unit *unitInstanceMul = new A55Unit(kUnitIdMul);
+if(unitInstanceMul == nullptr) {
+  cout << "Unit allocation for kUnitIdMul failed." << endl;
+}
+CG_ASSERT(unitInstanceMul, "Unit allocation for kUnitIdMul failed.");
+
+Unit *unitInstanceDiv = new A55Unit(kUnitIdDiv);
+if(unitInstanceDiv == nullptr) {
+  cout << "Unit allocation for kUnitIdDiv failed." << endl;
+}
+CG_ASSERT(unitInstanceDiv, "Unit allocation for kUnitIdDiv failed.");
+
+Unit *unitInstanceBranch = new A55Unit(kUnitIdBranch);
+if(unitInstanceBranch == nullptr) {
+  cout << "Unit allocation for kUnitIdBranch failed." << endl;
+}
+CG_ASSERT(unitInstanceBranch, "Unit allocation for kUnitIdBranch failed.");
+
+Unit *unitInstanceStAgu = new A55Unit(kUnitIdStAgu);
+if(unitInstanceStAgu == nullptr) {
+  cout << "Unit allocation for kUnitIdStAgu failed." << endl;
+}
+CG_ASSERT(unitInstanceStAgu, "Unit allocation for kUnitIdStAgu failed.");
+
+Unit *unitInstanceLdAgu = new A55Unit(kUnitIdLdAgu);
+if(unitInstanceLdAgu == nullptr) {
+  cout << "Unit allocation for kUnitIdLdAgu failed." << endl;
+}
+CG_ASSERT(unitInstanceLdAgu, "Unit allocation for kUnitIdLdAgu failed.");
+
+Unit *unitInstanceFpAluLo = new A55Unit(kUnitIdFpAluLo);
+if(unitInstanceFpAluLo == nullptr) {
+  cout << "Unit allocation for kUnitIdFpAluLo failed." << endl;
+}
+CG_ASSERT(unitInstanceFpAluLo, "Unit allocation for kUnitIdFpAluLo failed.");
+
+Unit *unitInstanceFpAluHi = new A55Unit(kUnitIdFpAluHi);
+if(unitInstanceFpAluHi == nullptr) {
+  cout << "Unit allocation for kUnitIdFpAluHi failed." << endl;
+}
+CG_ASSERT(unitInstanceFpAluHi, "Unit allocation for kUnitIdFpAluHi failed.");
+
+Unit *unitInstanceFpMulLo = new A55Unit(kUnitIdFpMulLo);
+if(unitInstanceFpMulLo == nullptr) {
+  cout << "Unit allocation for kUnitIdFpMulLo failed." << endl;
+}
+CG_ASSERT(unitInstanceFpMulLo, "Unit allocation for kUnitIdFpMulLo failed.");
+
+Unit *unitInstanceFpMulHi = new A55Unit(kUnitIdFpMulHi);
+if(unitInstanceFpMulHi == nullptr) {
+  cout << "Unit allocation for kUnitIdFpMulHi failed." << endl;
+}
+CG_ASSERT(unitInstanceFpMulHi, "Unit allocation for kUnitIdFpMulHi failed.");
+
+Unit *unitInstanceFpDivLo = new A55Unit(kUnitIdFpDivLo);
+if(unitInstanceFpDivLo == nullptr) {
+  cout << "Unit allocation for kUnitIdFpDivLo failed." << endl;
+}
+CG_ASSERT(unitInstanceFpDivLo, "Unit allocation for kUnitIdFpDivLo failed.");
+
+Unit *unitInstanceFpDivHi = new A55Unit(kUnitIdFpDivHi);
+if(unitInstanceFpDivHi == nullptr) {
+  cout << "Unit allocation for kUnitIdFpDivHi failed." << endl;
+}
+CG_ASSERT(unitInstanceFpDivHi, "Unit allocation for kUnitIdFpDivHi failed.");
+
+
+const int kunitNum = 2;
+Unit *unitInstanceSlotS = new A55Unit(kUnitTypeOr, kUnitIdSlotS, kunitNum, unitInstanceSlot0, unitInstanceSlot1);
+if(unitInstanceSlotS == nullptr) {
+  cout << "Unit allocation for kUnitIdSlotS failed." << endl;
+}
+CG_ASSERT(unitInstanceSlotS, "Unit allocation for kUnitIdSlotS failed.");
+
+Unit *unitInstanceFpAluS = new A55Unit(kUnitTypeOr, kUnitIdFpAluS, kunitNum,
+                                       unitInstanceFpAluLo, unitInstanceFpAluHi);
+if(unitInstanceFpAluS == nullptr) {
+  cout << "Unit allocation for kUnitIdFpAluS failed." << endl;
+}
+CG_ASSERT(unitInstanceFpAluS, "Unit allocation for kUnitIdFpAluS failed.");
+
+Unit *unitInstanceFpMulS = new A55Unit(kUnitTypeOr, kUnitIdFpMulS, kunitNum,
+                                       unitInstanceFpMulLo, unitInstanceFpMulHi);
+if(unitInstanceFpMulS == nullptr) {
+  cout << "Unit allocation for kUnitIdFpMulS failed." << endl;
+}
+CG_ASSERT(unitInstanceFpMulS, "Unit allocation for kUnitIdFpMulS failed.");
+
+Unit *unitInstanceFpDivS = new A55Unit(kUnitTypeOr, kUnitIdFpDivS, kunitNum,
+                                       unitInstanceFpDivLo, unitInstanceFpDivHi);
+if(unitInstanceFpDivS == nullptr) {
+  cout << "Unit allocation for kUnitIdFpDivS failed." << endl;
+}
+CG_ASSERT(unitInstanceFpDivS, "Unit allocation for kUnitIdFpDivS failed.");
+
+
+Unit *unitInstanceSlotD = new A55Unit(kUnitTypeAnd, kUnitIdSlotD, kunitNum, unitInstanceSlot0, unitInstanceSlot1);
+if(unitInstanceSlotD == nullptr) {
+  cout << "Unit allocation for kUnitIdSlotD failed." << endl;
+}
+CG_ASSERT(unitInstanceSlotD, "Unit allocation for kUnitIdSlotD failed.");
+
+Unit *unitInstanceFpAluD = new A55Unit(kUnitTypeAnd, kUnitIdFpAluD, kunitNum,
+                                       unitInstanceFpAluLo, unitInstanceFpAluHi);
+if(unitInstanceFpAluD == nullptr) {
+  cout << "Unit allocation for kUnitIdFpAluD failed." << endl;
+}
+CG_ASSERT(unitInstanceFpAluD, "Unit allocation for kUnitIdFpAluD failed.");
+
+Unit *unitInstanceFpMulD = new A55Unit(kUnitTypeAnd, kUnitIdFpMulD, kunitNum,
+                                       unitInstanceFpMulLo, unitInstanceFpMulHi);
+if(unitInstanceFpMulD == nullptr) {
+  cout << "Unit allocation for kUnitIdFpMulD failed." << endl;
+}
+CG_ASSERT(unitInstanceFpMulD, "Unit allocation for kUnitIdFpMulD failed.");
+
+Unit *unitInstanceFpDivD = new A55Unit(kUnitTypeAnd, kUnitIdFpDivD, kunitNum,
+                                       unitInstanceFpDivLo, unitInstanceFpDivHi);
+if(unitInstanceFpDivD == nullptr) {
+  cout << "Unit allocation for kUnitIdFpDivD failed." << endl;
+}
+CG_ASSERT(unitInstanceFpDivD, "Unit allocation for kUnitIdFpDivD failed.");
+
+
+Unit *unitInstanceSlotSHazard = new A55Unit(kUnitTypeAnd, kUnitIdSlotSHazard, kunitNum,
+                                            unitInstanceSlotS, unitInstanceHazard);
+if(unitInstanceSlotSHazard == nullptr) {
+  cout << "Unit allocation for kUnitIdSlotSHazard failed." << endl;
+}
+CG_ASSERT(unitInstanceSlotSHazard, "Unit allocation for kUnitIdSlotSHazard failed.");
+
+Unit *unitInstanceSlotSMul = new A55Unit(kUnitTypeAnd, kUnitIdSlotSMul, kunitNum,
+                                         unitInstanceSlotS, unitInstanceMul);
+if(unitInstanceSlotSMul == nullptr) {
+  cout << "Unit allocation for kUnitIdSlotSMul failed." << endl;
+}
+CG_ASSERT(unitInstanceSlotSMul, "Unit allocation for kUnitIdSlotSMul failed.");
+
+Unit *unitInstanceSlotSBranch = new A55Unit(kUnitTypeAnd, kUnitIdSlotSBranch, kunitNum,
+                                         unitInstanceSlotS, unitInstanceBranch);
+if(unitInstanceSlotSBranch == nullptr) {
+  cout << "Unit allocation for kUnitIdSlotSBranch failed." << endl;
+}
+CG_ASSERT(unitInstanceSlotSBranch, "Unit allocation for kUnitIdSlotSBranch failed.");
+
+Unit *unitInstanceSlotSAgen = new A55Unit(kUnitTypeAnd, kUnitIdSlotSAgen, kunitNum,
+                                         unitInstanceSlotS, unitInstanceAgen);
+if(unitInstanceSlotSAgen == nullptr) {
+  cout << "Unit allocation for kUnitIdSlotSAgen failed." << endl;
+}
+CG_ASSERT(unitInstanceSlotSAgen, "Unit allocation for kUnitIdSlotSAgen failed.");
+
+Unit *unitInstanceSlotDAgen = new A55Unit(kUnitTypeAnd, kUnitIdSlotDAgen, kunitNum,
+                                         unitInstanceSlotD, unitInstanceAgen);
+if(unitInstanceSlotDAgen == nullptr) {
+  cout << "Unit allocation for kUnitIdSlotDAgen failed." << endl;
+}
+CG_ASSERT(unitInstanceSlotDAgen, "Unit allocation for kUnitIdSlotDAgen failed.");
+
+Unit *unitInstanceSlot0LdAgu = new A55Unit(kUnitTypeAnd, kUnitIdSlot0LdAgu, kunitNum,
+                                         unitInstanceSlot0, unitInstanceLdAgu);
+if(unitInstanceSlot0LdAgu == nullptr) {
+  cout << "Unit allocation for kUnitIdSlot0LdAgu failed." << endl;
+}
+CG_ASSERT(unitInstanceSlot0LdAgu, "Unit allocation for kUnitIdSlot0LdAgu failed.");
+
+Unit *unitInstanceSlot0StAgu = new A55Unit(kUnitTypeAnd, kUnitIdSlot0StAgu, kunitNum,
+                                         unitInstanceSlot0, unitInstanceStAgu);
+if(unitInstanceSlot0StAgu == nullptr) {
+  cout << "Unit allocation for kUnitIdSlot0StAgu failed." << endl;
+}
+CG_ASSERT(unitInstanceSlot0StAgu, "Unit allocation for kUnitIdSlot0StAgu failed.");
+
+
+#endif //MPLAD_CORTEX_A55
+

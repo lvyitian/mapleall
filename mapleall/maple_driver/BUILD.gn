@@ -1,0 +1,122 @@
+#
+# Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
+#
+# Licensed under the Mulan Permissive Software License v2.
+# You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+# You may obtain a copy of MulanPSL - 2.0 at:
+#
+#     https://opensource.org/licenses/MulanPSL-2.0
+#
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
+# FIT FOR A PARTICULAR PURPOSE.
+# See the MulanPSL - 2.0 for more details.
+#
+
+configs = [ "${MAPLEALL_ROOT}:mapleallcompilecfg" ]
+
+if(TARGET == "aarch64"){
+  cflags_cc += [
+      "-DTARGAARCH64",
+      "-DMAPLE_ROOT=\"${MAPLE_ROOT}\"",
+  ]
+}
+
+if(TARGET == "ark"){
+  cflags_cc += [
+      "-DTARGARK",
+      "-DMAPLE_ROOT=\"${MAPLE_ROOT}\"",
+  ]
+}
+
+include_directories = [
+  "${MAPLEALL_ROOT}",
+  "${MAPLEALL_ROOT}/maple_driver/defs",
+  "${MAPLEALL_ROOT}/maple_driver/include",
+  "${MAPLEALL_ROOT}/maple_util/include",
+  "${MAPLEALL_ROOT}/mpl2mpl/include",
+  "${MAPLEALL_ROOT}/maple_me/include",
+  "${MAPLEALL_ROOT}/maple_ipa/include",
+  "${MAPLEALL_ROOT}/maple_phase/include",
+  "${MAPLEALL_ROOT}/maple_util/include",
+  "${MAPLEALL_ROOT}/maple_ir/include",
+  "${MAPLEALL_ROOT}/maple_me/include",
+  "${MAPLEALL_ROOT}/maple_be/include/be",
+  "${MAPLEALL_ROOT}/maple_be/include/cg",
+  "${MAPLEALL_ROOT}/maple_be/include/ad",
+  "${MAPLE_RE_ROOT}/include",
+  "${MAPLEALL_ROOT}/mempool/include",
+  "${MAPLE_ROOT}/huawei_secure_c/include",
+]
+
+executable("maple") {
+  sources = [
+    "src/compiler.cpp",
+    "src/compiler_factory.cpp",
+    "src/compiler_selector.cpp",
+    "src/driver_runner.cpp",
+    "src/file_utils.cpp",
+    "src/jbc2mpl_compiler.cpp",
+    "src/maple.cpp",
+    "src/maple_comb_compiler.cpp",
+    "src/mpl_options.cpp",
+  ]
+
+  include_dirs = include_directories
+
+  deps = [
+    ":liboption_parser",
+    "${MAPLEALL_ROOT}/maple_be:libmplad",
+    "${MAPLEALL_ROOT}/maple_ipa:libmplipa",
+    "${MAPLEALL_ROOT}/mpl2mpl:libmpl2mpl",
+    "${MAPLEALL_ROOT}/maple_me:libmplme",
+    "${MAPLEALL_ROOT}/maple_me:libmplmewpo",
+    "${MAPLEALL_ROOT}/maple_phase:libmplphase",
+    "${MAPLEALL_ROOT}/maple_be:libcg",
+    "${MAPLEALL_ROOT}/maple_ir:libmplir",
+    "${MAPLEALL_ROOT}/mempool:libmempool",
+    "${MAPLEALL_ROOT}/maple_be:libmplbe",
+    "${MAPLEALL_ROOT}/maple_util:libmplutil",
+    "${MAPLE_ROOT}/huawei_secure_c:libHWSecureC",
+  ]
+  libs = []
+  libs += [
+    "${MAPLEALL_ROOT}/deplibs/libmplutil.a",
+  ]
+}
+
+static_library("liboption_parser_extra") {
+  sources = [
+    "src/option_parser.cpp",
+  ]
+
+  cflags_cc += [
+    "-DOPTION_PARSER_EXTRAOPT",
+    "-DOPTION_PARSER_DEBUG",
+  ]
+
+  include_dirs = [
+    "${MAPLEALL_ROOT}/maple_util/include",
+    "${MAPLEALL_ROOT}/maple_driver/include",
+    "${MAPLEALL_ROOT}/maple_ir/include",
+    "${MAPLEALL_ROOT}/mempool/include",
+    "${MAPLE_ROOT}/huawei_secure_c/include",
+  ]
+}
+
+static_library("liboption_parser") {
+  sources = [
+    "src/option_parser.cpp",
+  ]
+
+  include_dirs = [
+    "${MAPLEALL_ROOT}/maple_util/include",
+    "${MAPLEALL_ROOT}/maple_driver/include",
+    "${MAPLEALL_ROOT}/maple_ir/include",
+    "${MAPLEALL_ROOT}/mempool/include",
+    "${MAPLE_ROOT}/huawei_secure_c/include",
+  ]
+
+  output_dir = "${root_out_dir}/lib/${HOST_ARCH}"
+
+}

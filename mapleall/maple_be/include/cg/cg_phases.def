@@ -1,0 +1,55 @@
+/*
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
+ *
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
+ *
+ *   https://opensource.org/licenses/MulanPSL-2.0
+ *
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
+ * FIT FOR A PARTICULAR PURPOSE.
+ * See the MulanPSL - 2.0 for more details.
+ */
+
+#if !TARGARK
+FUNCAPHASE(CgFuncPhase_LIVE, CgDoLiveAnalysis)
+FUNCAPHASE(CgFuncPhase_LIVEEH, CgDoLiveAnalysisEh)
+FUNCAPHASE(CgFuncPhase_REACHDEF, CgDoReachingDefinition)
+FUNCAPHASE(CgFuncPhase_LOOP, CgDoLoopAnalysis)
+FUNCAPHASE(CgFuncPhase_LOOPNOEH, CgDoLoopAnalysisNoEh)
+FUNCTPHASE(CgFuncPhase_LAYOUTSF, CgDoLayoutSF)
+#endif
+FUNCTPHASE(CgFuncPhase_CREATESELABEL, CgDoCreateLabel)
+FUNCTPHASE(CgFuncPhase_BUILDEHFUNC, CgDoBuildEHFunc)
+#if !TARGARK
+FUNCTPHASE(CgFuncPhase_HANDLEFUNC, CgDoHandleFunc)
+FUNCTPHASE(CgFuncPhase_OPTLOCALREF, CgDoOptLocalRef)
+FUNCTPHASE(CgFuncPhaes_MOVVARG, CgMoveVRegargs)
+FUNCTPHASE(CgFuncPhaes_MERGEBB, CgDoMerge)
+FUNCTPHASE(CgFuncPhaes_SPLITBB, CgDoSplit)
+FUNCTPHASE(CgFuncPhaes_EBO, CgDoEbo)
+FUNCTPHASE(CgFuncPhaes_EBO1, CgDoEbo1)
+FUNCTPHASE(CgFuncPhaes_POSTEBO, CgDoPostEbo)
+FUNCTPHASE(CgFuncPhaes_CFGO, CgDoCfgo)
+FUNCTPHASE(CgFuncPhaes_POSTCFGO, CgDoPostCfgo)
+FUNCTPHASE(CgFuncPhaes_ICO, CgDoIco)
+FUNCTPHASE(CgFuncPhaes_REGALLOC, CgDoRegAlloc)
+FUNCTPHASE(CgFuncPhaes_MOVARG, CgMoveRegargs)
+FUNCTPHASE(CgFuncPhaes_GENPROEPILOG, CgDoGenProEpiLog)
+FUNCTPHASE(CgFuncPhaes_OFFADJFPLR, CgDoOffAdjFPLR)
+FUNCTPHASE(CgFuncPhaes_CFOFST, CgFixCFLocOsft)
+FUNCTPHASE(CgFuncPhaes_PREPEEPHOLE, CgDoPrePeepHole)
+FUNCTPHASE(CgFuncPhaes_PREPEEPHOLE1, CgDoPrePeepHole1)
+FUNCTPHASE(CgFuncPhaes_PEEPHOLE0, CgDoPeepHole0)
+FUNCTPHASE(CgFuncPhaes_PEEPHOLE, CgDoPeepHole)
+FUNCTPHASE(CgFuncPhaes_SLO, CgDoStoreLoadOpt)
+FUNCTPHASE(CgFuncPhaes_GLOBALOPT, CgDoGlobalOpt)
+FUNCTPHASE(CgFuncPhaes_SCHEDULE, CgDoScheduling)
+FUNCTPHASE(CgFuncPhaes_PRESCHEDULE, CgDoPreScheduling)
+FUNCTPHASE(CgFuncPhaes_GENCFI, CgDoGenCfi)
+FUNCTPHASE(CgFuncPhaes_YIELDPOINT, CgYieldpointInsertion)
+FUNCTPHASE(CgFuncPhaes_FIXSHORTBRANCH, CgFixShortBranch)
+#endif
+FUNCTPHASE(CgFuncPhaes_EMIT, CgDoEmission)

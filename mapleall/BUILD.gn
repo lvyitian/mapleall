@@ -1,0 +1,103 @@
+#
+# Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
+#
+# Licensed under the Mulan Permissive Software License v2.
+# You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+# You may obtain a copy of MulanPSL - 2.0 at:
+#
+#     https://opensource.org/licenses/MulanPSL-2.0
+#
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
+# FIT FOR A PARTICULAR PURPOSE.
+# See the MulanPSL - 2.0 for more details.
+#
+
+config("mapleallcompilecfg"){
+    cflags_cc = []
+    cflags_cc += [
+        "-std=c++14",
+        "-Werror",
+        "-Wno-unused-variable",
+        ]
+    if(GN_BUILD_TYPE == "DEBUG"){
+        cflags_c += [
+            "-DDEBUG",
+            "-DDEBUG_MAPLE",
+            "-DMIR_DEBUG=1",
+            "-DDEBUGGC=1",
+            "-DMM_DEBUG=1",
+        ]
+        cflags_cc += [
+            "-DDEBUG",
+            "-DDEBUG_MAPLE",
+            "-DMIR_DEBUG=1",
+            "-DDEBUGGC=1",
+            "-DMM_DEBUG=1",
+        ]
+    }
+
+    if(HOST_ARCH == 64){
+         ldflags = cflags_cc
+         ldflags += [
+            "-std=c++14",
+            "-Werror",
+            "-Wno-unused-variable",
+            "-rdynamic",
+            "-lpthread",
+            "-Wl,-z,relro",
+            "-Wl,-z,now",
+            "-Wl,-z,noexecstack",
+            "-fPIE",
+            "-lelf",
+            "-lcrypto",
+         ]
+     }
+
+    if(HOST_ARCH == 32){
+
+        libs = [
+            "-lz",
+            "-lpthread",
+            "-ldl",
+            "-lelf",
+        ]
+
+        ldflags = []
+        ldflags += [
+            "-Wall",
+            "-m32",
+            "-DDYNAMICLANG",
+            "-DRC_NO_MMAP",
+            "-DMIR_FEATURE_FULL=1",
+            "-DMIR_JAVA=0",
+            "-std=c++14",
+            "-w",
+            "-O3",
+            "-rdynamic",
+            "-Wl,-z,relro",
+            "-Wl,-z,now",
+            "-Wl,-z,noexecstack",
+            "-fPIE",
+        ]
+    }
+}
+
+group("mapleall"){
+    deps = [
+        "${MAPLEALL_ROOT}/maple_be:mplcg",
+        "${MAPLEALL_ROOT}/maple_be:mplbe",
+        "${MAPLEALL_ROOT}/maple_be:mplbe-c",
+        "${MAPLE_ROOT}/huawei_secure_c:libHWSecureC",
+        "${MAPLEALL_ROOT}/mpl2mpl:mpl2mpl",
+        "${MAPLEALL_ROOT}/maple_ipa:mplipa",
+        "${MAPLEALL_ROOT}/maple_me:mplme",
+        "${MAPLEALL_ROOT}/maple_driver:maple",
+        "${MAPLEALL_ROOT}/maple_ir:irbuild",
+        "${MAPLEALL_ROOT}/maple_ir:mmpl2cmpl",
+        "${MAPLEALL_ROOT}/maple_ir:cmpl2mmpl",
+        "${MAPLEALL_ROOT}/maple_ir:mplverf",
+        "${MAPLEALL_ROOT}/maple_me:mplme",
+        "${MAPLEALL_ROOT}/mempool:MemPool",
+    ]
+}

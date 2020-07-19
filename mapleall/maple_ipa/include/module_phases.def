@@ -1,0 +1,40 @@
+/*
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
+ *
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
+ *
+ *   https://opensource.org/licenses/MulanPSL-2.0
+ *
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
+ * FIT FOR A PARTICULAR PURPOSE.
+ * See the MulanPSL - 2.0 for more details.
+ */
+
+MODAPHASE(MoPhase_CLONE, DoClone)
+MODAPHASE(MoPhase_CHA, DoKlassHierarchy)
+MODAPHASE(MoPhase_CLINIT, DoClassInit)
+MODAPHASE(MoPhase_IPO_DEVIRTULIZE, DoIPODevirtulize)
+MODAPHASE(MoPhase_CALLGRAPH_ANALYSIS, DoCallGraph)
+MODAPHASE(MoPhase_UPDATEMPLT_ANALYSIS, DoUpdateMplt)
+#if MIR_JAVA
+MODTPHASE(MoPhase_GENNATIVESTUBFUNC, DoGenNativeStubFunc)
+MODAPHASE(MoPhase_VTABLEANALYSIS, DoVtableAnalysis)
+MODAPHASE(MoPhase_REFLECTIONANALYSIS, DoReflectionAnalysis)
+MODTPHASE(MoPhase_VTABLEIMPL, DoVtableImpl)
+MODTPHASE(MoPhase_JAVALOWERING, DoJavaLowering)
+MODTPHASE(MoPhase_ANALYZECTOR, DoAnalyzeCtor)
+MODTPHASE(MoPhase_BARRIERINSERTION, BarrierInsertion)
+MODTPHASE(MoPhase_DEFERRAL_BARRIER, DeferralBarrier)
+MODTPHASE(MoPhase_JAVAEHLOWER, JavaEHLowerer)
+MODTPHASE(MoPhase_CodeReLayout, DoCodeReLayout)
+MODTPHASE(MoPhase_MUIDREPLACEMENT, DoMUIDReplacement)
+MODTPHASE(MoPhase_DECOUPLE, DoDeCouple)
+MODTPHASE(MoPhase_SIMPLIFY, DoSimplify)
+MODTPHASE(MoPhase_CHECKCASTGENERATION, DoCheckCastGeneration)
+MODTPHASE(MoPhase_SCALARREPLACEMENT, DoScalarReplacement)
+#endif
+MODTPHASE(MoPhase_INLINE, DoInline)
+MODTPHASE(MoPhase_GREEDYINLINE, DoGreedyInline)
