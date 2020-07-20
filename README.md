@@ -15,9 +15,7 @@
 #
 ```
 
-#MAPLE - Multiple Architecture and Programming Language Environment
-
-## Steps to build
+## MAPLE - Multiple Architecture and Programming Language Environment
 
 Let MAPLE_ROOT be the top directory for mapleall repository.
 
@@ -39,27 +37,27 @@ The directory structure as follows:
             out          : created during make
 ```
 
-## Set up tools
+### Set up tools
 1. cd $MAPLE_ROOT
 2. cd tools
 3. ./setup_tools.sh
 
-## Build compiler
+### Build compiler
 1. cd $MAPLE_ROOT
 2. choose {TARGET, VERSION} combo from four flavors {arm/ark, release/debug}
 3. source envsetup.sh TARGET VERSION
 4. make
 5. make install
 
-## Output
+### Output
 maple excutables are in $MAPLE_ROOT/bin directory
 
-## Usage
-refer to maple_build git repository for java2asm.sh and asm2so.sh scripts
-java2asm.sh: .java -> .mpl -> .s
-asm2so.sh  : .s -> .so
+### Usage
+refer to maple_engine git repository for java2asm.sh and asm2so.sh scripts
+1. java2asm.sh: .java -> .mpl -> .s
+2. asm2so.sh  : .s -> .so
 
-## Possible issues
+### Possible issues
 You might need to install required packages like:
 ```
         sudo apt-get -y install clang
