@@ -816,7 +816,12 @@ int MirGenerator::MaxEvalStack(MIRFunction *func) {
   int maxEvalStackSize = 0;
   ASSERT(func->body, "Function has no body");
   StmtNode *fstmt = func->body->GetFirst();
+
   curFunc.callsCleanupLocalRefVars = false;
+  curFunc.cleanupLocalRefVars.clear();
+  curFunc.cleanupFormalVars.clear();
+  curFunc.cleanupLocalVarsInc.clear();
+  curFunc.cleanupPregsInc.clear();
 
   while (fstmt) {
     int evalStackSize = 0;
@@ -831,22 +836,62 @@ int MirGenerator::MaxEvalStack(MIRFunction *func) {
       evalStackSize = 1;
     }
 
-    if (fstmt->op == OP_intrinsiccall) { // collect localrefvars from parameters of the intrinsic call CLEANUP_LOCALREFVARS
-      IntrinsiccallNode* node = dynamic_cast<IntrinsiccallNode*>(fstmt);
-      if (node->intrinsic == INTRN_MPL_CLEANUP_LOCALREFVARS) {
-        for (size_t i=0; i<node->NumOpnds(); i++) {
-          ASSERT(node->Opnd(i)->op == OP_dread, "MPL_CLEANUP_LOCALREFVARS opnd should be OP_dread");
-          DreadNode *dread = (DreadNode *)node->Opnd(i);
+    if (evalStackSize > maxEvalStackSize) {
+      maxEvalStackSize = evalStackSize;
+    }
+
+    // The following is not related to eval stack size. It is put here simply to avoid
+    // going through all the statements again.
+    // Here we collecte two sets of references: (1) localrefvars, which are parameters of the intrinsic
+    // CLEANUP_LOCALREFVARS (2) parameters of OP_calls that are between CLEANUP_LOCALREFVARS and Return.
+    if (fstmt->op == OP_intrinsiccall) {
+      IntrinsiccallNode* intrNode = static_cast<IntrinsiccallNode*>(fstmt);
+      if (intrNode->intrinsic == INTRN_MPL_CLEANUP_LOCALREFVARS) { // collect localrefvars from parameters of the intrinsic call CLEANUP_LOCALREFVARS
+        for (size_t i=0; i<intrNode->NumOpnds(); i++) {
+          ASSERT(intrNode->Opnd(i)->op == OP_dread, "MPL_CLEANUP_LOCALREFVARS opnd should be OP_dread");
+          DreadNode *dread = (DreadNode *)intrNode->Opnd(i);
 
           MIRSymbol *s = GetCurFunction()->GetLocalOrGlobalSymbol(dread->stIdx);
           curFunc.cleanupLocalRefVars.insert(s);
         }
         curFunc.callsCleanupLocalRefVars = true;
-      }
-    }
 
-    if (evalStackSize > maxEvalStackSize) {
-      maxEvalStackSize = evalStackSize;
+        // Between CLEANUP_LOCALREFVARS and Return, there may be calls of MCC_DecRef_NaiveRCFast() or MCC_IncRef_NaiveRCFast();
+        // need to collect those references.
+        StmtNode *stNode = fstmt;  // Do not change fstmt because outer loop is looking for OP_calls. Use a different iterator.
+        do {
+          stNode = stNode->GetNext();
+          if (stNode->op != OP_return) {
+            if (stNode->op == OP_call) {
+              CallNode* node = static_cast<CallNode*>(stNode);
+              const std::string& fname = GlobalTables::GetFunctionTable().funcTable.at(node->puIdx)->GetName();
+
+              ASSERT(fname == "MCC_DecRef_NaiveRCFast" || fname == "MCC_IncRef_NaiveRCFast",
+                              "OP_call after CLEANUP_LOCALREFVARS must be to MCC_DecRef_NaiveRCFast or MCC_IncRef_NaiveRCFast");
+
+              if (fname == "MCC_DecRef_NaiveRCFast") {
+                ASSERT(node->Opnd(0)->op == OP_dread, "After CLEANUP_LOCALREFVARS, opnd of MCC_DecRef_NaiveFast should be OP_dread");
+                DreadNode *dread = static_cast<DreadNode *>(node->Opnd(0));
+                MIRSymbol *s = GetCurFunction()->GetLocalOrGlobalSymbol(dread->stIdx);
+                ASSERT(s->storageClass == kScFormal, "Parameters of calls of MCC_DecRef_NaiveRCFast between CLEANUP_LOCALREFVARS and Return should be formals");
+                curFunc.cleanupFormalVars.insert(s);
+              } else { // call of MCC_IncRef_NaiveRCFast()
+                ASSERT(node->Opnd(0)->op == OP_regread || node->Opnd(0)->op == OP_dread,
+                       "After CLEANUP_LOCALREFVARS, opnd of MCC_IncRef_NaiveFast should be OP_regread or OP_dread");
+                if(node->Opnd(0)->op == OP_regread) {
+                  RegreadNode *regread = static_cast<RegreadNode *>(node->Opnd(0));
+                  curFunc.cleanupPregsInc.insert(regread->regIdx);
+                } else {
+                  DreadNode *dread = static_cast<DreadNode *>(node->Opnd(0));
+                  MIRSymbol *s = GetCurFunction()->GetLocalOrGlobalSymbol(dread->stIdx);
+                  ASSERT(s->storageClass != kScFormal, "Parameters of calls of MCC_IncRef_NaiveRCFast between CLEANUP_LOCALREFVARS and Return should not be formals");
+                  curFunc.cleanupLocalVarsInc.insert(s);
+                }
+              }
+            }
+          }
+        } while(stNode->op != OP_return);
+      }
     }
     fstmt = fstmt->GetNext();
   }
@@ -882,12 +927,17 @@ void MirGenerator::EmitAsmAutoVarsInfo(MIRFunction *func) {
       // 2: function calls CLEANUP_LOCALREFVAR, and this var is a parameter of the call.
       // 3: function does not call CLEANUP_LOCALREFVAR; this local refvar (most likely exception related)
       //    should have cleanup.
+      // 4. Local var that requires RC increased
+      // 5. Preg that requires RC increased (see below)
       int cleanupFlag = 0;
       if (s->IsRefType()) {
         if(curFunc.callsCleanupLocalRefVars) {
           cleanupFlag = 1;
           if(curFunc.cleanupLocalRefVars.find(s) != curFunc.cleanupLocalRefVars.end()) {
             cleanupFlag = 2;
+          }
+          else if(curFunc.cleanupLocalVarsInc.find(s) != curFunc.cleanupLocalVarsInc.end()) {
+            cleanupFlag = 4;
           }
         } else {
           // function has no intrinsic call of CLEANUP_LOCALREFVARS
@@ -906,8 +956,11 @@ void MirGenerator::EmitAsmAutoVarsInfo(MIRFunction *func) {
   for (int32 i = 1; i < pregtable.size(); i++) {
     MIRPreg *preg = pregtable[i];
     if (!curFunc.FindFormalPreg(preg->pregNo)) {
+      int cleanupFlag = 0;
+      if(curFunc.cleanupPregsInc.find(preg->pregNo) != curFunc.cleanupPregsInc.end())
+        cleanupFlag = 5;
       os << "\t.byte " << hex << "0x" << preg->primType
-         << ", 0x0" << dec << "\t// %" << preg->pregNo << "\n"; // the 2nd byte is 0x0, meaning preg is not localrefvar
+         << ", " << cleanupFlag << dec << "\t// %" << preg->pregNo << "\n";
     }
   }
 }
@@ -967,7 +1020,15 @@ void MirGenerator::EmitAsmFormalArgInfo(MIRFunction *func) {
   for (int i = 0; i< func->formalDefVec.size(); i++) {
     MIRSymbol *arg = func->formalDefVec[i].formalSym;
     MIRType *ty = GlobalTables::GetTypeTable().GetTypeFromTyIdx(func->formalDefVec[i].formalTyIdx);
-    os << hex << "\t.byte " << "0x" << ty->primType << "\t// ";
+    os << hex << "\t.byte " << "0x" << ty->primType;
+
+    int cleanupFlag = 0;
+    if (arg->sKind != kStPreg) {
+      if(curFunc.cleanupFormalVars.find(arg) != curFunc.cleanupFormalVars.end())
+        cleanupFlag = 1;
+    }
+    os << hex << ", 0x" << cleanupFlag << "\t// ";
+
     if (arg->sKind == kStPreg) {
       os << dec << "%" << arg->value.preg->pregNo << "\n";
     } else {

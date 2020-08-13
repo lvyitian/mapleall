@@ -245,6 +245,9 @@ class RE_Func {
   std::map<MIRSymbol *, int> localVars; // local var to autos idx;
   std::set<MIRSymbol*> cleanupLocalRefVars;  // localrefvar that require cleanup
   bool callsCleanupLocalRefVars;  // boolean indicating if function calls intrinsic CLEANUP_LOCALVARS
+  std::set<MIRSymbol*> cleanupFormalVars;  // formal variables that require cleanup
+  std::set<MIRSymbol*> cleanupLocalVarsInc;  // local variables that require RC increase
+  std::set<PregIdx> cleanupPregsInc;  // pregs that require RC increase
 
  public:
   void Init(MIRFunction *f) {
