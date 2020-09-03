@@ -341,7 +341,7 @@ class MirGenerator : public CmplGenerator {
     javatry_stmts(nullptr),
     mmodule(mod), os(ostream), becommon(be) {}
   void FlattenExpr(BaseNode *fexpr);
-  void EmitExpr(BaseNode *fexpr);
+  void EmitExpr(Opcode expr, PrimType exprType, BaseNode *fexpr);
   void EmitStmt(StmtNode *fstmt);
   void EmitFuncDef(BlockNode *fblock);
   void EmitFunc(MIRFunction *ffunc);
@@ -376,6 +376,7 @@ class MirGenerator : public CmplGenerator {
   int MaxEvalStack(MIRFunction *func);
   uint32 GetFieldOffsetType(TyIdx tyidx, FieldID fieldid, MIRType *&);
   RE_Opcode MapEHOpcode(RE_Opcode op);
+  void CheckInsertOpCvt(Opcode expr, PrimType exprType, PrimType insnType);
 
   int GetFuncOffset(void) {
     return funcOffset;
