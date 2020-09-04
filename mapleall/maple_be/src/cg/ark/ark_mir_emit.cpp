@@ -45,7 +45,22 @@ std::vector <std::string> RE_OpName = {
 // Flatten statements, expressions and sub-expressions to postfix order
 void MirGenerator::FlattenExpr(BaseNode *fexpr) {
   for (int i = 0; i < fexpr->NumOpnds(); i++) {
-    EmitExpr(fexpr->Opnd(i));
+    EmitExpr(fexpr->op, fexpr->primType, fexpr->Opnd(i));
+  }
+}
+
+void MirGenerator::CheckInsertOpCvt(Opcode expr, PrimType exprType, PrimType insnType) {
+  if (expr == OP_bior || expr == OP_band || expr == OP_add || expr == OP_sub || expr == OP_dassign) {
+    if (exprType != insnType &&
+        (insnType == PTY_u1 ||
+         insnType == PTY_i8 ||
+         insnType == PTY_u8 ||
+         insnType == PTY_i16 ||
+         insnType == PTY_u16)) {
+        mre_instr_t cvt(RE_cvt, exprType, 1);
+        cvt.param.type.opPtyp = insnType;
+        EmitAsmBaseNode(cvt);
+    }
   }
 }
 
@@ -119,7 +134,7 @@ inline void MirGenerator::EmitStringNoTab(const std::string &str, int bytes) {
 /* general routine to handle expression conversion
    Note: FlattenExpr should go first, to guarantee postorder
  */
-void MirGenerator::EmitExpr(BaseNode *fexpr) {
+void MirGenerator::EmitExpr(Opcode curOp, PrimType curPrimType, BaseNode *fexpr) {
   mre_instr_t expr(fexpr);
   switch (fexpr->op) {
     // leaf opcodes
@@ -269,6 +284,8 @@ void MirGenerator::EmitExpr(BaseNode *fexpr) {
       regName.append(std::to_string(preg->pregNo));
       expr.param.frameIdx = curFunc.EncodePreg(preg->pregNo);
       EmitAsmBaseNode(expr, regName);
+      // check for regread of less than 4 bytes
+      CheckInsertOpCvt(curOp, curPrimType, fexpr->primType);
       break;
     }
     case OP_ireadoff: {
@@ -295,7 +312,7 @@ void MirGenerator::EmitExpr(BaseNode *fexpr) {
       MIRType *type = nullptr;
       int32 offset = GetFieldOffsetType(((IreadNode *)fexpr)->tyIdx, ((IreadNode *)fexpr)->fieldID, type);
       // Evaluate operands
-      EmitExpr(static_cast<IreadNode *>(fexpr)->uOpnd);
+      EmitExpr(fexpr->op, fexpr->primType, static_cast<IreadNode *>(fexpr)->uOpnd);
       mre_instr_t ireadoff(RE_ireadoff, expr.primType, fexpr->numOpnds);
       // generate 4 byte instr if offset fits in 16 bits else generate 8 byte instr
       if (offset <= 32767 && offset >= -32768) {
@@ -378,6 +395,8 @@ void MirGenerator::EmitExpr(BaseNode *fexpr) {
         FlattenExpr(fexpr);
         expr.param.frameIdx = curFunc.EncodeSym(s);
         EmitAsmBaseNode(expr, s->GetName());
+        // check for dread of less than 4 bytes (as encountered in -O0 build)
+        CheckInsertOpCvt(curOp, curPrimType, fexpr->primType);
       } else {
         // lower to OP_iread and insert an OP_addrof instr as its <addr-expr>
         AddrofNode addrofNode(OP_addrof, PTY_a64, dread->stIdx, dread->fieldID);
@@ -554,6 +573,8 @@ void MirGenerator::EmitStmt(StmtNode *fstmt) {
       DassignNode *dassign = (DassignNode *)fstmt;
       ASSERT(dassign->fieldID == 0, "OP_dassign field != 0");
       MIRSymbol *s = GetCurFunction()->GetLocalOrGlobalSymbol(dassign->stIdx);
+      ASSERT(s != nullptr, "OP_dassign cannot find symbol");
+      fstmt->primType = s->GetType()->GetPrimType();
       if (s->storageClass == kScAuto || s->storageClass == kScFormal) {
         FlattenExpr(fstmt); // val <rhs-expr>
         if ((dassign->uOpnd->op == OP_zext || dassign->uOpnd->op == OP_sext) &&
@@ -575,7 +596,7 @@ void MirGenerator::EmitStmt(StmtNode *fstmt) {
         } else {
           EmitAsmAddroffPC(&addrofNode, s->GetName());
         }
-        EmitExpr(dassign->uOpnd); // eval <rhs-expr> before generating iassign node
+        EmitExpr(fstmt->op, fstmt->primType, dassign->uOpnd); // eval <rhs-expr> before generating iassign node
         mre_instr_t iassignoff(RE_iassignoff, s->GetType()->GetPrimType(), 2);
         iassignoff.param.offset = 0; // offset always 0 because fieldID is always 0
         EmitAsmBaseNode(iassignoff);
@@ -588,8 +609,8 @@ void MirGenerator::EmitStmt(StmtNode *fstmt) {
       MIRType *type = nullptr;
       int32 offset = GetFieldOffsetType(iassign->tyIdx, iassign->fieldID, type);
       // eval <addrexp> and <rhs>
-      EmitExpr(iassign->addrExpr);
-      EmitExpr(iassign->rhs);
+      EmitExpr(fstmt->op, type->GetPrimType(), iassign->addrExpr);
+      EmitExpr(fstmt->op, type->GetPrimType(), iassign->rhs);
       // the type of rhs of iassign should correspond with its element type, but not the rhs' type
       if (GetPrimTypeSize(type->GetPrimType()) != GetPrimTypeSize(iassign->rhs->primType)) {
         fprintf(stderr, "warning for the store, the dest type and src type size dosent' match\n");
@@ -839,6 +860,7 @@ int MirGenerator::MaxEvalStack(MIRFunction *func) {
     if (evalStackSize > maxEvalStackSize) {
       maxEvalStackSize = evalStackSize;
     }
+
 
     // The following is not related to eval stack size. It is put here simply to avoid
     // going through all the statements again.
@@ -1331,3 +1353,4 @@ RE_Opcode MirGenerator::MapEHOpcode(RE_Opcode op) {
   }
   return op;
 }
+
