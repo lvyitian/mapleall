@@ -282,7 +282,7 @@ void MirGenerator::EmitExpr(Opcode curOp, PrimType curPrimType, BaseNode *fexpr)
       ASSERT(preg, "preg is null");
       regName.append("%");
       regName.append(std::to_string(preg->pregNo));
-      expr.param.frameIdx = curFunc.EncodePreg(preg->pregNo);
+      expr.param.frameIdx = preg->pregNo;
       EmitAsmBaseNode(expr, regName);
       // check for regread of less than 4 bytes
       CheckInsertOpCvt(curOp, curPrimType, fexpr->primType);
@@ -297,6 +297,19 @@ void MirGenerator::EmitExpr(Opcode curOp, PrimType curPrimType, BaseNode *fexpr)
         EmitAsmBaseNode(expr);
       } else {
         expr.op = RE_ireadoff32;
+        EmitAsmBaseNode(expr);
+        EmitAsmWord(offset);
+      }
+      break;
+    }
+    case OP_ireadfpoff: {
+      int32 offset = static_cast<IreadFPoffNode *>(fexpr)->offset;
+      // generate 4 byte instr if offset fits in 16 bits else generate 8 byte instr
+      if (offset <= 32767 && offset >= -32768) {
+        expr.param.offset = offset;
+        EmitAsmBaseNode(expr);
+      } else {
+        expr.op = RE_ireadfpoff32;
         EmitAsmBaseNode(expr);
         EmitAsmWord(offset);
       }
@@ -473,6 +486,20 @@ void MirGenerator::EmitStmt(StmtNode *fstmt) {
       }
       break;
     }
+    case OP_iassignfpoff: {
+      int32 offset = static_cast<IassignFPoffNode *>(fstmt)->offset;
+      FlattenExpr(fstmt);
+      // generate 4 byte instr if offset fits in 16 bits else generate 8 byte instr
+      if (offset <= 32767 && offset >= -32768) {
+        stmt.param.offset = offset;
+        EmitAsmBaseNode(stmt);
+      } else {
+        stmt.op = RE_iassignfpoff32;
+        EmitAsmBaseNode(stmt);
+        EmitAsmWord(offset);
+      }
+      break;
+    }
     case OP_regassign: {
       string regName;
       FlattenExpr(fstmt);
@@ -480,7 +507,7 @@ void MirGenerator::EmitStmt(StmtNode *fstmt) {
       ASSERT(preg, "preg is null");
       regName.append("%");
       regName.append(std::to_string(preg->pregNo));
-      stmt.param.frameIdx = curFunc.EncodePreg(preg->pregNo);
+      stmt.param.frameIdx = preg->pregNo;
       EmitAsmBaseNode(stmt, regName);
       break;
     }
@@ -1079,21 +1106,35 @@ void MirGenerator::EmitAsmFuncInfo(MIRFunction *func) {
 
   //printf("func %d \n", func->puIdxOrigin);
   curFunc.Init(func);
+/*
   curFunc.numFormalArgs = GetFormalsInfo(func);
   curFunc.numAutoVars = GetLocalsInfo(func) + 2; // incl. %%retval0 and %%thrownval
+*/
   curFunc.evalStackDepth = MaxEvalStack(func);
-
+/*
   if (func->IsWeak()) curFunc.SetWeakAttr();
   if (func->IsStatic()) curFunc.SetStaticAttr();
   if (func->IsConstructor()) curFunc.SetConstructorAttr();
   if (GlobalTables::GetStrTable().GetStringFromStrIdx(func->GetBaseFuncNameStridx()) == "finalize") curFunc.SetFinalizeAttr();
-
+*/
   // insert interpreter shim and signature
-  os << "\t.ascii \"MPLI\"\n";
+  int formalsBlkBitVectBytes = BlkSize2BitvectorSize(func->upFormalSize);
+  int localsBlkBitVectBytes = BlkSize2BitvectorSize(func->frameSize);
+  os << "\t.ascii \"MPJS\"\n";
   os << infoLabel << ":\n";
   os << "\t" << ".long " << codeLabel << " - .\n";
-  os << "\t" << ".word " << curFunc.numFormalArgs << ", " << curFunc.numAutoVars << ", " << curFunc.evalStackDepth <<  ", " << curFunc.funcAttrs << " // func storage info\n";
+  os << "\t" << ".word " << func->upFormalSize << ", " << func->frameSize << ", " << curFunc.evalStackDepth <<  ", " << 0 << "\t// upFormalSize, frameSize, evalStackDepth\n";
+  os << "\t" << ".word " << formalsBlkBitVectBytes << ", " << localsBlkBitVectBytes << "\t\t// formalWords bit vector byte count, localWords bit vector byte count\n";
+  if (formalsBlkBitVectBytes) {
+    EmitBytesComment(func->formalWordsTypeTagged, formalsBlkBitVectBytes, "// formalWordsTypeTagged");
+    EmitBytesComment(func->formalWordsRefCounted, formalsBlkBitVectBytes, "// formalWordsRefCounted");
+  }
+  if (localsBlkBitVectBytes) {
+    EmitBytesComment(func->localWordsTypeTagged, localsBlkBitVectBytes, "// localWordsTypeTagged");
+    EmitBytesComment(func->localWordsRefCounted, localsBlkBitVectBytes, "// localWordsRefCounted");
+  }
 
+/*
   if (curFunc.numFormalArgs) {
     os << "\t" << "// PrimType of formal arguments\n";
   }
@@ -1116,9 +1157,23 @@ void MirGenerator::EmitAsmFuncInfo(MIRFunction *func) {
       os << "\t// ALIAS %" << GlobalTables::GetStrTable().GetStringFromStrIdx(it.first) << " %"
          << GlobalTables::GetStrTable().GetStringFromStrIdx(it.second.memPoolStrIdx) << "\n";
   }
-
+*/
   os << "\t.p2align 1\n";
   os << codeLabel << ":\n";
+}
+
+void MirGenerator::EmitGlobalDecl(void) {
+  os << "\t.section\t.rodata\n";
+  os << "\t.p2align 3\n";
+  os << "\t.global __mpljs_module_decl__\n";
+  os << "__mpljs_module_decl__:\n";
+  os << "\t.word " << mmodule.globalMemSize << "\t// globalMemSize byte count\n";
+  if (mmodule.globalMemSize) {
+    EmitBytesComment(mmodule.globalBlkMap, mmodule.globalMemSize, "\t// globalMemMap");;
+    os << "\t.word " << BlkSize2BitvectorSize(mmodule.globalMemSize) << "\t// globalwordstypetagged/refcounted byte count\n";
+    EmitBytesComment(mmodule.globalWordsTypeTagged, BlkSize2BitvectorSize(mmodule.globalMemSize), "\t// globalwordstypetagged");
+    EmitBytesComment(mmodule.globalWordsRefCounted, BlkSize2BitvectorSize(mmodule.globalMemSize), "\t// globalwordsrefcounted");
+  }
 }
 
 void MirGenerator::EmitAsmBaseNode(mre_instr_t &m) {
@@ -1158,7 +1213,7 @@ void MirGenerator::EmitBytes(uint8 *b, int count) {
   EmitString(ss.str(), count);
 }
 
-void MirGenerator::EmitBytesComment(uint8 *b, int count, string &comment) {
+void MirGenerator::EmitBytesComment(uint8 *b, int count, const string &comment) {
   stringstream ss;
   ss << ".byte ";
   for (int i=0; i<count; ++i) {
