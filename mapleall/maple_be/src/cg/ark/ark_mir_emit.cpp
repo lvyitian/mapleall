@@ -30,6 +30,8 @@
 #include <iomanip>
 
 #define CLANG (mmodule.IsCModule())
+#define JAVALANG (mmodule.IsJavaModule())
+#define JAVASCRIPT (mmodule.IsJsModule())
 
 using std::hex;
 
@@ -119,13 +121,13 @@ std::set<std::string> PreDefClassInfo = {
 // TODO: add memcmpMpl to list when we have x86 replacement.
 // NOTE: IntrinsicList is moved to special_func.cpp
 
-inline void MirGenerator::EmitString(const std::string &str, int bytes) {
+inline void MirGenerator::EmitString(const std::string &str, int bytes=0) {
   int offset = GetFuncOffset();
   os << "\t" << str << "\n";
   SetFuncOffset(offset + bytes);
 }
 
-inline void MirGenerator::EmitStringNoTab(const std::string &str, int bytes) {
+inline void MirGenerator::EmitStringNoTab(const std::string &str, int bytes=0) {
   int offset = GetFuncOffset();
   os << str << "\n";
   SetFuncOffset(offset + bytes);
@@ -282,7 +284,7 @@ void MirGenerator::EmitExpr(Opcode curOp, PrimType curPrimType, BaseNode *fexpr)
       ASSERT(preg, "preg is null");
       regName.append("%");
       regName.append(std::to_string(preg->pregNo));
-      if (curFunc.func->module->IsJsModule()) {
+      if (JAVASCRIPT) {
         expr.param.frameIdx = preg->pregNo;
       } else {
         expr.param.frameIdx = curFunc.EncodePreg(preg->pregNo);
@@ -307,7 +309,7 @@ void MirGenerator::EmitExpr(Opcode curOp, PrimType curPrimType, BaseNode *fexpr)
       break;
     }
     case OP_ireadfpoff: {
-      ASSERT(curFunc.func->module->IsJsModule(), "OP_ireadfpoff in non Maple JS input");
+      ASSERT(JAVASCRIPT, "OP_ireadfpoff in non Maple JS input");
       int32 offset = static_cast<IreadFPoffNode *>(fexpr)->offset;
       // generate 4 byte instr if offset fits in 16 bits else generate 8 byte instr
       if (offset <= 32767 && offset >= -32768) {
@@ -492,7 +494,7 @@ void MirGenerator::EmitStmt(StmtNode *fstmt) {
       break;
     }
     case OP_iassignfpoff: {
-      ASSERT(curFunc.func->module->IsJsModule(), "OP_iassignfpoff in non Maple JS input");
+      ASSERT(JAVASCRIPT, "OP_iassignfpoff in non Maple JS input");
       int32 offset = static_cast<IassignFPoffNode *>(fstmt)->offset;
       FlattenExpr(fstmt);
       // generate 4 byte instr if offset fits in 16 bits else generate 8 byte instr
@@ -513,7 +515,7 @@ void MirGenerator::EmitStmt(StmtNode *fstmt) {
       ASSERT(preg, "preg is null");
       regName.append("%");
       regName.append(std::to_string(preg->pregNo));
-      if (curFunc.func->module->IsJsModule()) {
+      if (JAVASCRIPT) {
         stmt.param.frameIdx = preg->pregNo;
       } else {
         stmt.param.frameIdx = curFunc.EncodePreg(preg->pregNo);
@@ -1116,7 +1118,7 @@ void MirGenerator::EmitAsmFuncInfo(MIRFunction *func) {
 
   //printf("func %d \n", func->puIdxOrigin);
   curFunc.Init(func);
-  if (!curFunc.func->module->IsJsModule()) {
+  if (!JAVASCRIPT) {
     curFunc.numFormalArgs = GetFormalsInfo(func);
     curFunc.numAutoVars = GetLocalsInfo(func) + 2; // incl. %%retval0 and %%thrownval
     if (func->IsWeak()) curFunc.SetWeakAttr();
@@ -1126,7 +1128,7 @@ void MirGenerator::EmitAsmFuncInfo(MIRFunction *func) {
   }
   curFunc.evalStackDepth = MaxEvalStack(func);
   // insert interpreter shim and signature
-  if (curFunc.func->module->IsJsModule()) {
+  if (JAVASCRIPT) {
     os << "\t.ascii \"MPJS\"\n";
     os << infoLabel << ":\n";
     os << "\t" << ".long " << codeLabel << " - .\n";
@@ -1174,6 +1176,23 @@ void MirGenerator::EmitAsmFuncInfo(MIRFunction *func) {
 
   os << "\t.p2align 1\n";
   os << codeLabel << ":\n";
+}
+
+void MirGenerator::EmitModuleInfo(void) {
+  EmitOpCodes();
+  if (JAVASCRIPT) {
+    EmitGlobalDecl();
+  }
+}
+
+void MirGenerator::EmitOpCodes(void) {
+  // gen opcodes - skip entry 0 (kOpUndef) and handle duplicate name (OP_dassign, OP_maydassign)
+  EmitStringNoTab("\nOP_dassign = 1");
+  EmitStringNoTab("OP_maydassign = 2");
+  for (int i = 3; i < kREOpLast; ++i) {
+    EmitStringNoTab(string("OP_")+RE_OpName[i]+" = "+to_string(i));
+  }
+  EmitStringNoTab("");
 }
 
 void MirGenerator::EmitGlobalDecl(void) {
@@ -1421,14 +1440,13 @@ void MirGenerator::EmitAsmConststr(UStrIdx strIdx) {
 }
 
 RE_Opcode MirGenerator::MapEHOpcode(RE_Opcode op) {
-  MIRModule *module = GetCurFunction()->module;
-  if (module->IsCModule()) {
+  if (CLANG) {
     if (op == RE_catch) {
       op = RE_cppcatch;
     } else if (op == RE_try) {
       op = RE_cpptry;
     }
-  } else if (module->IsJavaModule()) {
+  } else if (JAVALANG) {
     if (op == RE_catch) {
       op = RE_javacatch;
     } else if (op == RE_try) {

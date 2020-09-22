@@ -370,7 +370,9 @@ class MirGenerator : public CmplGenerator {
   void EmitString(const std::string &str, int bytes);
   void EmitStringNoTab(const std::string &str, int bytes);
   void EmitYieldPoint(void);
+  void EmitModuleInfo(void);
   void EmitGlobalDecl(void);
+  void EmitOpCodes(void);
   void CheckYieldPointInsert(StmtNode *fstmt);
   int GetFormalsInfo(MIRFunction *func);
   int GetLocalsInfo(MIRFunction *func);
