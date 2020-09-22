@@ -1138,12 +1138,12 @@ void MirGenerator::EmitAsmFuncInfo(MIRFunction *func) {
     os << "\t" << ".word " << func->upFormalSize << ", " << func->frameSize << ", " << curFunc.evalStackDepth <<  ", " << 0 << "\t// upFormalSize, frameSize, evalStackDepth\n";
     os << "\t" << ".word " << formalsBlkBitVectBytes << ", " << localsBlkBitVectBytes << "\t\t// formalWords bit vector byte count, localWords bit vector byte count\n";
     if (formalsBlkBitVectBytes) {
-      EmitBytesComment(func->formalWordsTypeTagged, formalsBlkBitVectBytes, "// formalWordsTypeTagged");
-      EmitBytesComment(func->formalWordsRefCounted, formalsBlkBitVectBytes, "// formalWordsRefCounted");
+      EmitBytesCommentOffset(func->formalWordsTypeTagged, formalsBlkBitVectBytes, "// formalWordsTypeTagged", 0);
+      EmitBytesCommentOffset(func->formalWordsRefCounted, formalsBlkBitVectBytes, "// formalWordsRefCounted", 0);
     }
     if (localsBlkBitVectBytes) {
-      EmitBytesComment(func->localWordsTypeTagged, localsBlkBitVectBytes, "// localWordsTypeTagged");
-      EmitBytesComment(func->localWordsRefCounted, localsBlkBitVectBytes, "// localWordsRefCounted");
+      EmitBytesCommentOffset(func->localWordsTypeTagged, localsBlkBitVectBytes, "// localWordsTypeTagged", 0);
+      EmitBytesCommentOffset(func->localWordsRefCounted, localsBlkBitVectBytes, "// localWordsRefCounted", 0);
     }
   } else {
     os << "\t.ascii \"MPLI\"\n";
@@ -1202,10 +1202,10 @@ void MirGenerator::EmitGlobalDecl(void) {
   os << "__mpljs_module_decl__:\n";
   os << "\t.word " << mmodule.globalMemSize << "\t// globalMemSize byte count\n";
   if (mmodule.globalMemSize) {
-    EmitBytesComment(mmodule.globalBlkMap, mmodule.globalMemSize, "\t// globalMemMap");;
+    EmitBytesCommentOffset(mmodule.globalBlkMap, mmodule.globalMemSize, "\t// globalMemMap", 0);;
     os << "\t.word " << BlkSize2BitvectorSize(mmodule.globalMemSize) << "\t// globalwordstypetagged/refcounted byte count\n";
-    EmitBytesComment(mmodule.globalWordsTypeTagged, BlkSize2BitvectorSize(mmodule.globalMemSize), "\t// globalwordstypetagged");
-    EmitBytesComment(mmodule.globalWordsRefCounted, BlkSize2BitvectorSize(mmodule.globalMemSize), "\t// globalwordsrefcounted");
+    EmitBytesCommentOffset(mmodule.globalWordsTypeTagged, BlkSize2BitvectorSize(mmodule.globalMemSize), "\t// globalwordstypetagged", 0);
+    EmitBytesCommentOffset(mmodule.globalWordsRefCounted, BlkSize2BitvectorSize(mmodule.globalMemSize), "\t// globalwordsrefcounted", 0);
   }
 }
 
@@ -1246,7 +1246,7 @@ void MirGenerator::EmitBytes(uint8 *b, int count) {
   EmitString(ss.str(), count);
 }
 
-void MirGenerator::EmitBytesComment(uint8 *b, int count, const string &comment) {
+void MirGenerator::EmitBytesCommentOffset(uint8 *b, int count, const string &comment, int offset=0) {
   stringstream ss;
   ss << ".byte ";
   for (int i=0; i<count; ++i) {
@@ -1256,7 +1256,11 @@ void MirGenerator::EmitBytesComment(uint8 *b, int count, const string &comment) 
     }
   }
   ss << "\t" << comment;
-  EmitString(ss.str(), count);
+  EmitString(ss.str(), offset);
+}
+
+void MirGenerator::EmitBytesComment(uint8 *b, int count, const string &comment) {
+  EmitBytesCommentOffset(b, count, comment, count);
 }
 
 inline void MirGenerator::EmitAsmShort(uint16 s) {

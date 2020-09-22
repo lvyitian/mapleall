@@ -354,6 +354,7 @@ class MirGenerator : public CmplGenerator {
   void EmitAsmComment(CommentNode *comment);
   void EmitBytes(uint8 *b, int count);
   void EmitBytesComment(uint8 *b, int count, const string &comment);
+  void EmitBytesCommentOffset(uint8 *b, int count, const string &comment, int offset);
   void EmitAsmShort(uint16 s);
   void EmitAsmWord(uint32 word);
   void EmitAsmWord(uint32 word, string comment);
