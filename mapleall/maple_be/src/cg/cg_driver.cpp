@@ -177,10 +177,15 @@ int main(int argc, char **argv) {
     }
 
     if (cgoption.run_cg_flag) {
-/*
-      // 1. LowerIR.
-      thecg.LowerIR();
-*/
+#if TARGARK
+      if (!themodule->IsJsModule()) {
+#endif
+        // 1. LowerIR.
+        thecg.LowerIR();
+#if TARGARK
+      }
+#endif
+
       // 2. Generate the output file
       BECommon &becommon = *g->becommon;
       thecg.emitter_ = themodule->memPool->New<Emitter>(&thecg, output);
@@ -200,8 +205,9 @@ int main(int argc, char **argv) {
       for (int i = 3; i < kREOpLast; ++i) {
         thecg.emitter_->Emit(string("OP_")+RE_OpName[i]+" = "+to_string(i)+"\n");
       }
-      mirGen->EmitGlobalDecl();
-
+      if (themodule->IsJsModule()) {
+        mirGen->EmitGlobalDecl();
+      }
       // load profile info for class meta data - uses same binary metadata profile (meta.list) as mpl2mpl
       uint32 javaNameIdx = themodule->GetFileinfo(GlobalTables::GetStrTable().GetOrCreateStrIdxFromName("INFO_filename"));
       const std::string &javaName = GlobalTables::GetStrTable().GetStringFromStrIdx(GStrIdx(javaNameIdx));

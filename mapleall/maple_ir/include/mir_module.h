@@ -240,6 +240,10 @@ class MIRModule : public mir_module_t {
     return srcLang == kSrcLangC || srcLang == kSrcLangCPlusPlus;
   }
 
+  bool IsJsModule() const {
+    return srcLang == kSrcLangJs;
+  }
+
   void ReleaseCurFuncMpTmp();
   inline void SetUseFuncCodeMpTmp() {
     useFuncCodeMpTmp = true;

@@ -282,7 +282,11 @@ void MirGenerator::EmitExpr(Opcode curOp, PrimType curPrimType, BaseNode *fexpr)
       ASSERT(preg, "preg is null");
       regName.append("%");
       regName.append(std::to_string(preg->pregNo));
-      expr.param.frameIdx = preg->pregNo;
+      if (curFunc.func->module->IsJsModule()) {
+        expr.param.frameIdx = preg->pregNo;
+      } else {
+        expr.param.frameIdx = curFunc.EncodePreg(preg->pregNo);
+      }
       EmitAsmBaseNode(expr, regName);
       // check for regread of less than 4 bytes
       CheckInsertOpCvt(curOp, curPrimType, fexpr->primType);
@@ -303,6 +307,7 @@ void MirGenerator::EmitExpr(Opcode curOp, PrimType curPrimType, BaseNode *fexpr)
       break;
     }
     case OP_ireadfpoff: {
+      ASSERT(curFunc.func->module->IsJsModule(), "OP_ireadfpoff in non Maple JS input");
       int32 offset = static_cast<IreadFPoffNode *>(fexpr)->offset;
       // generate 4 byte instr if offset fits in 16 bits else generate 8 byte instr
       if (offset <= 32767 && offset >= -32768) {
@@ -487,6 +492,7 @@ void MirGenerator::EmitStmt(StmtNode *fstmt) {
       break;
     }
     case OP_iassignfpoff: {
+      ASSERT(curFunc.func->module->IsJsModule(), "OP_iassignfpoff in non Maple JS input");
       int32 offset = static_cast<IassignFPoffNode *>(fstmt)->offset;
       FlattenExpr(fstmt);
       // generate 4 byte instr if offset fits in 16 bits else generate 8 byte instr
@@ -507,7 +513,11 @@ void MirGenerator::EmitStmt(StmtNode *fstmt) {
       ASSERT(preg, "preg is null");
       regName.append("%");
       regName.append(std::to_string(preg->pregNo));
-      stmt.param.frameIdx = preg->pregNo;
+      if (curFunc.func->module->IsJsModule()) {
+        stmt.param.frameIdx = preg->pregNo;
+      } else {
+        stmt.param.frameIdx = curFunc.EncodePreg(preg->pregNo);
+      }
       EmitAsmBaseNode(stmt, regName);
       break;
     }
@@ -1106,58 +1116,62 @@ void MirGenerator::EmitAsmFuncInfo(MIRFunction *func) {
 
   //printf("func %d \n", func->puIdxOrigin);
   curFunc.Init(func);
-/*
-  curFunc.numFormalArgs = GetFormalsInfo(func);
-  curFunc.numAutoVars = GetLocalsInfo(func) + 2; // incl. %%retval0 and %%thrownval
-*/
+  if (!curFunc.func->module->IsJsModule()) {
+    curFunc.numFormalArgs = GetFormalsInfo(func);
+    curFunc.numAutoVars = GetLocalsInfo(func) + 2; // incl. %%retval0 and %%thrownval
+    if (func->IsWeak()) curFunc.SetWeakAttr();
+    if (func->IsStatic()) curFunc.SetStaticAttr();
+    if (func->IsConstructor()) curFunc.SetConstructorAttr();
+    if (GlobalTables::GetStrTable().GetStringFromStrIdx(func->GetBaseFuncNameStridx()) == "finalize") curFunc.SetFinalizeAttr();
+  }
   curFunc.evalStackDepth = MaxEvalStack(func);
-/*
-  if (func->IsWeak()) curFunc.SetWeakAttr();
-  if (func->IsStatic()) curFunc.SetStaticAttr();
-  if (func->IsConstructor()) curFunc.SetConstructorAttr();
-  if (GlobalTables::GetStrTable().GetStringFromStrIdx(func->GetBaseFuncNameStridx()) == "finalize") curFunc.SetFinalizeAttr();
-*/
   // insert interpreter shim and signature
-  int formalsBlkBitVectBytes = BlkSize2BitvectorSize(func->upFormalSize);
-  int localsBlkBitVectBytes = BlkSize2BitvectorSize(func->frameSize);
-  os << "\t.ascii \"MPJS\"\n";
-  os << infoLabel << ":\n";
-  os << "\t" << ".long " << codeLabel << " - .\n";
-  os << "\t" << ".word " << func->upFormalSize << ", " << func->frameSize << ", " << curFunc.evalStackDepth <<  ", " << 0 << "\t// upFormalSize, frameSize, evalStackDepth\n";
-  os << "\t" << ".word " << formalsBlkBitVectBytes << ", " << localsBlkBitVectBytes << "\t\t// formalWords bit vector byte count, localWords bit vector byte count\n";
-  if (formalsBlkBitVectBytes) {
-    EmitBytesComment(func->formalWordsTypeTagged, formalsBlkBitVectBytes, "// formalWordsTypeTagged");
-    EmitBytesComment(func->formalWordsRefCounted, formalsBlkBitVectBytes, "// formalWordsRefCounted");
-  }
-  if (localsBlkBitVectBytes) {
-    EmitBytesComment(func->localWordsTypeTagged, localsBlkBitVectBytes, "// localWordsTypeTagged");
-    EmitBytesComment(func->localWordsRefCounted, localsBlkBitVectBytes, "// localWordsRefCounted");
+  if (curFunc.func->module->IsJsModule()) {
+    os << "\t.ascii \"MPJS\"\n";
+    os << infoLabel << ":\n";
+    os << "\t" << ".long " << codeLabel << " - .\n";
+
+    int formalsBlkBitVectBytes = BlkSize2BitvectorSize(func->upFormalSize);
+    int localsBlkBitVectBytes = BlkSize2BitvectorSize(func->frameSize);
+    os << "\t" << ".word " << func->upFormalSize << ", " << func->frameSize << ", " << curFunc.evalStackDepth <<  ", " << 0 << "\t// upFormalSize, frameSize, evalStackDepth\n";
+    os << "\t" << ".word " << formalsBlkBitVectBytes << ", " << localsBlkBitVectBytes << "\t\t// formalWords bit vector byte count, localWords bit vector byte count\n";
+    if (formalsBlkBitVectBytes) {
+      EmitBytesComment(func->formalWordsTypeTagged, formalsBlkBitVectBytes, "// formalWordsTypeTagged");
+      EmitBytesComment(func->formalWordsRefCounted, formalsBlkBitVectBytes, "// formalWordsRefCounted");
+    }
+    if (localsBlkBitVectBytes) {
+      EmitBytesComment(func->localWordsTypeTagged, localsBlkBitVectBytes, "// localWordsTypeTagged");
+      EmitBytesComment(func->localWordsRefCounted, localsBlkBitVectBytes, "// localWordsRefCounted");
+    }
+  } else {
+    os << "\t.ascii \"MPLI\"\n";
+    os << infoLabel << ":\n";
+    os << "\t" << ".long " << codeLabel << " - .\n";
+
+    if (curFunc.numFormalArgs) {
+      os << "\t" << "// PrimType of formal arguments\n";
+    }
+    EmitAsmFormalArgInfo(func);
+    if (curFunc.numAutoVars) {
+      os << "\t" << "// PrimType of automatic variables\n";
+    }
+    EmitAsmAutoVarsInfo(func);
+
+    if (curFunc.numFormalArgs) {
+      os << "\t" << "// Name of formal arguments\n";
+    }
+    EmitAsmFormalArgNameInfo(func);
+    if (curFunc.numAutoVars) {
+      os << "\t" << "// Name of automatic variables\n";
+    }
+    EmitAsmAutoVarsNameInfo(func);
+
+    for (std::pair<GStrIdx, MIRAliasVars> it : curFunc.func->aliasVarMap) {
+        os << "\t// ALIAS %" << GlobalTables::GetStrTable().GetStringFromStrIdx(it.first) << " %"
+           << GlobalTables::GetStrTable().GetStringFromStrIdx(it.second.memPoolStrIdx) << "\n";
+    }
   }
 
-/*
-  if (curFunc.numFormalArgs) {
-    os << "\t" << "// PrimType of formal arguments\n";
-  }
-  EmitAsmFormalArgInfo(func);
-  if (curFunc.numAutoVars) {
-    os << "\t" << "// PrimType of automatic variables\n";
-  }
-  EmitAsmAutoVarsInfo(func);
-
-  if (curFunc.numFormalArgs) {
-    os << "\t" << "// Name of formal arguments\n";
-  }
-  EmitAsmFormalArgNameInfo(func);
-  if (curFunc.numAutoVars) {
-    os << "\t" << "// Name of automatic variables\n";
-  }
-  EmitAsmAutoVarsNameInfo(func);
-
-  for (std::pair<GStrIdx, MIRAliasVars> it : curFunc.func->aliasVarMap) {
-      os << "\t// ALIAS %" << GlobalTables::GetStrTable().GetStringFromStrIdx(it.first) << " %"
-         << GlobalTables::GetStrTable().GetStringFromStrIdx(it.second.memPoolStrIdx) << "\n";
-  }
-*/
   os << "\t.p2align 1\n";
   os << codeLabel << ":\n";
 }
