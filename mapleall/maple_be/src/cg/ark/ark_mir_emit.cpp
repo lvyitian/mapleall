@@ -558,6 +558,11 @@ void MirGenerator::EmitStmt(StmtNode *fstmt) {
       EmitAsmBaseNode(stmt);
       EmitAsmLabel(((GotoNode *)fstmt)->offset, true);
       break;
+    case OP_gosub:
+      stmt.op = RE_gosub;
+      EmitAsmBaseNode(stmt);
+      EmitAsmLabel(((GotoNode *)fstmt)->offset, true);
+      break;
     case OP_rangegoto: {
       RangegotoNode *rNode = static_cast<RangegotoNode *>(fstmt);
       SmallCaseVector &rTable = rNode->rangegotoTable;
@@ -568,9 +573,7 @@ void MirGenerator::EmitStmt(StmtNode *fstmt) {
       EmitAsmBaseNode(stmt); // emit base instr with num jump table entry
       EmitAsmWord(rNode->tagOffset); // emit tagOffset
       for (int i = 0; i < numCases; i++) { // emit jump table
-        MIRFunction *func = GetCurFunction();
-        string label = "mirbin_label_"+to_string(func->puIdxOrigin)+"_"+to_string(rTable[i].second);
-        EmitString(".4byte "+label+"-. "+"\t// jmptbl["+to_string(rTable[i].first)+"]", 2);
+        EmitString(".4byte "+BuildLabelString(rTable[i].second)+"-. "+"\t// jmptbl["+to_string(rTable[i].first)+"]", 4);
       }
       break;
     }
@@ -715,6 +718,22 @@ void MirGenerator::EmitStmt(StmtNode *fstmt) {
       EmitAsmBaseNode(stmt);
       curFunc.currentTry = nullptr;
       break;
+    case OP_cleanuptry:
+    case OP_finally:
+    case OP_retsub:
+      EmitAsmBaseNode(stmt);
+      break;
+    case OP_jstry: {
+      JsTryNode *jstry = static_cast<JsTryNode *>(fstmt);
+      EmitAsmBaseNode(stmt);
+      if (jstry->catchOffset) EmitAsmLabel(jstry->catchOffset, true);
+      if (jstry->finallyOffset) EmitAsmLabel(jstry->finallyOffset, true);
+      break;
+    }
+    case OP_jscatch: {
+      EmitAsmBaseNode(stmt);
+      break;
+    }
     default:
       MIR_FATAL("unknown statement opcode: [%d]:(%s)\n", fstmt->op, kOpcodeInfo.GetName(fstmt->op));
   }
@@ -1423,15 +1442,36 @@ void MirGenerator::EmitYieldPoint(void) {
   EmitAsmBaseNode(node);
 }
 
+std::string MirGenerator::BuildLabelString(LabelIdx lbidx) {
+  MIRFunction *func = GetCurFunction();
+  string label;
+
+  // Many strangeness with labels if we generate labels into .s
+  // by the label's name in string table:
+  // - we get @ and | characters in name string that the assembler complains
+  // - duplicate name strings across different label idx in the same function
+  // - duplicate label idx in same function if all of CG's phases are run.
+  if (JAVASCRIPT){
+    string labelName = func->GetLabelName(lbidx);
+    replace(labelName.begin(), labelName.end(), '@', '_');
+    replace(labelName.begin(), labelName.end(), '|', '_');
+    // cannot use puIdxOrigin because they are all 0 in js2mpl generated mpl
+    MIRSymbol *fnSt = GlobalTables::GetGsymTable().GetSymbolFromStIdx(func->stIdx.Idx());
+    label = "mirbin_label_"+fnSt->GetName()+"_"+labelName;
+  } else {
+    label = "mirbin_label_"+ to_string(func->puIdxOrigin)+"_"+to_string(lbidx);
+  }
+  return label;
+}
+
 void MirGenerator::EmitAsmLabel(LabelIdx lbidx, bool genOffset) {
   MIRFunction *func = GetCurFunction();
 
-  string label = "mirbin_label_"+to_string(func->puIdxOrigin)+"_"+to_string(lbidx);
   // TODO: fix issue - currently have to disable fpm->run in CG to avoid duplicate labels
   if (genOffset) {
-    EmitString(".long "+label+"-.", 4);
+    EmitString(".long "+BuildLabelString(lbidx)+"-.", 4);
   } else {
-    os << label+":\n";
+    os << BuildLabelString(lbidx)+":\n";
   }
 }
 

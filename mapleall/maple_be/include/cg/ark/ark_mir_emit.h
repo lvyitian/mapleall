@@ -381,6 +381,7 @@ class MirGenerator : public CmplGenerator {
   uint32 GetFieldOffsetType(TyIdx tyidx, FieldID fieldid, MIRType *&);
   RE_Opcode MapEHOpcode(RE_Opcode op);
   void CheckInsertOpCvt(Opcode expr, PrimType exprType, PrimType insnType);
+  std::string BuildLabelString(LabelIdx lbidx);
 
   int GetFuncOffset(void) {
     return funcOffset;
