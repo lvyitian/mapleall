@@ -435,6 +435,13 @@ void MirGenerator::EmitExpr(Opcode curOp, PrimType curPrimType, BaseNode *fexpr)
       EmitAsmBaseNode(expr);
       EmitAsmConststr(reinterpret_cast<ConststrNode *>(fexpr)->strIdx);
       break;
+    case OP_intrinsicop: {
+      IntrinsicopNode *intrinsicop = (IntrinsicopNode *)fexpr;
+      expr.param.intrinsic.intrinsicId = intrinsicop->intrinsic;
+      FlattenExpr(fexpr);
+      EmitAsmBaseNode(expr, GetIntrinsicName(intrinsicop->intrinsic));
+      break;
+    }
     default:
       MIR_FATAL("unknown expression opcode: [%d]:(%s)\n", fexpr->op, kOpcodeInfo.GetName(fexpr->op));
   }
