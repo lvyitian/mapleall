@@ -62,7 +62,7 @@ PregIdx MmplLowerer::GetSpecialRegFromSt(const MIRSymbol *sym) {
 }
 
 BaseNode *MmplLowerer::ReadregNodeForSymbol(MIRSymbol *sym) {
-  return mirModule.mirBuilder->CreateExprRegread(PTY_a32, GetSpecialRegFromSt(sym));
+  return mirModule.mirBuilder->CreateExprRegread(LOWERED_PTR_TYPE, GetSpecialRegFromSt(sym));
 }
 
 BaseNode *MmplLowerer::LowerAddrof(AddrofNode *expr) {
@@ -80,7 +80,7 @@ BaseNode *MmplLowerer::LowerAddrof(AddrofNode *expr) {
   offset += symbol->IsLocal() ? memlayout->sym_alloc_table[symbol->GetStIndex()].offset
                               : globmemlayout->sym_alloc_table[symbol->GetStIndex()].offset;
   return (offset == 0) ? rrn
-                       : mirModule.mirBuilder->CreateExprBinary(OP_add, GlobalTables::GetTypeTable().GetTypeFromTyIdx((TyIdx)PTY_a32), rrn,
+                       : mirModule.mirBuilder->CreateExprBinary(OP_add, GlobalTables::GetTypeTable().GetTypeFromTyIdx((TyIdx)LOWERED_PTR_TYPE), rrn,
                                                                  mirModule.mirBuilder->GetConstInt(offset));
 }
 
@@ -103,7 +103,7 @@ BaseNode *MmplLowerer::LowerDread(AddrofNode *expr) {
       symty, memlayout->sym_alloc_table[symbol->GetStIndex()].offset + offset);
     return ireadoff;
   } else {
-    BaseNode *rrn = mirModule.mirBuilder->CreateExprRegread(PTY_a32, spcreg);
+    BaseNode *rrn = mirModule.mirBuilder->CreateExprRegread(LOWERED_PTR_TYPE, spcreg);
     SymbolAlloc &symalloc = symbol->IsLocal() ? memlayout->sym_alloc_table[symbol->GetStIndex()]
                                               : globmemlayout->sym_alloc_table[symbol->GetStIndex()];
     IreadoffNode *ireadoff = mirModule.mirBuilder->CreateExprIreadoff(symty, symalloc.offset + offset, rrn);
