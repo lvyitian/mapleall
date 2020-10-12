@@ -103,7 +103,7 @@ class MmplMemLayout {
       seg_FPbased(MS_FPbased, -SIZEOFPTR),
       seg_SPbased(MS_SPbased),
       sym_alloc_table(mallocator->Adapter()) {
-    sym_alloc_table.resize(f->symtab->GetSymbolTableSize());
+    sym_alloc_table.resize(f->symTab->GetSymbolTableSize());
   }
 
   ~MmplMemLayout() {}

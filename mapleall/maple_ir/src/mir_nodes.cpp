@@ -83,7 +83,7 @@ bool BaseNode::MayThrowException() {
       return true;
     }
   }
-  for (size_t i = 0; i < NumOpnds(); i++) {
+  for (int32 i = 0; i < NumOpnds(); i++) {
     if (Opnd(i)->MayThrowException()) {
       return true;
     }
@@ -176,6 +176,9 @@ void BlockNode::AddStatement(StmtNode *stmt) {
 
 void BlockNode::AppendStatementsFromBlock(BlockNode *blk) {
   ASSERT(blk != nullptr, "null ptr check");
+  if (blk->GetStmtNodes().empty()) {
+    return;
+  }
   stmtNodeList.splice(stmtNodeList.end(), blk->GetStmtNodes());
 }
 
@@ -1079,7 +1082,7 @@ void BlockNode::Dump(const MIRModule *mod, int32 indent, const MIRSymbolTable *t
       curFunc->SetInfoPrinted();
       if (curFunc->upFormalSize) {
         PrintIndentation(indent + 1);
-        LogInfo::MapleLogger() << "upFormalSize " << static_cast<uint32>(curFunc->upFormalSize) << std::endl;
+        LogInfo::MapleLogger() << "upformalsize " << static_cast<uint32>(curFunc->upFormalSize) << std::endl;
         if (curFunc->formalWordsTypeTagged != nullptr) {
           PrintIndentation(indent + 1);
           LogInfo::MapleLogger() << "formalwordstypetagged = [ ";
@@ -1107,7 +1110,7 @@ void BlockNode::Dump(const MIRModule *mod, int32 indent, const MIRSymbolTable *t
       }
       if (curFunc->frameSize) {
         PrintIndentation(indent + 1);
-        LogInfo::MapleLogger() << "frameSize " << curFunc->frameSize << std::endl;
+        LogInfo::MapleLogger() << "framesize " << curFunc->frameSize << std::endl;
         if (curFunc->localWordsTypeTagged != nullptr) {
           PrintIndentation(indent + 1);
           LogInfo::MapleLogger() << "localwordstypetagged = [ ";
@@ -1181,7 +1184,7 @@ void BlockNode::Dump(const MIRModule *mod, int32 indent, const MIRSymbolTable *t
       }
       // print the locally declared variables
       thesymtab->Dump(true, indent + 1);
-      thepregTab->DumpRef(indent + 1);
+      thepregTab->DumpPregsWithTypes(indent + 1);
     }
     LogInfo::MapleLogger() << std::endl;
     for (std::pair<GStrIdx, MIRAliasVars> it : mod->CurFunction()->aliasVarMap) {

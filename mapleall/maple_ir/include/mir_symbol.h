@@ -330,7 +330,7 @@ class MIRSymbol {
   bool IsGctibSym();
   bool IsPrimordialObject();
   bool IgnoreRC();
-  void Dump(bool isLocal, int32 indent, bool suppressinit = false) const;
+  void Dump(bool isLocal, int32 indent, bool suppressinit = false, const MIRSymbolTable *localsymtab = nullptr) const;
   void DumpAsLiteralVar(int32 indent);
   bool operator==(const MIRSymbol &msym) const {
     return nameStrIdx == msym.nameStrIdx;

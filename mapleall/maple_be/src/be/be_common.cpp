@@ -32,6 +32,7 @@ BECommon::BECommon(MIRModule &mod)
   : mirModule(mod),
     type_size_table(GlobalTables::GetTypeTable().typeTable.size(), 0, mirModule.memPoolAllocator.Adapter()),
     type_align_table(GlobalTables::GetTypeTable().typeTable.size(), 0, mirModule.memPoolAllocator.Adapter()),
+    type_natural_align_table(GlobalTables::GetTypeTable().typeTable.size(), 0, mirModule.memPoolAllocator.Adapter()),
     type_has_flexible_array(GlobalTables::GetTypeTable().typeTable.size(), false, mirModule.memPoolAllocator.Adapter()),
     struct_fieldcount_table(GlobalTables::GetTypeTable().typeTable.size(), 0, mirModule.memPoolAllocator.Adapter()),
     jclass_layout_table(mirModule.memPoolAllocator.Adapter()),
@@ -138,7 +139,9 @@ void BECommon::ComputeTypeSizesAligns(MIRType *ty, uint8 align) {
         ComputeTypeSizesAligns(elemty);
         elemsize = type_size_table[elemty->tyIdx.GetIdx()];
       }
+      uint32 elemAlign = arrayty->typeAttrs.GetAlign();
       elemsize = std::max(elemsize, static_cast<uint32>(type_align_table[elemty->tyIdx.GetIdx()]));
+      elemsize = std::max(elemsize, elemAlign);
       // compute total number of elements from the multipel dimensions
       uint64 numelems = 1;
       for (int d = 0; d < arrayty->dim; d++) {
@@ -146,6 +149,10 @@ void BECommon::ComputeTypeSizesAligns(MIRType *ty, uint8 align) {
       }
       type_size_table[i.GetIdx()] = elemsize * numelems;
       type_align_table[i.GetIdx()] = type_align_table[elemty->tyIdx.GetIdx()];
+      if (type_align_table[i.GetIdx()] < elemAlign) {
+        type_natural_align_table[i.GetIdx()] = type_align_table[i.GetIdx()];
+        type_align_table[i.GetIdx()] = elemAlign;
+      }
       break;
     }
 
@@ -191,6 +198,12 @@ void BECommon::ComputeTypeSizesAligns(MIRType *ty, uint8 align) {
           fieldsize = type_size_table[fieldtyidx.GetIdx()];
         }
         uint8 fieldalign = type_align_table[fieldtyidx.GetIdx()];
+        TyidxFieldAttrPair tfap = structty->GetTyidxFieldAttrPair(j);
+        if (fieldalign < tfap.second.GetAlign()) {
+          type_natural_align_table[fieldtyidx.GetIdx()] = fieldalign;
+          type_align_table[fieldtyidx.GetIdx()] = tfap.second.GetAlign();
+          fieldalign = type_align_table[fieldtyidx.GetIdx()];
+        }
         CHECK_FATAL(fieldalign != 0, "");
 
         MIRStructType *substructty = fieldty->EmbeddedStructType();
@@ -214,10 +227,29 @@ void BECommon::ComputeTypeSizesAligns(MIRType *ty, uint8 align) {
               allocedSizeInBits = allocedSize *8;
             }
           } else {
-            // pad alloced_size according to the field alignment
-            allocedSize = RoundUp(allocedSize, fieldalign);
-            allocedSize += fieldsize;
-            allocedSizeInBits = allocedSize * 8;
+            uint32 fldsizeinbits = fieldsize * 8;
+            bool leftoverbits = false;
+
+            if (allocedSizeInBits == allocedSize * 8) {
+              allocedSize = RoundUp(allocedSize, fieldalign);
+            } else {
+              //still some leftover bits on allocated words, we calculate things based on bits then.
+              if (allocedSizeInBits / (fieldalign * 8) != (allocedSizeInBits + fldsizeinbits - 1) / (fieldalign * 8)) {
+                // the field is crossing the align boundary of its base type;
+                // align alloced_size_in_bits to fieldalign
+                allocedSizeInBits = RoundUp(allocedSizeInBits, fieldalign * 8);
+              }
+              leftoverbits =  true;
+            }
+            if (leftoverbits) {
+              allocedSizeInBits += fldsizeinbits;
+              allocedSize = std::max(allocedSize, RoundUp(allocedSizeInBits, fieldalign * 8) / 8);
+            } else {
+              // pad alloced_size according to the field alignment
+              allocedSize = RoundUp(allocedSize, fieldalign);
+              allocedSize += fieldsize;
+              allocedSizeInBits = allocedSize * 8;
+            }
           }
         } else {  // for unions, bitfields are treated as non-bitfields
           allocedSize = std::max(allocedSize, static_cast<uint64>(fieldsize));
@@ -548,17 +580,35 @@ std::pair<int32, int32> BECommon::GetFieldOffset(MIRStructType *structty, FieldI
         allocedSizeInBits += fldsize;
         allocedSize = std::max(allocedSize, RoundUp(allocedSizeInBits, fieldalign * 8) / 8);
       } else {
-        allocedSize = RoundUp(allocedSize, fieldalign);
+
+        uint32 fldsizeinbits = fieldsize * 8;
+        bool leftoverbits = false;
+        uint32 offset = 0;
+
+        if (allocedSizeInBits  == allocedSize *8) {
+          allocedSize = RoundUp(allocedSize, fieldalign);
+          offset = allocedSize;
+        } else {
+          //still some leftover bits on allocated words, we calculate things based on bits then.
+          if (allocedSizeInBits / (fieldalign * 8) != (allocedSizeInBits + fldsizeinbits - 1) / (fieldalign * 8)) {
+            // the field is crossing the align boundary of its base type;
+            // align alloced_size_in_bits to fieldalign
+            allocedSizeInBits = RoundUp(allocedSizeInBits, fieldalign * 8);
+          }
+          allocedSize = RoundUp(allocedSize, fieldalign);
+          offset = (allocedSizeInBits / (fieldalign * 8)) * fieldalign;
+          leftoverbits =  true;
+        }
 
         if (curFieldid == fieldID) {
-          return std::pair<int32, int32>(allocedSize, 0);
+          return std::pair<int32, int32>(offset, 0);
         } else {
           MIRStructType *substructty = fieldty->EmbeddedStructType();
           if (substructty == nullptr) {
             curFieldid++;
           } else {
             if (curFieldid + struct_fieldcount_table[substructty->tyIdx.GetIdx()] < fieldID) {
-              curFieldid += struct_fieldcount_table[fieldtyidx.GetIdx()] + 1;
+              curFieldid += struct_fieldcount_table[substructty->tyIdx.GetIdx()] + 1;
             } else {
               std::pair<int32, int32> result = GetFieldOffset(substructty, fieldID - curFieldid);
               return std::pair<int32, int32>(result.first + allocedSize, result.second);
@@ -566,20 +616,28 @@ std::pair<int32, int32> BECommon::GetFieldOffset(MIRStructType *structty, FieldI
           }
         }
 
-        allocedSize += fieldsize;
-        allocedSizeInBits = allocedSize * 8;
+        if (leftoverbits) {
+          allocedSizeInBits += fldsizeinbits;
+          allocedSize = std::max(allocedSize, RoundUp(allocedSizeInBits, fieldalign * 8) / 8);
+        } else {
+          allocedSize += fieldsize;
+          allocedSizeInBits = allocedSize * 8;
+        }
       }
     } else {  // for unions, bitfields are treated as non-bitfields
       if (curFieldid == fieldID) {
         return std::pair<int32, int32>(0, 0);
-      } else if (fieldty->typeKind == kTypeStruct) {  // union cannot be kTypeClass
-        if (curFieldid + struct_fieldcount_table[fieldtyidx.GetIdx()] < fieldID) {
-          curFieldid += struct_fieldcount_table[fieldtyidx.GetIdx()] + 1;
-        } else {
-          return GetFieldOffset(static_cast<MIRStructType *>(fieldty), fieldID - curFieldid);
-        }
       } else {
-        curFieldid++;
+        MIRStructType *substructty = fieldty->EmbeddedStructType();
+        if (substructty == nullptr) {
+          curFieldid++;
+        } else {
+          if (curFieldid + struct_fieldcount_table[substructty->tyIdx.GetIdx()] < fieldID) {
+            curFieldid += struct_fieldcount_table[substructty->tyIdx.GetIdx()] + 1;
+          } else {
+            return GetFieldOffset(substructty, fieldID - curFieldid);
+          }
+        }
       }
     }
   }

@@ -16,7 +16,7 @@
 #ifndef MAPLEBE_INCLUDE_BE_MMPL_MMPLLOWERER_H_
 #define MAPLEBE_INCLUDE_BE_MMPL_MMPLLOWERER_H_
 #include "be_common.h"
-#include "mmplmem_layout.h"
+#include "mmpl_mem_layout.h"
 #include "be_lowerer.h"
 
 namespace maplebe {
@@ -50,6 +50,9 @@ class MmplLowerer : public BELowerer {
   /*virtual*/ StmtNode *LowerSyncEnterSyncExit(StmtNode *stmt) {
     CHECK_FATAL(false, "NYI");
     return stmt;
+  }
+  bool IsIntrinsicOpHandledAtLowerLevel(MIRIntrinsicID intrinsic) {
+    return false;
   }
 };
 

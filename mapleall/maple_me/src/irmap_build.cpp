@@ -29,7 +29,7 @@ VarMeExpr *IrMapBuild::GetOrCreateVarFromVerSt(const VersionSt *verst) {
   }
 
   OriginalSt *ost = verst->ost;
-  ASSERT(ost->ostType == OriginalSt::kSymbolOst, "GetOrCreateVarFromVerSt: wrong ost_type");
+  ASSERT(ost->ostType == OriginalSt::kSymbolOst || ost->indirectLev > 0, "GetOrCreateVarFromVerSt: wrong ost_type");
   VarMeExpr *varx = irMap->New<VarMeExpr>(irMap->exprID++, ost, vindex,
          GlobalTables::GetTypeTable().typeTable[ost->tyIdx.GetIdx()]->primType);
   varx->ost->fieldID = ost->fieldID;

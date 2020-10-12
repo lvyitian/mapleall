@@ -517,6 +517,10 @@ MeExpr *Prop::PropVar(VarMeExpr *varmeexpr, bool atParm, bool checkPhi) {
   if (st->wpofakeParm || st->wpofakeRet || st->instrumented || varmeexpr->IsVolatile(ssaTab)) {
     return varmeexpr;
   }
+  MIRType *mirType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(varmeexpr->ost->tyIdx);
+  if (mirType->typeKind == kTypeBitField && IsSignedInteger(mirType->primType)) {
+    return varmeexpr;
+  }
   if (varmeexpr->defBy == kDefByStmt) {
     DassignMeStmt *defStmt = dynamic_cast<DassignMeStmt *>(varmeexpr->def.defStmt);
     CHECK_FATAL(defStmt != nullptr, "dynamic cast result is nullptr");

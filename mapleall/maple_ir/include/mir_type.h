@@ -465,7 +465,7 @@ class MIRType {
     return GetPrimTypeSize(primType);
   }
 
-  virtual uint8 GetAlign() const {
+  virtual uint32 GetAlign() const {
     return GetPrimTypeSize(primType);
   }
 
@@ -523,7 +523,7 @@ class MIRPtrType : public MIRType {
 
   void Dump(int indent, bool dontUseName = false) const override;
   size_t GetSize() const override { return POINTER_SIZE; }
-  uint8 GetAlign() const override { return POINTER_SIZE; }
+  uint32 GetAlign() const override { return POINTER_SIZE; }
   TyidxFieldAttrPair GetPointedTyidxFldAttrPairWithFieldId(FieldID fldid) const;
   TyIdx GetPointedTyidxWithFieldId(FieldID fldid) const;
   bool PointsToConstString() const override;
@@ -545,6 +545,7 @@ class MIRArrayType : public MIRType {
   TyIdx eTyIdx;
   uint16 dim;
   uint32 sizeArray[kMaxArrayDim];
+  TypeAttrs typeAttrs;
   bool Equalto(const MIRType &p) const override;
   MIRArrayType &operator=(const MIRArrayType &p) = default;
   MIRArrayType() : MIRType(kTypeArray, PTY_agg), dim(0) {
@@ -561,6 +562,7 @@ class MIRArrayType : public MIRType {
     for (int i = 0; i < dim; i++) {
       sizeArray[i] = pat.sizeArray[i];
     }
+    typeAttrs = pat.typeAttrs;
   }
 
   MIRArrayType(const TyIdx &eTyIdx, std::vector<uint32> &sizeArray) : MIRType(kTypeArray, PTY_agg) {
@@ -589,20 +591,8 @@ class MIRArrayType : public MIRType {
   }
 
   void Dump(int indent, bool dontUseName = false) const override;
-  size_t GetSize() const override {
-    size_t elemsize = GetElemType()->GetSize();
-    if (elemsize == 0) {
-      return 0;
-    }
-    size_t numelems = sizeArray[0];
-    for (int i = 1; i < dim; i++) {
-      numelems *= sizeArray[i];
-    }
-    return elemsize * numelems;
-  }
-  uint8 GetAlign() const override {
-    return GetElemType()->GetAlign();
-  }
+  size_t GetSize() const override;
+  uint32 GetAlign() const override;
 
   size_t GetHashIndex() const override {
     constexpr uint8 kIdxShift = 2;
@@ -611,7 +601,7 @@ class MIRArrayType : public MIRType {
       CHECK_FATAL(i < kMaxArrayDim, "array index out of range");
       hidx += sizeArray[i] << i;
     }
-    return hidx;
+    return hidx + (typeAttrs.attrFlag << 3) + typeAttrs.attrAlign;
   }
 
   std::string GetMplTypeName() const override;
@@ -762,6 +752,10 @@ class MIRStructType : public MIRType {
 
   MIRType *GetElemType(uint32 n) const;
 
+  TyidxFieldAttrPair GetTyidxFieldAttrPair(uint32 n) const {
+    return fields.at(n).second;
+  }
+
   TyIdx GetFieldTyidx(FieldID fieldID) {
     FieldPair fldpair = TraverseToField(fieldID);
     return fldpair.second.first;
@@ -806,7 +800,7 @@ class MIRStructType : public MIRType {
   bool IsLocal() const;
 
   size_t GetSize() const override;
-  uint8 GetAlign() const override;
+  uint32 GetAlign() const override;
 
   size_t GetHashIndex() const override {
     return ((nameStrIdx.GetIdx() << kShiftNumOfNameStrIdx) + (typeKind << kShiftNumOfTypeKind));
@@ -1119,7 +1113,7 @@ class MIRBitfieldType : public MIRType {
     }
   }
 
-  uint8 GetAlign() const override {
+  uint32 GetAlign() const override {
     return 0;
   }  // align not be in bytes
 
@@ -1165,7 +1159,7 @@ class MIRFuncType : public MIRType {
   size_t GetSize() const override {
     return 0;
   }  // size unknown
-  uint8 GetAlign() const override {
+  uint32 GetAlign() const override {
     return 0;
   }  // align unknown
 
@@ -1194,7 +1188,7 @@ class MIRTypeByName : public MIRType {
   size_t GetSize() const override {
     return 0;
   }  // size unknown
-  uint8 GetAlign() const override {
+  uint32 GetAlign() const override {
     return 0;
   }  // align unknown
 
@@ -1222,7 +1216,7 @@ class MIRTypeParam : public MIRType {
   size_t GetSize() const override {
     return 0;
   }  // size unknown
-  uint8 GetAlign() const override {
+  uint32 GetAlign() const override {
     return 0;
   }  // align unknown
 
@@ -1259,7 +1253,7 @@ class MIRInstantVectorType : public MIRType {
   size_t GetSize() const override {
     return 0;
   }  // size unknown
-  uint8 GetAlign() const override {
+  uint32 GetAlign() const override {
     return 0;
   }  // align unknown
 
@@ -1291,7 +1285,7 @@ class MIRGenericInstantType : public MIRInstantVectorType {
   size_t GetSize() const override {
     return 0;
   }  // size unknown
-  uint8 GetAlign() const override {
+  uint32 GetAlign() const override {
     return 0;
   }  // align unknown
 

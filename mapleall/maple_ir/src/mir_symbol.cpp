@@ -274,7 +274,7 @@ bool MIRSymbol::IgnoreRC() { // is RC needed
   return false;
 }
 
-void MIRSymbol::Dump(bool isLocal, int32 indent, bool suppressinit) const {
+void MIRSymbol::Dump(bool isLocal, int32 indent, bool suppressinit, const MIRSymbolTable *localsymtab) const {
   if (storageClass == kScUnused) {
     return;
   }
@@ -327,7 +327,7 @@ void MIRSymbol::Dump(bool isLocal, int32 indent, bool suppressinit) const {
   }
   if (IsConst() && !suppressinit && !(IsLiteral() && storageClass == kScExtern)) {
     LogInfo::MapleLogger() << " = ";
-    GetConst()->Dump();
+    GetConst()->Dump(localsymtab);
   }
   LogInfo::MapleLogger() << std::endl;
 }
@@ -348,7 +348,7 @@ void MIRSymbolTable::Dump(bool isLocal, int32 indent, bool printdeleted) const {
     if (!printdeleted && symbol->IsDeleted()) {
       continue;
     }
-    symbol->Dump(isLocal, indent);
+    symbol->Dump(isLocal, indent, false/*suppressinit*/, this);
   }
   return;
 }

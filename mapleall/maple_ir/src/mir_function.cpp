@@ -18,7 +18,6 @@
 #include <iostream>
 #include "mir_nodes.h"
 #include "mir_function.h"
-#include "string_utils.h"
 #include "name_mangler.h"
 
 namespace maple {
@@ -51,7 +50,7 @@ void MIRFunction::Dump(bool withoutBody) {
     LogInfo::MapleLogger() << " (";
     // Dump arguments
     bool hasPrintedFormal = false;
-    for (int i = 0; i < formalDefVec.size(); i++) {
+    for (uint32 i = 0; i < formalDefVec.size(); i++) {
       MIRSymbol *symbol = formalDefVec[i].formalSym;
       if (symbol == nullptr && (formalDefVec[i].formalStrIdx.GetIdx() == 0 ||
                                 GlobalTables::GetStrTable().GetStringFromStrIdx(formalDefVec[i].formalStrIdx).empty())) {
@@ -106,10 +105,15 @@ bool MIRFunction::IsEmpty() const {
 }
 
 bool MIRFunction::IsClinit() const {
-  const std::string &funcName = this->GetName();
+  const std::string &funcname = this->GetName();
+  size_t clinitSuffixPos = funcname.find("_7C_3Cclinit_3E_7C_28_29V");
+  bool isClinit = (clinitSuffixPos != std::string::npos) &&
+                  (clinitSuffixPos + sizeof("_7C_3Cclinit_3E_7C_28_29V") - 1 == funcname.size());
+
   // this does not work for smali files like art/test/511-clinit-interface/smali/BogusInterface.smali,
   // which is decorated without "constructor".
-  return StringUtils::EndsWith(funcName, NameMangler::kClinitSuffix);
+
+  return isClinit;
 }
 
 void MIRFunction::Emit(const std::string &outFileName, bool isFirstFunction) {
@@ -249,7 +253,17 @@ void MIRFunction::NewBody() {
         formalDef.formalSym->sKind = kStPreg;
         uint32 thepregno = std::stoi(formalName);
         MIRType *mirType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(formalDef.formalTyIdx);
-        PregIdx pregIdx = pregTab->EnterPregNo(thepregno, mirType->primType, mirType);
+        PrimType pType = mirType->primType;
+        // if mirType info is not needed, set mirType to nullptr
+        if (mirType->primType != PTY_ref && mirType->primType != PTY_ptr) {
+          mirType = nullptr;
+        } else if (mirType->primType == PTY_ptr) {
+          MIRType *pointedType = static_cast<MIRPtrType *>(mirType)->GetPointedType();
+          if (pointedType == nullptr || pointedType->typeKind != kTypeFunction) {
+            mirType = nullptr;
+          }
+        }
+        PregIdx pregIdx = pregTab->EnterPregNo(thepregno, pType, mirType);
         MIRPreg *preg = pregTab->PregFromPregIdx(pregIdx);
         formalDef.formalSym->value.preg = preg;
       }

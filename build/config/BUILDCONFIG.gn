@@ -53,9 +53,6 @@ MEMORY_LEAK_CHECK = false
 MARK_CYCLE_ROOTS = false
 ARCH64_TOOLCHAIN = "/usr/bin/aarch64-linux-gnu"
 OJ_LIBCORE_ENV = getenv("USE_OJ_LIBCORE")
-if (OJ_LIBCORE_ENV == "1") {
-    USE_OJ_LIBCORE = 1
-}
 
 MAPLE_BUILD_TYPE = getenv("MAPLE_BUILD_TYPE")
 
@@ -67,6 +64,7 @@ GN_RUNTIME_OUTPUT_DIRECTORY = "${GN_INSTALL_PREFIX}/out/${MAPLE_BUILD_TYPE}/bin"
 
 MAPLEALL_ROOT = "${MAPLE_ROOT}/mapleall"
 MAPLE_RE_ROOT = "${MAPLE_ROOT}/maple_engine"
+HUAWEI_SECURE_C_ROOT = "${MAPLE_ROOT}/huawei_secure_c"
 
 # Toolchain setup
 if (USE_CLANG == 1) {
@@ -136,12 +134,19 @@ if (GN_BUILD_TYPE == "RELEASE") {
     ]
 }
 
-if (USE_OJ_LIBCORE  == 1) {
+if (OJ_LIBCORE_ENV == "1") {
     cflags_cc += [
-        "-D__OPENJDK__",
+        "-D__OPENJDK__=1",
     ]
     cflags_c += [
-        "-D__OPENJDK__",
+        "-D__OPENJDK__=1",
+    ]
+} else if (OJ_LIBCORE_ENV == "2") {
+    cflags_cc += [
+        "-D__OPENJDK__=2",
+    ]
+    cflags_c += [
+        "-D__OPENJDK__=2",
     ]
 }
 

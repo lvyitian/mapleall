@@ -48,39 +48,17 @@ void CGCFG::BuildCFG() {
         curbb->succs.push_back(fallthrubb);
         fallthrubb->preds.push_back(curbb);
 
-        StmtNode *last = curbb->laststmt;
-        if (last) {
-          while (last->op == OP_comment) {
-            last = last->GetPrev();
-            CG_ASSERT(last, "");
-          }
+        Insn *last = curbb->lastinsn;
 
-          CG_ASSERT((last->IsCondBr() || last->op == OP_switch || curbb->lastinsn->IsBranch()),
-                    "must be a conditional branch or switch");
-        } else {
-          CG_ASSERT(curbb->lastinsn->IsBranch(), "must be a conditional branch generated from an intrinsic");
+        CHECK_FATAL(last->IsBranch(), "If BB has no cond br");
+        // Assume the last non-null operand is the branch target
+        int i = Insn::kMaxOperandNum - 1;
+        while (last->GetOperand(i) == nullptr) {
+          i--;
         }
-
-        if (last) {
-          if (last->IsCondBr() || curbb->lastinsn->IsBranch()) {
-            BB *brtobb = nullptr;
-            if (curbb->lastinsn->IsBranch()) {
-              // Assume the last non-null operand is the branch target
-              int i = Insn::kMaxOperandNum - 1;
-              while (curbb->lastinsn->GetOperand(i) == nullptr) {
-                i--;
-              }
-              brtobb = lab2bbmap[static_cast<LabelOperand *>(curbb->lastinsn->GetOperand(i))->labidx_];
-            } else {
-              brtobb = lab2bbmap[static_cast<CondGotoNode *>(curbb->laststmt)->offset];
-            }
-            curbb->succs.push_back(brtobb);
-            brtobb->preds.push_back(curbb);
-          }
-        } else {
-          curbb->succs.push_back(curbb);
-          curbb->preds.push_back(curbb);
-        }
+        BB *brtobb = lab2bbmap[static_cast<LabelOperand *>(last->GetOperand(i))->labidx_];
+        curbb->succs.push_back(brtobb);
+        brtobb->preds.push_back(curbb);
         break;
       }
       case BB::kBBGoto: {
@@ -604,6 +582,19 @@ BB *CGCFG::GetTargetSuc(BB *curbb, bool branchOnly, bool isGotoIf) {
           }
         }
         break;
+      }
+      case BB::kBBIgoto: {
+        for (Insn *insn = curbb->lastinsn; insn != nullptr; insn = insn->prev) {
+          if (insn->GetMachineOpcode() == MOP_adrp_label) {
+            LabelIdx label = static_cast<ImmOperand *>(insn->GetOperand(1))->GetValue();
+            for (BB *bb : curbb->succs) {
+              if (bb->labidx == label) {
+                return bb;
+              }
+            }
+          }
+        }
+        CHECK_FATAL(0, "Cannot find label in Igoto bb");
       }
       case BB::kBBCall:
       case BB::kBBFallthru: {

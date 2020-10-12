@@ -117,7 +117,7 @@ OriginalSt *OriginalStTable::CreateSymbolOriginalSt(MIRSymbol *mirst, PUIdx pidx
 
 OriginalSt *OriginalStTable::CreatePregOriginalSt(PregIdx regIdx, PUIdx pidx) {
   OriginalSt *ost =
-    alloc.GetMemPool()->New<OriginalSt>(original_st_vector_.size(), regIdx, pidx, &alloc);
+    alloc.GetMemPool()->New<OriginalSt>(original_st_vector_.size(), regIdx, pidx, 0, &alloc);
   if (regIdx < 0) {
     ost->tyIdx = TyIdx(PTY_unknown);
   } else {
@@ -173,7 +173,7 @@ OriginalSt *OriginalStTable::FindOrCreateExtraLevSymOrRegOriginalSt(OriginalSt *
                                                       fld, &alloc);
   } else {
     nextlevOst = alloc.GetMemPool()->New<OriginalSt>(original_st_vector_.size(), ost->GetPregIdx(), ost->puIdx,
-                                                      &alloc);
+                                                      fld, &alloc);
   }
   original_st_vector_.push_back(nextlevOst);
   nextlevOst->indirectLev = ost->indirectLev + 1;

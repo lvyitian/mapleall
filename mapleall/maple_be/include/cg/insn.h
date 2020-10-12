@@ -655,7 +655,11 @@ class Insn {
 
   virtual uint32 GetLatencyType() const {
     return 0;
-  };
+  }
+
+  virtual int GetJumpTargetIdx() const {
+    return 0;
+  }
 };
 
 struct DataInsnInfoCmp {

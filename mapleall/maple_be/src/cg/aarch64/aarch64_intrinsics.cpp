@@ -120,8 +120,8 @@ void AArch64CGFunc::SelectCVaStart(IntrinsiccallNode *intrnnode) {
   }
 
   // Find beginning of unnamed arg on stack.
-  // Ex. void foo(int i1, dbl d1, struct S r, struct S s, ...)
-  //     where struct S has size 32, r and s are on stack but they are named.
+  // Ex. void foo(int i1, int i2, ... int i8, struct S r, struct S s, ...)
+  //     where struct S has size 32, address of r and s are on stack but they are named.
   ParmLocator parmlocator(becommon);
   PLocInfo ploc;
   uint32 stksize = 0;
@@ -210,6 +210,54 @@ void AArch64CGFunc::SelectCVaStart(IntrinsiccallNode *intrnnode) {
   insn = cg->BuildInstruction<AArch64Insn>(MOP_wstr, tmpreg, strOpnd);
   curbb->AppendInsn(insn);
   return;
+}
+
+Operand *AArch64CGFunc::SelectCclz(IntrinsicopNode *intrnnode) {
+  CG_ASSERT(intrnnode->NumOpnds() == 1, "must be 1 operand");
+  BaseNode *argexpr = intrnnode->Opnd(0);
+  PrimType ptype = argexpr->primType;
+  Operand *opnd = HandleExpr(intrnnode, argexpr);
+  MOperator mop;
+  if (GetPrimTypeSize(ptype) == 4) {
+    mop = MOP_wclz;
+  } else {
+    mop = MOP_xclz;
+  }
+  RegOperand *dst = CreateRegisterOperandOfType(ptype);
+  curbb->AppendInsn(cg->BuildInstruction<AArch64Insn>(mop, dst, opnd));
+  return dst;
+}
+
+Operand *AArch64CGFunc::SelectCctz(IntrinsicopNode *intrnnode) {
+  CG_ASSERT(intrnnode->NumOpnds() == 1, "must be 1 operand");
+  BaseNode *argexpr = intrnnode->Opnd(0);
+  PrimType ptype = argexpr->primType;
+  Operand *opnd = HandleExpr(intrnnode, argexpr);
+  MOperator clzmop;
+  MOperator rbitmop;
+  if (GetPrimTypeSize(ptype) == 4) {
+    clzmop = MOP_wclz;
+    rbitmop = MOP_wrbit;
+  } else {
+    clzmop = MOP_xclz;
+    rbitmop = MOP_xrbit;
+  }
+  RegOperand *dst1 = CreateRegisterOperandOfType(ptype);
+  curbb->AppendInsn(cg->BuildInstruction<AArch64Insn>(rbitmop, dst1, opnd));
+  RegOperand *dst2 = CreateRegisterOperandOfType(ptype);
+  curbb->AppendInsn(cg->BuildInstruction<AArch64Insn>(clzmop, dst2, dst1));
+  return dst2;
+}
+
+Operand *AArch64CGFunc::SelectIntrinOp(IntrinsicopNode *intrinsicopnode) {
+  MIRIntrinsicID intrinsic = intrinsicopnode->intrinsic;
+  if (intrinsic == INTRN_C_clz32 || intrinsic == INTRN_C_clz64) {
+    return SelectCclz(intrinsicopnode);
+  }
+  if (intrinsic == INTRN_C_ctz32 || intrinsic == INTRN_C_ctz64) {
+    return SelectCctz(intrinsicopnode);
+  }
+  CHECK_FATAL(0, "NYI");
 }
 
 void AArch64CGFunc::SelectIntrinCall(IntrinsiccallNode *intrinsiccallnode) {

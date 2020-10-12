@@ -45,7 +45,7 @@ Operand *AArch64RegAllocator::AllocSrcOpnd(Operand *opnd, OpndProp *prop, Insn *
     VectorType vctType = kVecNone;
     if (opndprop)
       vctType = aarch64Cgfunc->PickVectorType(opndprop->regprop_.subRegType);
-    if (regopnd->IsOfCC()) {
+    if (regopnd->IsOfCC() || regopnd->IsOfVary()) {
       return opnd;
     }
     if (!regopnd->IsVirtualRegister()) {
@@ -90,7 +90,7 @@ Operand *AArch64RegAllocator::AllocSrcOpnd(Operand *opnd, OpndProp *prop, Insn *
     switch (memopnd->GetAddrMode()) {
       case AArch64MemOperand::kAddrModeBOi:
         res = AllocSrcOpnd(memopnd->GetBaseRegister());
-        CG_ASSERT(res->IsRegister() && !static_cast<RegOperand *>(res)->IsVirtualRegister(), "");
+        //CG_ASSERT(res->IsRegister() && !static_cast<RegOperand *>(res)->IsVirtualRegister(), "");
         memopnd->SetBaseRegister(static_cast<AArch64RegOperand *>(res));
         break;
       case AArch64MemOperand::kAddrModeBOrX:
@@ -431,6 +431,7 @@ static void InsertPRegStoreInstruction(Insn *insn, BB *bb) {
 bool DefaultO0RegAllocator::AllocateRegisters() {
   InitAvailReg();
   PreAllocate();
+  cgfunc_->SetIsAfterRegAlloc();
 
   AArch64CGFunc *a64cgfunc = static_cast<AArch64CGFunc *>(cgfunc_);
   // we store both FP/LR if using FP or if not using FP, but func has a call
@@ -451,6 +452,7 @@ bool DefaultO0RegAllocator::AllocateRegisters() {
 
     uint32 id = 1;
     FOR_BB_INSNS_REV(insn, bb) {
+      if (!insn->IsMachineInstruction()) continue;
       insn->id = id;
       id++;
       const AArch64MD *md = &AArch64CG::kMd[static_cast<AArch64Insn *>(insn)->mop_];
@@ -541,7 +543,6 @@ bool DefaultO0RegAllocator::AllocateRegisters() {
       atomic_store_result_reg = kRinvalid;
     }
   }
-  cgfunc_->SetIsAfterRegAlloc();
   return true;
 }
 
@@ -759,6 +760,7 @@ void O1RegAllocator::StorePseudoRegister(RegOperand *regopnd, AArch64reg_t regNo
 bool O1RegAllocator::AllocateRegisters() {
   InitAvailReg();
   PreAllocate();
+  cgfunc_->SetIsAfterRegAlloc();
 
   AArch64CGFunc *a64cgfunc = static_cast<AArch64CGFunc *>(cgfunc_);
   // we store both FP/LR if using FP or if not using FP, but func has a call
@@ -903,7 +905,6 @@ bool O1RegAllocator::AllocateRegisters() {
   }
   CG_ASSERT(atomic_store_result_reg == kRinvalid, "");
 
-  cgfunc_->SetIsAfterRegAlloc();
   return true;
 }
 
@@ -1866,7 +1867,7 @@ void LSRALinearScanRegAllocator::BuildIntervalRanges() {
 
     for (auto it = bb->liveout_regno.begin(); it != bb->liveout_regno.end(); it++) {
       regno = static_cast<regno_t>(*it);
-      if (regno < kNArmRegisters) {
+      if (regno < kMaxRegNum) {
         // Do not consider physical regs.
         continue;
       }
@@ -1890,7 +1891,7 @@ void LSRALinearScanRegAllocator::BuildIntervalRanges() {
             RegType regtype = regOpnd->GetRegisterType();
             if (regtype != kRegTyCc && regtype != kRegTyVary) {
               regno = regOpnd->GetRegisterNumber();
-              if (regno > kNArmRegisters) {
+              if (regno > kMaxRegNum) {
                 LI_[regno]->AddRange(blockFrom, insn->id);
                 LI_[regno]->use_positions.insert(insn->id);
               }
@@ -1901,7 +1902,7 @@ void LSRALinearScanRegAllocator::BuildIntervalRanges() {
             RegType regtype = regOpnd->GetRegisterType();
             if (regtype != kRegTyCc && regtype != kRegTyVary) {
               regno = regOpnd->GetRegisterNumber();
-              if (regno > kNArmRegisters) {
+              if (regno > kMaxRegNum) {
                 LI_[regno]->AddRange(blockFrom, insn->id);
                 LI_[regno]->use_positions.insert(insn->id);
               }
@@ -1915,7 +1916,7 @@ void LSRALinearScanRegAllocator::BuildIntervalRanges() {
               bool isdef = static_cast<AArch64OpndProp *>(md->operand_[i])->IsRegDef();
               bool isuse = static_cast<AArch64OpndProp *>(md->operand_[i])->IsRegUse();
               regno = regOpnd->GetRegisterNumber();
-              if (regno > kNArmRegisters) {
+              if (regno > kMaxRegNum) {
                 if (isdef) {
                   if (!LI_[regno]->ranges.empty()) {
                     LI_[regno]->ranges.front().first = insn->id;
@@ -1990,7 +1991,7 @@ void LSRALinearScanRegAllocator::ComputeLiveInterval()
     // Extend live interval with live-in info
     for (auto it = bb->livein_regno.begin(); it != bb->livein_regno.end(); it++) {
       regno_t regno = static_cast<regno_t>(*it);
-      if (regno < kNArmRegisters) {
+      if (regno < kMaxRegNum) {
         // Do not consider physical regs.
         continue;
       }
@@ -4455,13 +4456,13 @@ AnalysisResult *CgDoRegAlloc::Run(CGFunc *cgfunc, CgFuncResultMgr *m) {
   RegAllocator *regallocator = cgfunc->NewRegAllocator(cgfunc, phaseMp, &phaseAllocator);
   CHECK_FATAL(regallocator != nullptr, "regallocator is null in CgDoRegAlloc::Run");
   m->GetAnalysisResult(CgFuncPhase_LOOP, cgfunc);
+  cgfunc->SetIsAfterRegAlloc();
   regallocator->AllocateRegisters();
   // the live range info may changed, so invalid the info.
   m->InvalidAnalysisResult(CgFuncPhase_LIVE, cgfunc);
   m->InvalidAnalysisResult(CgFuncPhase_LOOP, cgfunc);
   mempoolctrler.DeleteMemPool(phaseMp);
 
-  cgfunc->SetIsAfterRegAlloc();
   return nullptr;
 }
 

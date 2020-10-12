@@ -188,11 +188,11 @@ class TypeTable {
     return typeTable.at(PTY_void);
   }
 
+#ifdef DYNAMICLANG
   MIRType *GetDynundef() const {
     return typeTable.at(PTY_dynundef);
   }
 
-#ifdef DYNAMICLANG
   MIRType *GetDynany() const {
     return typeTable.at(PTY_dynany);
   }
@@ -283,6 +283,10 @@ class TypeTable {
   MIRType *GetOrCreateStructOrUnion(const char *name, const FieldVector &fields, const FieldVector &prntFields,
                              MIRModule *module, bool isUnion, bool isCreate);
   MIRType *GetOrCreateClassOrInterface(const char *name, MIRModule *module, bool isCreate, bool forClass);
+
+ public:
+  void DumpTypeTable() const;
+  void DumpEntry(TyIdx tyIdx) const;
 };
 
 class StrPtrHash {

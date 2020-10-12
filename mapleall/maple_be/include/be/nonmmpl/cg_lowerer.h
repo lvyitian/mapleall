@@ -228,6 +228,7 @@ class CGLowerer : public BELowerer {
 
  protected:
   bool IsIntrinsicCallHandledAtLowerLevel(MIRIntrinsicID intrinsic) override;
+  bool IsIntrinsicOpHandledAtLowerLevel(MIRIntrinsicID intrinsic) override;
 };
 
 }  // namespace maplebe

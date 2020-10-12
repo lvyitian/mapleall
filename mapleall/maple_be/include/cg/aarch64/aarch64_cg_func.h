@@ -1,5 +1,5 @@
 /*
- * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
+ * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
  *
  * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
  * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
@@ -98,6 +98,8 @@ class AArch64CGFunc : public CGFunc {
   MapleVector<AArch64reg_t> callee_saved_regs;
   MapleVector<AArch64reg_t> formal_reg_list_;  // store the parameters register used by this function
   MapleSet<AArch64MemOperand *> gen_memopnds_requiring_offset_adjustment_;
+  MapleList<std::string> intrinsic_func_name;  // For RA to mark special function name, which function may not change
+                                               // some caller-saved registers.
   MapleList<uint64> intrinsic_caller_mask;     // upper 32 bits fp, lower 32 bits int
 
   unsigned int refCount;  // Ref count number. 0 if function don't have "bl MCC_InitializeLocalStackRef"
@@ -151,14 +153,14 @@ class AArch64CGFunc : public CGFunc {
 
   void CreateCallStructParamPassByStack(int32 symSize, MIRSymbol *sym, RegOperand *addropnd, int32 baseOffset);
   AArch64RegOperand *GenUnalignedSymCallStructParam(AArch64reg_t reg, MIRSymbol *sym, uint32 memOffset, PrimType pty, RegOperand *addropnd);
-  void CreateCallStructParamPassByReg(AArch64reg_t reg, MemOperand *mopnd, AArch64ListOperand *srcopnds, CSR_call_info_t &ci, MIRSymbol *sym, uint32 offset, fpParamState state, RegOperand *addropnd = nullptr);
-  RegOperand *CreateCallStructParamMemcpy(MIRSymbol *sym, RegOperand *addropnd, uint32 structSize, int32 copyOffset);
-  AArch64RegOperand *CreateCallStructParamCopyToStack(uint32 numMemOp, MIRSymbol *sym, RegOperand *addropnd, int32 copyOffset, PLocInfo *ploc);
+  void CreateCallStructParamPassByReg(AArch64reg_t reg, MemOperand *mopnd, AArch64ListOperand *srcopnds, CSR_call_info_t &ci, MIRSymbol *sym, int32 offset, fpParamState state, RegOperand *addropnd = nullptr);
+  RegOperand *CreateCallStructParamMemcpy(MIRSymbol *sym, RegOperand *addropnd, uint32 structSize, int32 copyOffset, int32 fromOffset);
+  AArch64RegOperand *CreateCallStructParamCopyToStack(uint32 numMemOp, MIRSymbol *sym, RegOperand *addropnd, int32 copyOffset, int32 fromOffset, PLocInfo *ploc);
   void SelectParmList(StmtNode *narynode, AArch64ListOperand *srcopnds, CSR_call_info_t &ci, bool iscallnative = false);
 
   Operand *SelectIgoto(Operand *opnd0) override;
   void SelectCondGoto(LabelOperand *targetopnd, Opcode jmpop, Opcode cmpop, Operand *opnd0, Operand *opnd1,
-                      PrimType primType);
+                      PrimType primType, bool signedCond);
 
   void EmitAArch64Insn(Insn *insn);
   void EmitCfiInsn(Insn *insn);
@@ -191,6 +193,7 @@ class AArch64CGFunc : public CGFunc {
       callee_saved_regs(mallocator->Adapter()),
       formal_reg_list_(mallocator->Adapter()),
       gen_memopnds_requiring_offset_adjustment_(mallocator->Adapter()),
+      intrinsic_func_name(mallocator->Adapter()),
       intrinsic_caller_mask(mallocator->Adapter()),
       refCount(0),
       beginOffset(0),
@@ -346,7 +349,7 @@ class AArch64CGFunc : public CGFunc {
 
   Operand *SelectIread(BaseNode *parent, IreadNode *expr) override;
 
-  Operand *SelectIntconst(MIRIntConst *expr) override;
+  Operand *SelectIntconst(MIRIntConst *expr, PrimType pty) override;
   Operand *SelectFloatconst(MIRFloatConst *floatconst) override;
   Operand *SelectDoubleconst(MIRDoubleConst *doubleconst) override;
   Operand *SelectVectorIntconst(MIRVectorIntConst *expr) override;
@@ -451,6 +454,9 @@ class AArch64CGFunc : public CGFunc {
 
   void SelectMPLClinitCheck(IntrinsiccallNode *);
   void SelectCVaStart(IntrinsiccallNode *);
+  Operand *SelectCclz(IntrinsicopNode *);
+  Operand *SelectCctz(IntrinsicopNode *);
+  Operand *SelectIntrinOp(IntrinsicopNode *intrinopnode) override;
 
  public:
   Operand *SelectSelect(TernaryNode *node, Operand *opnd0, Operand *opnd1, Operand *opnd2) override;
@@ -532,7 +538,7 @@ class AArch64CGFunc : public CGFunc {
     }
   }
 
-  RegOperand *GenStructParamIndex(RegOperand *base, BaseNode *indexExpr, int shift);
+  RegOperand *GenStructParamIndex(RegOperand *base, BaseNode *indexExpr, int shift, PrimType baseType, PrimType targetType);
 
   MemOperand *GetOrCreateMemOpnd(MIRSymbol *symbol, int32 offset, int32 size) override;
 
@@ -706,6 +712,12 @@ class AArch64CGFunc : public CGFunc {
   void AppendCall(MIRSymbol *func);
 
   void AppendJump(MIRSymbol *func);
+
+  int32 MaxCondBranchDistance() override {
+    return AArch64Abi::kMaxInstrForCondBr;
+  }
+
+  void InsertJumpPad(Insn *insn) override;
 
   // CFI directives related stuffs
   Operand *CreateCfiRegOperand(uint32 reg, uint8 size) override {

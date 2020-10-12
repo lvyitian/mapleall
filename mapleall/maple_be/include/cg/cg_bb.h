@@ -231,6 +231,7 @@ class BB {
   std::set<regno_t> lastuse_regno;
 
   // Different meaning for each data flow analysis.
+  // For HandleFunction(), rough estimate of num of insn created.
   // For reaching definition, it means: true if BB is dirty for stack memory, otherwise false.
   // For storeloadopt, it indicates if it has a backedge entry.
   // For aarchregalloc.cpp, the bb is part of cleanup at end of function.
@@ -364,6 +365,7 @@ class BB {
       InsertInsnAfter(lastinsn, insn);
     }
     insn->bb = this;
+    internal_flag1++;
   }
 
   /*
@@ -485,7 +487,6 @@ class BB {
 
   // Number of instructions excluding DbgInsn and comments
   int NumInsn();
-
 };  // class BB
 
 }  // namespace maplebe

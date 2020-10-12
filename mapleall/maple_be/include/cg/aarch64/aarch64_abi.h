@@ -28,6 +28,7 @@ namespace AArch64Abi
 {
 static const int32 kNumIntParmRegs = 8;
 static const int32 kNumFloatParmRegs = 8;
+static const int32 kMaxInstrForCondBr = 260000; // approximately less than (2^18);
 
 constexpr static const AArch64reg_t int_return_regs[kNumIntParmRegs] = { R0, R1, R2, R3, R4, R5, R6, R7 };
 constexpr static const AArch64reg_t float_return_regs[kNumFloatParmRegs] = { V0, V1, V2, V3, V4, V5, V6, V7 };
@@ -93,6 +94,7 @@ class ParmLocator {
 
   // Return size of aggregate structure copy on stack.
   int32 LocateNextParm(MIRType *ty, PLocInfo &ploc, bool isFirst = false);
+  int32 LocateRetVal(MIRType *retty, PLocInfo &ploc);
   void InitPlocInfo(PLocInfo &ploc);
 
  private:

@@ -45,7 +45,7 @@ class Partition {
 
 class ICOPattern : public OptimizationPattern {
  public:
-  const int kThreshold = 2;
+  const int kThreshold = 1;
 
  public:
   ICOPattern(CGFunc *func) : OptimizationPattern(func) {

@@ -231,6 +231,21 @@ void TypeTable::AddFieldToStructType(MIRStructType *structType, const char *fiel
   }
 }
 
+void TypeTable::DumpTypeTable() const {
+  std::cout << "=============== Dump Type Table ===============" << std::endl;
+  for (auto ty : typeTable) {
+    if (!ty) continue;
+    std::cout << ty->GetTypeIndex().GetIdx() << " : " << ty->GetMplTypeName() << " : " << ty->nameStrIdx.GetIdx() << std::endl;
+  }
+  std::cout << "===============================================" << std::endl;
+}
+
+void TypeTable::DumpEntry(TyIdx tyIdx) const {
+  MIRType *mirType = typeTable[tyIdx.GetIdx()];
+  mirType->Dump(0);
+  std::cout << std::endl;
+}
+
 FPConstTable::FPConstTable() : floatConstTable(), doubleConstTable() {
   // set up the FP constants
   nanFloatConst = new MIRFloatConst(NAN, GlobalTables::GetTypeTable().typeTable.at(PTY_f32));

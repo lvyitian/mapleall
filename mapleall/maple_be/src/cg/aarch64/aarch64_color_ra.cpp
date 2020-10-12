@@ -732,7 +732,7 @@ bool GraphColorRegAllocator::CreateLiveRangeHandleLocal(regno_t regno, BB *bb, b
       //lraInfo->localPregMask |= (1LL << regno);
     }
     // lr info is useful for lra, so continue lr info
-  } else if (regno < kNArmRegisters) {
+  } else if (regno < kMaxRegNum) {
     // This is a cross bb physical reg
     LocalRaInfo *lraInfo = localRegVec[bb->id];
     if (lraInfo == nullptr) {
@@ -911,7 +911,7 @@ uint8 GraphColorRegAllocator::SetupLiveRangeByOp(Operand *op, Insn *insn, bool i
 #ifdef MOVE_COALESCE
     if (insn->GetMachineOpcode() == MOP_xmovrr || insn->GetMachineOpcode() == MOP_wmovrr) {
       RegOperand *opnd = static_cast<RegOperand *>(insn->GetOperand(1));
-      if (opnd->GetRegisterNumber() < kNArmRegisters) {
+      if (opnd->GetRegisterNumber() < kMaxRegNum) {
         lr->prefs.insert(opnd->GetRegisterNumber() - R0);
       }
     }
@@ -925,7 +925,7 @@ void GraphColorRegAllocator::SetupLiveRangeByRegno(regno_t lout, BB *bb, uint32 
   if (IsUnconcernedReg(lout)) {
     return;
   }
-  if (lout < kNArmRegisters) {
+  if (lout < kMaxRegNum) {
     pregLive.insert(lout);
     for (auto vregno : vregLive) {
       LiveRange *lr = lrVec[vregno];
@@ -992,7 +992,7 @@ void GraphColorRegAllocator::ComputeLiveRangesForEachOperand(Insn *insn) {
         }
       } else if (delInsn == 1 && opnd->IsRegister()) {
         regno_t vreg = (static_cast<RegOperand *>(opnd))->GetRegisterNumber();
-        if (vreg > kNArmRegisters) {
+        if (vreg > kMaxRegNum) {
           lrVec[vreg]->luMap[insn->bb->id]->useNum--;
         }
         LocalRaInfo *lraInfo = localRegVec[insn->bb->id];
@@ -1043,7 +1043,7 @@ void GraphColorRegAllocator::ComputeLiveRangesUpdateIfInsnIsCall(Insn *insn) {
 
 void GraphColorRegAllocator::ComputeLiveRangesUpdateLiveUnitInsnRange(BB *bb, uint32 currPoint) {
   for (auto lin : bb->livein_regno) {
-    if (lin < kNArmRegisters) {
+    if (lin < kMaxRegNum) {
       continue;
     }
     LiveRange *lr = lrVec[lin];
@@ -1092,7 +1092,7 @@ void GraphColorRegAllocator::ComputeLiveOut(BB *bb) {
       if (IsUnconcernedReg(regno)) {
         continue;
       }
-      if (regno < kNArmRegisters) {
+      if (regno < kMaxRegNum) {
         pregLive.insert(regno);
         continue;
       }
@@ -1107,7 +1107,7 @@ void GraphColorRegAllocator::ComputeLiveOut(BB *bb) {
       if (IsUnconcernedReg(regno)) {
         continue;
       }
-      if (regno < kNArmRegisters) {
+      if (regno < kMaxRegNum) {
         pregLive.insert(regno);
         continue;
       }
@@ -1221,7 +1221,7 @@ MemOperand *GraphColorRegAllocator::CreateSpillMem(uint32 spillIdx) {
 bool GraphColorRegAllocator::IsLocalReg(regno_t regno) {
   LiveRange *lr = lrVec[regno];
   if (lr == nullptr) {
-    LogInfo::MapleLogger() << "unexpected regno" << regno;
+    LogInfo::MapleLogger() << "unexpected regno " << regno << endl;
     return true;
   }
   if (lr->splitLr) {
@@ -2631,7 +2631,7 @@ bool GraphColorRegAllocator::HandleLocalRegDefWithNoUse(regno_t regno, LocalRegA
     // local reg has no use, but obviously seen.
     // If it is a vreg, then just assign it an unused preg
     // no action needed since its live is dead right after.
-    if (regno >= kNArmRegisters) {
+    if (regno >= kMaxRegNum) {
       bool founded = false;
       uint32 preg;
       FOREACH_LRA_REGS(isInt, preg, localRa) {
@@ -2700,7 +2700,7 @@ void GraphColorRegAllocator::HandleLocalReg(Operand *op, LocalRegAllocator *loca
   }
 
   // is this a local register ?
-  if (regno >= kNArmRegisters && !IsLocalReg(regno)) {
+  if (regno >= kMaxRegNum && !IsLocalReg(regno)) {
     return;
   }
 
@@ -2750,7 +2750,7 @@ bool GraphColorRegAllocator::LocalRaInitRegSet(LocalRegAllocator *localRa, uint3
   LocalRaInfo *lraInfo = localRegVec[bbid];
   for (auto it : lraInfo->useCnt) {
     regno_t regno = it.first;
-    if (regno >= kNArmRegisters) {
+    if (regno >= kMaxRegNum) {
       needLocalRa = true;
 #ifdef DO_PRE_LRA
     } else {
@@ -2883,7 +2883,7 @@ void GraphColorRegAllocator::LocalRegisterAllocator(bool doAllocate) {
     localRa->ClearLocalRaInfo();
     bool needLocalRa = LocalRaInitRegSet(localRa, bbid, doAllocate);
     for (auto it : lraInfo->defCnt) {
-      if (it.first >= kNArmRegisters) {
+      if (it.first >= kMaxRegNum) {
         needLocalRa = true;
         break;
       }
@@ -3069,6 +3069,10 @@ void GraphColorRegAllocator::SpillOperandForSpillPost(Insn *insn, Operand *opnd,
   spillMem = CreateSpillMem(spillIdx);
   AArch64CGFunc *a64cgfunc = static_cast<AArch64CGFunc *>(cgfunc_);
   CG *cg = a64cgfunc->cg;
+  bool lastInsn = false;
+  if (insn->bb->kind == BB::kBBIf && insn->bb->lastinsn == insn) {
+    lastInsn = true;
+  }
 
   RegOperand *regOpnd = static_cast<RegOperand *>(opnd);
   uint32 regno = regOpnd->GetRegisterNumber();
@@ -3087,10 +3091,19 @@ void GraphColorRegAllocator::SpillOperandForSpillPost(Insn *insn, Operand *opnd,
   ldInsn->SetSpillOp();
   std::string comment = " RELOAD for spill vreg: " + std::to_string(regno);
   ldInsn->AddComment(comment);
-  if (isOutOfRange) {
-    insn->bb->InsertInsnAfter(insn->next, ldInsn);
+  if (lastInsn) {
+    for (auto tbb : insn->bb->succs) {
+      Insn *newLd = cg->BuildInstruction<AArch64Insn>(a64cgfunc->PickLdInsn(spillMem->GetSize(), stype), phyopnd, spillMem);
+      newLd->SetSpillOp();
+      newLd->AddComment(comment);
+      tbb->InsertInsnBegin(newLd);
+    }
   } else {
-    insn->bb->InsertInsnAfter(insn, ldInsn);
+    if (isOutOfRange) {
+      insn->bb->InsertInsnAfter(insn->next, ldInsn);
+    } else {
+      insn->bb->InsertInsnAfter(insn, ldInsn);
+    }
   }
 }
 
@@ -3435,7 +3448,7 @@ RegOperand *GraphColorRegAllocator::GetReplaceOpnd(Insn *insn, Operand *opnd, ui
 
   uint32 vregno = regOpnd->GetRegisterNumber();
   RegType regtype = regOpnd->GetRegisterType();
-  if (vregno < kNArmRegisters) {
+  if (vregno < kMaxRegNum) {
     return nullptr;
   }
   if (IsUnconcernedReg(regOpnd)) {
@@ -3592,18 +3605,18 @@ void GraphColorRegAllocator::FinalizeRegisters() {
           memopnd->SetIndexRegister(phyOpnd);
         }
       }
-      for (int32_t i = 0; i < fInfo->defOperands.size(); i++) {
-        Operand *opnd = fInfo->defOperands[i];
-        RegOperand *phyOpnd = GetReplaceOpnd(insn, opnd, spillIdx, usedRegMask, true);
-        if (phyOpnd) {
-          insn->SetOperand(fInfo->defIdx[i], phyOpnd);
-        }
-      }
       for (int32_t i = 0; i < fInfo->useOperands.size(); i++) {
         Operand *opnd = fInfo->useOperands[i];
         RegOperand *phyOpnd = GetReplaceOpnd(insn, opnd, spillIdx, usedRegMask, false);
         if (phyOpnd) {
           insn->SetOperand(fInfo->useIdx[i], phyOpnd);
+        }
+      }
+      for (int32_t i = 0; i < fInfo->defOperands.size(); i++) {
+        Operand *opnd = fInfo->defOperands[i];
+        RegOperand *phyOpnd = GetReplaceOpnd(insn, opnd, spillIdx, usedRegMask, true);
+        if (phyOpnd) {
+          insn->SetOperand(fInfo->defIdx[i], phyOpnd);
         }
       }
     }  // insn
@@ -3653,6 +3666,7 @@ bool GraphColorRegAllocator::AllocateRegisters() {
   }
 #endif
 
+  cgfunc_->SetIsAfterRegAlloc();
   // EBO propgation extent the live range and might need to be turned off.
   InitFreeRegPool();
 
@@ -3682,7 +3696,6 @@ bool GraphColorRegAllocator::AllocateRegisters() {
     cgfunc_->DumpCGIR();
   }
 
-  cgfunc_->SetIsAfterRegAlloc();
   return true;
 }
 

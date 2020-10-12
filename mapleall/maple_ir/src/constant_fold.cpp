@@ -1368,34 +1368,28 @@ std::pair<BaseNode *, int64> ConstantFold::FoldExtractbits(ExtractbitsNode *n) {
 }
 
 std::pair<BaseNode *, int64> ConstantFold::FoldIread(IreadNode *n) {
-  BaseNode *res = n;
-  Opcode op = n->op;
-  FieldID fieldID = n->fieldID;
-
+  // fold n->uOpnd first
   std::pair<BaseNode *, int64> p = DispatchFold(n->uOpnd);
   BaseNode *e = PairToExpr(n->uOpnd->primType, p);
+  n->uOpnd = e;
 
-  if (op == OP_iaddrof && e->op == OP_addrof) {
+  BaseNode *res = n;
+  if (n->op == OP_iaddrof && e->op == OP_addrof) {
     AddrofNode *addrofNode = static_cast<AddrofNode *>(e);
     AddrofNode *newAddrof = addrofNode->MakeCopy(module);
-    newAddrof->fieldID += fieldID;
+    newAddrof->fieldID += n->fieldID;
     res = newAddrof;
-  } else if (op == OP_iread && e->op == OP_addrof) {
+  } else if (n->op == OP_iread && e->op == OP_addrof) {
     AddrofNode *addrofNode = static_cast<AddrofNode *>(e);
     MIRSymbol *msy = module->CurFunction()->GetLocalOrGlobalSymbol(addrofNode->stIdx);
-    TyIdx typeId = msy->GetTyIdx();
-    MIRType *msyType = GlobalTables::GetTypeTable().typeTable[typeId.GetIdx()];
-    if (msyType->GetKind() == kTypeStruct || msyType->GetKind() == kTypeClass) {
-      FieldID newFieldid = fieldID + addrofNode->fieldID;
-      MIRStructType *stty = static_cast<MIRStructType *>(msyType);
-      MIRType *fieldTy = stty->GetFieldType(newFieldid);
-      res = module->CurFuncCodeMemPool()->New<AddrofNode>(OP_dread, fieldTy->GetPrimType(), addrofNode->stIdx, newFieldid);
-      if (newFieldid == 0) {  // use original iread's primType
-        res->primType = n->primType;
-      }
+    MIRType *msyType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(msy->tyIdx);
+    if (addrofNode->fieldID != 0 && dynamic_cast<MIRStructType *>(msyType)) {
+      msyType = static_cast<MIRStructType *>(msyType)->GetFieldType(addrofNode->fieldID);
     }
-  } else if (e != n->uOpnd) {
-    res = module->CurFuncCodeMemPool()->New<IreadNode>(op, n->primType, n->tyIdx, fieldID, static_cast<BaseNode *>(e));
+    MIRPtrType *ptrType = dynamic_cast<MIRPtrType *>(GlobalTables::GetTypeTable().GetTypeFromTyIdx(n->tyIdx));
+    if (ptrType->GetPointedType() == msyType) {
+      res = module->CurFuncCodeMemPool()->New<AddrofNode>(OP_dread, n->primType, addrofNode->stIdx, n->fieldID + addrofNode->fieldID);
+    }
   }
   return std::make_pair(res, 0);
 }
@@ -1461,7 +1455,7 @@ std::pair<BaseNode *, int64> ConstantFold::FoldBinary(BinaryNode *n) {
       res = module->mirBuilder->CreateIntConst(0, cstTyp);
     } else if (op == OP_mul && cst == 1) {
       // 1 * X --> X
-      sum = 0;
+      sum = rp.second;
       res = r;
     } else if (op == OP_bior && cst == -1) {
       // (-1) | X -> -1
@@ -1512,7 +1506,7 @@ std::pair<BaseNode *, int64> ConstantFold::FoldBinary(BinaryNode *n) {
     } else if ((op == OP_mul || op == OP_div) && cst == 1) {
       // case [X * 1 -> X]
       // case [X / 1 = X]
-      sum = 0;
+      sum = lp.second;
       res = l;
     } else if (op == OP_band && cst == -1) {
       // X & (-1) -> X
@@ -1828,7 +1822,7 @@ StmtNode *ConstantFold::SimplifyIassign(IassignNode *n) {
         }
         lhsTyIdx = lhsStructTy->GetFieldType(addrofNode->fieldID)->tyIdx;
       }
-      if (iassPtType->pointedTyIdx == lhsTyIdx || n->fieldID == 0) {
+      if (iassPtType->pointedTyIdx == lhsTyIdx) {
         DassignNode *dassignNode = module->CurFuncCodeMemPool()->New<DassignNode>();
         dassignNode->stIdx = addrofNode->stIdx;
         dassignNode->SetRhs(n->rhs);

@@ -117,7 +117,7 @@ class X86CGFunc : public CGFunc {
   Operand *SelectAddroffunc(AddroffuncNode *expr) override;
   Operand *SelectIread(base_node_t *parent, IreadNode *expr) override;
 
-  Operand *SelectIntconst(MIRIntConst *expr) override;
+  Operand *SelectIntconst(MIRIntConst *expr, PrimType pty) override;
   Operand *SelectVectorIntconst(MIRVectorIntConst *expr) override {
     CG_ASSERT(0, "NYI");
   }

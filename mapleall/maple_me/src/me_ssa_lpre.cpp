@@ -332,7 +332,7 @@ void MeSSALPre::BuildWorkListExpr(MeStmt *mestmt, int32 seqstmt, MeExpr *meexpr,
     case kMeOpIvar:
     case kMeOpOp:
     case kMeOpNary: {
-      for (uint32 i = 0; i < meexpr->NumMeExprOpnds(); i++) {
+      for (int32 i = 0; i < meexpr->NumMeExprOpnds(); i++) {
         BuildWorkListExpr(mestmt, seqstmt, meexpr->GetOpnd(i), false, nullptr, false);
       }
       break;

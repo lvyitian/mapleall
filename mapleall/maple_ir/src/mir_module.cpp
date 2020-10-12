@@ -160,7 +160,7 @@ void MIRModule::DumpGlobals (bool emitStructureType) const {
   LogInfo::MapleLogger() << "numfuncs " << numFuncs << std::endl;
   if (importFiles.size() != 0) {
     uint32 size = importFiles.size();
-    for (int i = 0; i < size; i++) {
+    for (uint32 i = 0; i < size; i++) {
       LogInfo::MapleLogger() << "import \"" << GlobalTables::GetStrTable().GetStringFromStrIdx(importFiles[i]) << "\"" << std::endl;
     }
   }

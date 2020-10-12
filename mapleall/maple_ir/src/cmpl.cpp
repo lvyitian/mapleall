@@ -24,9 +24,11 @@
 #include "vmmemory.h"
 #endif
 
+#if MIR_FEATURE_FULL
 #include <cstdint>
 #include <climits>
 #include <cstdlib>
+#endif
 
 #if HAVE_MMAP
 #include <fcntl.h>
@@ -35,7 +37,9 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #else
+#if !defined(MIR_FEATURE_FULL)
 #include <cstdio>
+#endif // MIR_FEATURE_FULL
 #endif  // HAVE_MMAP
 
 #define BINMIR_FILE_TYPE kMjsvmFileTypeCmpl  // moved from cmpl.h

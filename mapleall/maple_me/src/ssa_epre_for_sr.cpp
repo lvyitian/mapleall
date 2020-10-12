@@ -155,7 +155,8 @@ static int64 GetIncreAmtAndRhsReg(MeExpr *x, RegMeExpr *&rhsreg) {
   rhsreg = static_cast<RegMeExpr *>(opexpr->GetOpnd(0));
   MIRConst *constVal = static_cast<ConstMeExpr *>(opexpr->GetOpnd(1))->constVal;
   CHECK_FATAL(constVal->kind == kConstInt, "GetIncreAmtAndRhsReg: unexpected constant type");
-  return static_cast<MIRIntConst *>(constVal)->GetValueUnderType();
+  int64 amt = static_cast<MIRIntConst *>(constVal)->GetValueUnderType();
+  return (opexpr->op == OP_sub) ? -amt : amt;
 }
 
 MeExpr* SSAEPre::InsertRepairStmt(MeExpr *temp, int64 increAmt, MeStmt *injuringDef) {

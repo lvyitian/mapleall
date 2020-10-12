@@ -15,7 +15,7 @@
 
 function print_usage {
   echo " "
-  echo "usage: source envsetup.sh arm/ark release/debug"
+  echo "usage: source envsetup.sh arm/engine release/debug"
   echo " "
 }
 
@@ -34,13 +34,18 @@ export TARGET_ARCH=64
 if [ $1 = "arm" ]; then
   PLATFORM=arm64
   USEOJ=0
-else if [ $1 = "ark" ]; then
-    PLATFORM=ark
-    USEOJ=1
-  else
-    print_usage
-    return
-  fi
+elif [ $1 = "engine" ]; then
+  PLATFORM=ark
+  USEOJ=1
+elif [ $1 = "ark" ]; then
+  PLATFORM=ark
+  USEOJ=1
+elif [ $1 = "ark2" ]; then
+  PLATFORM=ark
+  USEOJ=2
+else
+  print_usage
+  return
 fi
 
 if [ "$2" = "release" ]; then

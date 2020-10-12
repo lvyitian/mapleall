@@ -248,7 +248,7 @@ void SSAEPre::ComputeVarAndDfPhis() {
     GetIterDomFrontier(defBb, &dfphi_dfns);
 
     MeExpr *meexpr = realocc->meexpr;
-    for (uint32 i = 0; i < meexpr->NumMeExprOpnds(); i++) {
+    for (int32 i = 0; i < meexpr->NumMeExprOpnds(); i++) {
       SetVarPhis(meexpr->GetOpnd(i));
     }
   }
@@ -431,7 +431,7 @@ void SSAEPre::BuildWorkListIvarLHSOcc(MeStmt *mestmt, int32 seqstmt, bool isrebu
 // collect meexpr's variables and put them into varvec
 // varvec can only store RegMeExpr and VarMeExpr
 void SSAEPre::CollectVarForMeExpr(MeExpr *meexpr, std::vector<MeExpr *> &varvec) {
-  for (uint32 i = 0; i < meexpr->NumMeExprOpnds(); i++) {
+  for (int32 i = 0; i < meexpr->NumMeExprOpnds(); i++) {
     MeExpr *opnd = meexpr->GetOpnd(i);
     if (opnd->meOp == kMeOpVar || opnd->meOp == kMeOpReg) {
       varvec.push_back(opnd);

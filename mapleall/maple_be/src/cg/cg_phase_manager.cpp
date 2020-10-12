@@ -108,9 +108,11 @@ void CgFuncPhaseManager::AddPhases(std::vector<std::string> &phases) {
         ADDPHASE("storeloadopt");
       }
 
+#if !(TARGRISCV64)
       if (CGOptions::doGlobalOpt) {
         ADDPHASE("globalopt");
       }
+#endif
 
       if (CGOptions::doPrePeephole) {
         ADDPHASE("prepeephole1");
@@ -134,9 +136,11 @@ void CgFuncPhaseManager::AddPhases(std::vector<std::string> &phases) {
       if (CGOptions::doPeephole) {
         ADDPHASE("peephole0");
       }
+#if !(TARGRISCV64)
       if (CGOptions::doEbo) {
         ADDPHASE("postebo");
       }
+#endif
 
       if (CGOptions::doCfgo) {
         ADDPHASE("postcfgo");

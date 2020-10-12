@@ -286,8 +286,7 @@ StmtNode *MeStmt::EmitStmt(SSATab *ssaTab) {
 
 StmtNode *AssignMeStmt::EmitStmt(SSATab *ssaTab) {
   if (rhs->meOp == lhs->meOp && lhs->ost == static_cast<ScalarMeExpr *>(rhs)->ost) {
-    // identify assignment converted from phi; omit it
-    return nullptr;
+    return nullptr; // identity assignment converted from phi; omit it
   }
   if (lhs->meOp == kMeOpReg) {
     RegassignNode *regassignstmt =

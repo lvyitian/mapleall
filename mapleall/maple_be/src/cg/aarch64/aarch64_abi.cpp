@@ -78,6 +78,7 @@ static int32 ClassifyAggregate(BECommon &be, MIRType *ty, AArch64_ArgumentClass 
   // then the argument is copied to memory allocated by the caller and
   // the argument is replaced by a pointer to the copy.
   if (sizeofty > 16 || sizeofty == 0) {
+    classes[0] = kAArch64NoClass;
     return 0;
   }
 
@@ -170,6 +171,40 @@ static int32 ClassifyAggregate(BECommon &be, MIRType *ty, AArch64_ArgumentClass 
       classes[1] = kAArch64IntegerClass;
     }
     return sizeoftyInDwords;
+  }
+}
+
+int32 ParmLocator::LocateRetVal(MIRType *retty, PLocInfo &ploc) {
+  InitPlocInfo(ploc);
+  int retsz = _be.type_size_table.at(retty->tyIdx.GetIdx());
+  if (retsz == 0) {
+    return 0;    // size 0 ret val
+  }
+  if (retsz <= 16) {
+    // For return struct size less or equal to 16 bytes, the values
+    // are returned in register pairs.
+    AArch64_ArgumentClass classes[4]; // Max of four floats.
+    uint32 fpsize;
+    int32 numregs = ClassifyAggregate(_be, retty, classes, sizeof(classes), fpsize);
+    if (classes[0] == kAArch64FloatClass) {
+      CHECK_FATAL(numregs <= 4, "LocateNextParm: illegal number of regs");
+      AllocateNSIMDFPRegisters(ploc, numregs);
+      ploc.numFpPureRegs = numregs;
+      ploc.fpSize = fpsize;
+      return 0;
+    } else {
+      CHECK_FATAL(numregs <= 2, "LocateNextParm: illegal number of regs");
+      if (numregs == 1) {
+        ploc.reg0 = AllocateGPRegister();
+      } else {
+        AllocateTwoGPRegisters(ploc);
+      }
+      return 0;
+    }
+  } else {
+    // For return struct size > 16 bytes the pointer returns in x8.
+    ploc.reg0 = R8;
+    return SIZEOFPTR;
   }
 }
 

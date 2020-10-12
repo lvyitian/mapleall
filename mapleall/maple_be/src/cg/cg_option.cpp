@@ -89,6 +89,7 @@ bool CGOptions::insertYieldpoint = false;
 bool CGOptions::maplelinker = false;
 bool CGOptions::replaceasm = false;
 bool CGOptions::emitBlockMarker = true;
+bool CGOptions::printLowerIR = false;
 bool CGOptions::printFunction = false;
 bool CGOptions::doSimplePrint = false;
 bool CGOptions::nativeopt = false;
@@ -231,11 +232,13 @@ enum OptionIndex {
   kLiteralProfile,
   kStaticFieldsProfile,
   kEmitBlockMarker,
+  kEmitLocalBlockMarker,
   kClassMetaProfile,
   kMethodMetaProfile,
   kInsertSoe,
   kCheckArraystore,
   kFieldMetaProfile,
+  kPrintLowerIR,
   kPrintFunction,
   kPrintSimple,
   kDumpPhases,
@@ -473,6 +476,7 @@ const Descriptor kUsage[] = {
   { kDuplicateBb, 0, "", "no-dup-bb", kBuildTypeAll, kArgCheckPolicyNone,
     "  --no-dup-bb                      Allow cfg optimizer to duplicate bb" },
   { kDumpssadef, 0, "", "dump-ssadef", kBuildTypeAll, kArgCheckPolicyNone, "  --dump-ssadef" },
+  { kPrintLowerIR, 0, "", "print-ir", kBuildTypeAll, kArgCheckPolicyNone, "  --print-ir" },
   { kPrintFunction, 0, "", "print-func", kBuildTypeAll, kArgCheckPolicyNone, "  --print-func" },
   { kPrintSimple, 0, "", "print-simple", kBuildTypeAll, kArgCheckPolicyNone,                        "  --print-simple" },
   { kCheckComplete, 0, "", "check-complete", kBuildTypeAll, kArgCheckPolicyNone, "  --check-complete                  Check incomplete types" },
@@ -497,6 +501,8 @@ const Descriptor kUsage[] = {
     "  --staticfields_profile=list_file       For staticFields layout optimization" },
   { kEmitBlockMarker, 0, "", "block-marker", kBuildTypeAll, kArgCheckPolicyRequired,
     "  --block-marker     Emit block marker symbols in emitted assembly files" },
+  { kEmitLocalBlockMarker, 0, "", "local-marker", kBuildTypeAll, kArgCheckPolicyNone,
+    "  --local-bmarker     Emit block marker symbols as local in emitted assembly files" },
   { kInsertSoe, 0, "", "soe-check", kBuildTypeAll, kArgCheckPolicyNone,
     "  --soe-check                  Insert a soe check instruction[default off]" },
   { kCheckArraystore, OTI_ENABLED, "", "check-arraystore", kBuildTypeAll, kArgCheckPolicyNone,
@@ -637,6 +643,9 @@ bool CGOptions::ParseOptions(int argc, char **argv, string &fileName) {
       case kDumpssadef:
         SetOption(options_, kDumpSsaDef);
         break;
+      case kPrintLowerIR:
+        printLowerIR = true;
+        break;
       case kPrintFunction:
         printFunction = true;
         break;
@@ -722,6 +731,9 @@ bool CGOptions::ParseOptions(int argc, char **argv, string &fileName) {
         break;
       case FP:
         (do_with_fp = (opt.Type() == OTI_ENABLED)) ? SetOption(options_, kUseFp) : ClearOption(options_, kUseFp);
+        break;
+      case kEmitLocalBlockMarker:
+        emitBlockMarker = false;
         break;
       case kInsertSoe:
         SetOption(options_, kSoeCheckInsert);
@@ -899,6 +911,10 @@ bool CGOptions::ParseOptions(int argc, char **argv, string &fileName) {
 
   if (generate_gdb_friendly_code == true) {
     SetOption(options_, kDebugFriendly);
+#if !TARGARK
+    SetOption(options_, kWithLoc);
+    SetOption(options_, kWithSrc);
+#endif
   } else {
     ClearOption(options_, kDebugFriendly);
   }

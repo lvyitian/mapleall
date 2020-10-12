@@ -122,6 +122,11 @@ MIRConst *BinaryMplImport::ImportConst(MIRFunction *func) {
     FieldID fi = ReadNum();
     int32 ofst = ReadNum();
     return memPool->New<MIRAddrofConst>(sym->stIdx, fi, type, ofst, fieldID);
+  } else if (tag == kBinKindConstAddrofLocal) {
+    uint32 fullidx = ReadNum();
+    FieldID fi = ReadNum();
+    int32 ofst = ReadNum();
+    return memPool->New<MIRAddrofConst>(StIdx(fullidx), fi, type, ofst, fieldID);
   } else if (tag == kBinKindConstAddrofFunc) {
     PUIdx puIdx = ImportFunction();
     MIRAddroffuncConst *addrfunc;
@@ -571,6 +576,7 @@ TyIdx BinaryMplImport::ImportType() {
         type->sizeArray[i] = ReadNum();
       }
       type->eTyIdx = ImportType();
+      type->typeAttrs = ImportTypeAttrs();
       GlobalTables::GetTypeTable().PutToHashTable(type);
       return origType->tyIdx;
     }

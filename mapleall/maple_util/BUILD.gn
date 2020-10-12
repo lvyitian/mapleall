@@ -31,7 +31,7 @@ static_library("libmplutil"){
 
     include_dirs = [
        "${MAPLEALL_ROOT}/maple_util/include",
-       "${MAPLE_ROOT}/huawei_secure_c/include",
+       "${HUAWEI_SECURE_C_ROOT}/include",
     ]
 
     output_dir = "${root_out_dir}/lib/${HOST_ARCH}"

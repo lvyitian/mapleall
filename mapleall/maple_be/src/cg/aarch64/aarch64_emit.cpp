@@ -348,16 +348,8 @@ void AArch64Insn::Emit(CG &cg, Emitter &emitter) {
   emitter.Emit("\n");
 }
 
-void AArch64CGFunc::EmitBBHeaderLabel(const char *name, LabelIdx labidx) {
-  Emitter &emitter = *(cg->emitter_);
-  LabelOperand *lablel = GetOrCreateLabelOperand(labidx);
-  if (lablel->GetLabelOrder() == -1u) {
-    lablel->SetLabelOrder(cg->label_order_cnt_);
-    cg->label_order_cnt_++;
-  }
-
-  const char *idx = std::to_string(CG::curPuIdx).c_str();
-  emitter.Emit(".label.").Emit(idx).Emit("__").Emit(labidx).Emit(":\t\t// label order ").Emit(lablel->GetLabelOrder()).Emit("\n");
+void AArch64CGFunc::EmitBBHeaderLabel(const char *funcName, LabelIdx labelIdx) {
+  cg->emitter_->EmitBBHeaderLabel(funcName, "//", labelIdx, *this);
 }
 
 std::string AArch64CGFunc::GetReflectString(uint32_t offset) {

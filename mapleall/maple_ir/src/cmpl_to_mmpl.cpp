@@ -821,7 +821,7 @@ void CmplPrinter::PrintFunc(mir_func_t *func, int puid) {
   current_indent++;
 
   if (func->upFormalSize) {
-    indented_printf("upFormalSize %d\n", func->upFormalSize);
+    indented_printf("upformalsize %d\n", func->upFormalSize);
     indented_printf("formalwordstypetagged = [ ");
     uint32 *gmemPtr = reinterpret_cast<uint32 *>(func->formalWordsTypeTagged);
     int gmemToPrint = BlkSize2BitvectorSize(func->upFormalSize);
@@ -841,7 +841,7 @@ void CmplPrinter::PrintFunc(mir_func_t *func, int puid) {
     }
     printf("]\n");
   }
-  indented_printf("frameSize %d\n", func->frameSize);
+  indented_printf("framesize %d\n", func->frameSize);
   indented_printf("localwordstypetagged = [ ");
   uint32 *gmemPtr = reinterpret_cast<uint32 *>(func->localWordsTypeTagged);
   int gmemToPrint = BlkSize2BitvectorSize(func->frameSize);

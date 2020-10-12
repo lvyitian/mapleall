@@ -92,7 +92,7 @@ MOperator AArch64CGFunc::PickJmpInsn(Opcode brop, Opcode cmpop, bool isfloat, bo
 }
 
 void AArch64CGFunc::SelectCondGoto(LabelOperand *targetopnd, Opcode jmpop, Opcode cmpop, Operand *opnd0, Operand *opnd1,
-                                   PrimType primType) {
+                                   PrimType primType, bool signedCond) {
   CG_ASSERT(targetopnd != nullptr, "no branch target");
 
   //if (opnd0->IsIntImmediate() && static_cast<AArch64ImmOperand *>(opnd0)->IsZero() &&
@@ -184,7 +184,8 @@ void AArch64CGFunc::SelectCondGoto(LabelOperand *targetopnd, Opcode jmpop, Opcod
     curbb->AppendInsn(cg->BuildInstruction<AArch64Insn>(mop, rflag, opnd0, opnd1));
   }
 
-  MOperator jmpOp = PickJmpInsn(jmpop, cmpop, isfloat, IsSignedInteger(primType));
+  bool issigned = IsPrimitiveInteger(primType) ? IsSignedInteger(primType) : (signedCond ? true : false);
+  MOperator jmpOp = PickJmpInsn(jmpop, cmpop, isfloat, issigned);
   curbb->AppendInsn(cg->BuildInstruction<AArch64Insn>(jmpOp, rflag, targetopnd));
 }
 
@@ -217,7 +218,8 @@ void AArch64CGFunc::SelectCondSpecial(CondGotoNode *stmt, BaseNode *expr) {
   PrimType primType = static_cast<CompareNode *>(condnode)->opndType;
   isfloat = IsPrimitiveFloat(primType);
   Operand *rflag = GetOrCreateRflag();
-  MOperator jmpOp = PickJmpInsn(stmt->op, cmpop, isfloat, IsSignedInteger(primType));
+  bool issigned = IsPrimitiveInteger(primType) ? IsSignedInteger(primType) : (IsSignedInteger(condnode->primType) ? true : false);
+  MOperator jmpOp = PickJmpInsn(stmt->op, cmpop, isfloat, issigned);
   curbb->AppendInsn(cg->BuildInstruction<AArch64Insn>(jmpOp, rflag, targetopnd));
 }
 
@@ -251,7 +253,7 @@ void AArch64CGFunc::SelectCondGoto(CondGotoNode *stmt, Operand *opnd0, Operand *
     primType = condnode->primType;
   }
 
-  SelectCondGoto(targetopnd, stmt->op, cmpop, opnd0, opnd1, primType);
+  SelectCondGoto(targetopnd, stmt->op, cmpop, opnd0, opnd1, primType, IsSignedInteger(condnode->primType));
 }
 
 void AArch64CGFunc::SelectGoto(GotoNode *stmt) {
@@ -1634,7 +1636,7 @@ static bool LIsPrimitivePointer(PrimType primType) {
 }
 
 Operand *AArch64CGFunc::SelectRetype(TypeCvtNode *node, Operand *opnd0) {
-  PrimType fromtype = node->fromPrimType;
+  PrimType fromtype = node->Opnd(0)->primType;
   PrimType totype = node->primType;
   CG_ASSERT(GetPrimTypeSize(fromtype) == GetPrimTypeSize(totype), "retype bit widith doesn' match");
   if (LIsPrimitivePointer(fromtype) && LIsPrimitivePointer(totype)) {
@@ -1674,11 +1676,16 @@ Operand *AArch64CGFunc::SelectRetype(TypeCvtNode *node, Operand *opnd0) {
     } else {
       opnd0 = LoadIntoRegister(opnd0, itype);
     }
-    uint32 mopFmov =
-      isimm ? is64bits ? MOP_xdfmovri : MOP_wsfmovri
-            : isfromint ? (is64bits ? MOP_xdfmovrr : MOP_wsfmovrr) : (is64bits ? MOP_dxfmovrr : MOP_swfmovrr);
-    curbb->AppendInsn(cg->BuildInstruction<AArch64Insn>(mopFmov, resopnd, opnd0));
-    return resopnd;
+    if ((IsPrimitiveFloat(fromtype) && IsPrimitiveInteger(totype)) ||
+        (IsPrimitiveFloat(totype) && IsPrimitiveInteger(fromtype))) {
+      uint32 mopFmov =
+        isimm ? is64bits ? MOP_xdfmovri : MOP_wsfmovri
+              : isfromint ? (is64bits ? MOP_xdfmovrr : MOP_wsfmovrr) : (is64bits ? MOP_dxfmovrr : MOP_swfmovrr);
+      curbb->AppendInsn(cg->BuildInstruction<AArch64Insn>(mopFmov, resopnd, opnd0));
+      return resopnd;
+    } else {
+      return opnd0;
+    }
   } else {
     CG_ASSERT(false, "NYI retype");
   }
@@ -1781,11 +1788,11 @@ void AArch64CGFunc::SelectCvtInt2Int(BaseNode *parent, Operand *&resopnd, Operan
       if (fsize > tsize) {
         if (IsSignedInteger(toty)) {
           if (origValue < 0) {
-            signValue = 0xFFFFFFFFFFFFFFFF & ((1 << tsize));
+            signValue = 0xFFFFFFFFFFFFFFFFLL & (static_cast<int64>(1ULL << tsize));
           }
-          newValue = origValue & (static_cast<int64>(1 << tsize) - 1) & signValue;
+          newValue = (origValue & (static_cast<int64>(1ULL << tsize) - 1)) | signValue;
         } else {
-          newValue = origValue & (static_cast<int64>(1 << tsize) - 1);
+          newValue = origValue & (static_cast<int64>(1ULL << tsize) - 1);
         }
       }
     }

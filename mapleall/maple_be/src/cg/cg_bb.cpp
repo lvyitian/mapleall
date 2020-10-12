@@ -49,6 +49,7 @@ Insn *BB::InsertInsnAfter(Insn *existing, Insn *newinsn) {
     newinsn->next->prev = newinsn;
   }
   newinsn->bb = this;
+  internal_flag1++;
   return newinsn;
 }
 

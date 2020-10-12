@@ -62,6 +62,7 @@ namespace maple {
 #define CLASS_STATE_INITIALIZED_STR "__ClassStateInitialized__"
 #define INIT_FUNTION_STR "_3Cinit_3E"
 #define INNERCLASS_STR (std::string("annotation_2FInnerClass") + NameMangler::kClassMethodSplitterStr)
+#define ANNOTATION_ENCLOSINGCLASS_STR (std::string("annotation_2FEnclosingClass") + NameMangler::kClassMethodSplitterStr)
 
 static bool raDebug = false;
 
@@ -1310,7 +1311,7 @@ void ReflectionAnalysis::GenClassMetaData(Klass *klass) {
   for (Klass *superclass : klass->GetSuperKlasses()) {
     superclasslist.push_back(superclass);
   }
-  for (TyIdx const kIntftyidx : classtype->interfacesImplemented) {
+  for (TyIdx const& kIntftyidx : classtype->interfacesImplemented) {
     Klass *interface = klassh->GetKlassFromTyidx(kIntftyidx);
     if (interface == nullptr) {
       missingSuper = true;
@@ -1482,6 +1483,18 @@ void ReflectionAnalysis::SetAnnoFieldConst(MIRStructType *metadataRoType, MIRAgg
 }
 
 int8_t JudgePara(MIRClassType *ctype) {
+  for (MIRPragma *prag : ctype->pragmaVec) {
+    if (prag->pragmaKind == kPragmaClass) {
+      string pragStr = GlobalTables::GetStrTable().GetStringFromStrIdx(GlobalTables::GetTypeTable().GetTypeFromTyIdx(prag->tyIdx)->nameStrIdx);
+      string pStr = std::string(NameMangler::kPackageNameSplitterStr);
+      size_t pos = pragStr.find(pStr);
+      string classStr =pragStr.substr(pos + pStr.length());
+      if ( classStr == ANNOTATION_ENCLOSINGCLASS_STR &&
+          !(GetClassAccessFlags(ctype) & (0x00000008)) && (ctype->GetName() != JAVA_LANG_ENUM_STR)) {
+        return 1;
+      }
+    }
+  }
   return 0;
 }
 
@@ -1812,7 +1825,6 @@ void ReflectionAnalysis::LoadProfilingData(std::string profileFile, MapleUnorder
   std::ifstream infile;
   infile.open(profileFile);
   if (infile.fail()) {
-    cerr << "Cannot open profile file " << profileFile << "\n";
     return;
   }
 
@@ -1831,7 +1843,6 @@ void ReflectionAnalysis::LoadReflectStrProfile(std::string profileFile,
   std::ifstream infile;
   infile.open(profileFile);
   if (infile.fail()) {
-    cerr << "Cannot open profile file " << profileFile << "\n";
     return;
   }
   uint32_t hotType = HOT_LAYOUT::kStartUpHot;

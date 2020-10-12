@@ -793,7 +793,7 @@ Operand *ArmCGFunc::SelectIread(base_node_t *parent, IreadNode *expr) {
   return result;
 }
 
-Operand *ArmCGFunc::SelectIntconst(MIRIntConst *intconst) {
+Operand *ArmCGFunc::SelectIntconst(MIRIntConst *intconst, PrimType pty) {
   return GetOrCreateImmOperand(intconst->value, GetPrimTypeSize(intconst->type_->GetPrimType()) * 8, false);
 }
 

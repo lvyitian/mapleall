@@ -111,7 +111,7 @@ static const PrimitiveTypeProperty PTProperty_u32 = {
 };
 
 static const PrimitiveTypeProperty PTProperty_u64 = {
-  /*type=*/PTY_u64, /*isInteger=*/true, /*isUnsigned=*/true, /*isAddress=*/false, /*isFloat=*/false,
+  /*type=*/PTY_u64, /*isInteger=*/true, /*isUnsigned=*/true, /*isAddress=*/true, /*isFloat=*/false,
   /*isPointer=*/true, /*isSimple=*/false, /*isDynamic=*/false, /*isDynamicAny=*/false, /*isDynamicNone=*/false
 };
 

@@ -80,8 +80,8 @@ class OriginalSt {
       prevlevelnode(nullptr),
       indexRenamedFrom(0) {}
 
-  OriginalSt(uint32 index, PregIdx rIdx, PUIdx pIdx, MapleAllocator *alloc)
-      : OriginalSt(OStIdx(index), alloc, true, false, 0) {
+  OriginalSt(uint32 index, PregIdx rIdx, PUIdx pIdx, FieldID fldid, MapleAllocator *alloc)
+      : OriginalSt(OStIdx(index), alloc, true, false, fldid) {
     ostType = kPregOst;
     symOrPreg.pregIdx = rIdx;
     puIdx = pIdx;

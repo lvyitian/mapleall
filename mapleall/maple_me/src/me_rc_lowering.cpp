@@ -14,6 +14,7 @@
  */
 
 #include "me_rc_lowering.h"
+
 #include "me_option.h"
 #include "name_mangler.h"
 
@@ -852,6 +853,287 @@ VarMeExpr *RCLowering::GetMeExprForNewTemp(bool isLocalrefvar) {
   return GetTemp(tempstr.c_str(), isLocalrefvar);
 }
 
+// Fast path: Special RC handling for simple methods
+// where local ref assignments can be ignored
+// functions with global write cannot use fast path
+void RCLowering::FastRCLower(BB *bb) {
+  MapleMap<uint32, MeStmt *> exceptionAllocsites(func->alloc.Adapter());
+
+  for (auto stmt : bb->meStmtList) {
+    Opcode opcode = stmt->op;
+
+    switch (opcode) {
+      case OP_decrefreset:
+      case OP_incref:
+      case OP_decref: {
+        // ignore RC operations inserted by analyzerc
+        bb->RemoveMeStmt(stmt);
+        break;
+      }
+      case OP_maydassign:
+      case OP_dassign: {
+        ScalarMeExpr *lhs = stmt->GetVarLhs();
+        CHECK_FATAL(lhs != nullptr, "null ptr check");
+        if (stmt->NeedIncref() || stmt->NeedDecref()) {
+          MIRSymbol *lsym = lhs->ost->GetMIRSymbol();
+          if (lsym->IgnoreRC()) {
+            break;
+          }
+          CHECK_FATAL(!lsym->IsGlobal(), "Write to global not expected");
+        }
+        if (stmt->op == OP_dassign) {
+          MeExpr *dmsrhs = stmt->GetRhs();
+          CHECK_FATAL(dmsrhs != nullptr, "null ptr check");
+          if (!dmsrhs->IsGcmalloc()) {
+            break;
+          }
+          GcmallocMeExpr *rhs = static_cast<GcmallocMeExpr *>(dmsrhs);
+          MIRType *type = GlobalTables::GetTypeTable().GetTypeFromTyIdx(rhs->tyIdx);
+          Klass *klass = klassh->GetKlassFromStridx(type->nameStrIdx);
+          if (klass->IsExceptionKlass()) {
+            exceptionAllocsites[lhs->vstIdx] = stmt;
+          } else {
+            // add a localrefvar temp to compensate incref with new object
+            MeStmt *backup = irMap->CreateAssignMeStmt(GetMeExprForNewTemp(true), lhs, bb);
+            bb->InsertMeStmtAfter(stmt, backup);
+          }
+        }
+        break;
+      }
+      case OP_iassign: {
+        // only handle lhs
+        MeExpr *rhs = stmt->GetRhs();
+        CHECK_FATAL(rhs != nullptr, "null ptr check");
+        bool incWithLhs = stmt->NeedIncref();
+        bool decWithLhs = stmt->NeedDecref();
+        if (!incWithLhs && (rhs->op == OP_regread)) {
+          // check for regread
+          RegMeExpr *rhsvar = static_cast<RegMeExpr *>(rhs);
+          if (rhsvar->defBy == kDefByStmt) {
+            incWithLhs = rhsvar->def.defStmt->NeedIncref();
+          } else {
+            CHECK_FATAL(rhsvar->defBy == kDefByMustdef,
+                   "not supported yet");  // callassign is fine as IncRef has been done inside call, just skip
+          }
+        }
+        if (!incWithLhs && !decWithLhs) {
+          break;
+        }
+        if (incWithLhs && HandleSpecialRHS(stmt)) {
+          incWithLhs = false;
+          rhs = stmt->GetRhs();
+        }
+        IvarMeExpr *lhs = (static_cast<IassignMeStmt *>(stmt))->lhsVar;
+        if (lhs->IsVolatile()) {
+          MeStmt *prev = stmt->prev;
+          if (prev && prev->op == OP_membarrelease) {
+            stmt->bb->RemoveMeStmt(prev);
+          }
+          MeStmt *next = stmt->next;
+          if (next && next->op == OP_membarstoreload) {
+            stmt->bb->RemoveMeStmt(next);
+          }
+          MeStmt *writeRefCall =
+            CreateIntrinsicWithThreeArg(incWithLhs ? kWriteVol : kWriteVolNoInc, stmt, lhs->base->GetAddrExprBase(),
+                                   irMap->CreateAddrofMeExpr(lhs), rhs);
+          bb->ReplaceMeStmt(stmt, writeRefCall);
+        } else if (lhs->IsRCWeak()) {
+          MeStmt *writeRefCall = CreateIntrinsicWithThreeArg(kWriteWeak, stmt,
+                                 lhs->base->GetAddrExprBase(), irMap->CreateAddrofMeExpr(lhs), rhs);
+          bb->ReplaceMeStmt(stmt, writeRefCall);
+        } else {
+          // note that we are generating kWriteNoRc to support write_barrier,
+          // otherwise iassign would be enough.
+          MeStmt *writeRefCall = CreateIntrinsicWithThreeArg(
+            incWithLhs ? (decWithLhs ? kWrite : kWriteNoDec) : (decWithLhs ? kWriteNoInc : kWriteNoRc), stmt,
+            lhs->base->GetAddrExprBase(), irMap->CreateAddrofMeExpr(lhs), rhs);
+          bb->ReplaceMeStmt(stmt, writeRefCall);
+        }
+        break;
+      }
+      case OP_throw: {
+        ThrowMeStmt *throwstmt = static_cast<ThrowMeStmt *>(stmt);
+        // insert localrefvar for decref on throw arg
+        MeStmt *backup =
+          irMap->CreateAssignMeStmt(GetMeExprForNewTemp(true), throwstmt->opnd, bb);
+        bb->InsertMeStmtBefore(throwstmt, backup);
+        if (dynamic_cast<VarMeExpr*>(throwstmt->opnd)) {
+          VarMeExpr *var = static_cast<VarMeExpr*>(throwstmt->opnd);
+          MapleMap<uint32, MeStmt *>::iterator iter;
+          iter = exceptionAllocsites.find(var->vstIdx);
+          if (iter != exceptionAllocsites.end()) {
+            exceptionAllocsites.erase(iter);
+          }
+        }
+        break;
+      }
+      case OP_return: {
+        RetMeStmt *retmestmt = static_cast<RetMeStmt *>(stmt);
+        MapleVector<MeExpr *> &opnds = retmestmt->opnds;
+        if (opnds.size() == 0) {
+          break;  // function return void
+        }
+        MeExpr *ret = opnds[0];
+        maple::PrimType retPtyp = ret->primType;
+        if (retPtyp != PTY_ref && retPtyp != PTY_ptr) {
+          break;
+        }
+        if (ret->meOp == kMeOpVar) {
+          VarMeExpr *val = static_cast<VarMeExpr *>(ret);
+          MIRSymbol *sym = val->ost->GetMIRSymbol();
+          if (val->defBy == kDefByStmt && val->def.defStmt->op == OP_dassign) {
+            // gcmalloc already has incref
+            CHECK_FATAL(val->def.defStmt->GetRhs() != nullptr, "null ptr check");
+            Opcode op = val->def.defStmt->GetRhs()->op;
+            if (op == OP_gcmalloc || op == OP_gcmallocjarray) {
+              break;
+            }
+          }
+          if (sym && !sym->IgnoreRC()) {
+            MeStmt *inccall = CreateIntrinsicWithOneArg(kIncRef, stmt, val, true);
+            retmestmt->opnds[0] = lastTempReg;
+            bb->InsertMeStmtBefore(stmt, inccall);
+          }
+        } else if (ret->meOp == kMeOpReg) {
+          RegMeExpr *retreg = static_cast<RegMeExpr *>(ret);
+          if (retreg->defBy == kDefByStmt && retreg->def.defStmt->op == OP_regassign) {
+            AssignMeStmt *regassign = static_cast<AssignMeStmt *>(retreg->def.defStmt);
+            MeExpr *rhs = retreg->def.defStmt->GetRhs();
+            CHECK_FATAL(rhs != nullptr, "null ptr check");
+            if (rhs->op == OP_gcmalloc || rhs->op == OP_gcmallocjarray) {
+              break;
+            }
+          }
+          MeStmt *inccall = CreateIntrinsicWithOneArg(kIncRef, stmt, retreg);
+          bb->InsertMeStmtBefore(stmt, inccall);
+        } else {
+          // ret->meOp == kMeOpIvar etc
+          // return ivar, put into temp and IncRef
+          MeStmt *tmp = irMap->CreateAssignMeStmt(GetRegTemp(PTY_ptr), ret, bb);
+          bb->InsertMeStmtBefore(stmt, tmp);
+          AssignMeStmt *tmpret = static_cast<AssignMeStmt *>(tmp);
+          MeStmt *inccall = CreateIntrinsicWithOneArg(kIncRef, stmt, tmpret->lhs);
+          bb->InsertMeStmtBefore(stmt, inccall);
+          retmestmt->opnds[0] = tmpret->lhs;
+        }
+        break;
+      }
+
+      case OP_callassigned:
+      case OP_virtualcallassigned:
+      case OP_virtualicallassigned:
+      case OP_interfacecallassigned:
+      case OP_interfaceicallassigned:
+      case OP_superclasscallassigned:
+      case OP_polymorphiccallassigned: {
+        CallMeStmt *callassign = static_cast<CallMeStmt *>(stmt);
+        MIRFunction *callee = GlobalTables::GetFunctionTable().GetFunctionFromPuidx(callassign->puIdx);
+        MIRType *rettype = callee->GetReturnType();
+        CHECK_FATAL(rettype != nullptr, "rettype is nullptr");
+        if (rettype->GetPrimType() != PTY_ref) {
+          break;
+        }
+
+        CHECK_FATAL(callassign->mustDefList.size() <= 1, "multiple return values?");
+
+        if (callassign->mustDefList.size() == 1) {
+          MIRFunction *mirfunction = func->mirFunc;
+          MeExpr *lhs = callassign->mustDefList.front().lhs;
+          if (lhs->meOp != kMeOpVar) {
+            break;
+          }
+          const OriginalSt *ost = static_cast<VarMeExpr *>(lhs)->ost;
+          if (!ost->IsSymbol()) {
+            break;
+          }
+          MIRSymbol *retSym = ost->GetMIRSymbol();
+
+          // if retSym is null, that means we do not need decref
+          // to offset the incref before function return, just break
+          if (!retSym || retSym->IgnoreRC()) {
+            break;
+          }
+
+          // insert localrefvar for decref on ret
+          MeStmt *backup = irMap->CreateAssignMeStmt(GetMeExprForNewTemp(true), lhs, bb);
+          bb->InsertMeStmtAfter(stmt, backup);
+        } else {
+          // introduce a ret and decref on it
+          RegMeExpr *curTemp = GetRegTemp(PTY_ptr);
+          CHECK_FATAL(stmt->GetMustDefList() != nullptr, "null ptr check");
+          stmt->GetMustDefList()->push_back(MustDefMeNode(curTemp, stmt));
+          MeStmt *decrefCall = CreateIntrinsicWithOneArg(kDecRef, stmt, curTemp);
+          bb->InsertMeStmtAfter(stmt, decrefCall);
+        }
+        break;
+      }
+      case OP_icallassigned: {
+        IcallMeStmt *icallassigned = static_cast<IcallMeStmt *>(stmt);
+        const TyIdx retTyidxIdx = icallassigned->retTyIdx;
+        CHECK_FATAL(retTyidxIdx != TyIdx(0), "retTyIdx is invalid in RCLowering::FastRCLower");
+        MIRType *rettype = GlobalTables::GetTypeTable().GetTypeFromTyIdx(retTyidxIdx);
+        CHECK_FATAL(rettype != nullptr, "rettype is nullptr");
+        if (rettype->GetPrimType() != PTY_ref) {
+          break;
+        }
+        CHECK_FATAL(icallassigned->mustDefList.size() <= 1, "multiple return values?");
+        if (icallassigned->mustDefList.size() == 1) {
+          MIRFunction *mirfunction = func->mirFunc;
+          MeExpr *lhs = icallassigned->mustDefList.front().lhs;
+          if (lhs->meOp != kMeOpVar) {
+            break;
+          }
+          const OriginalSt *ost = static_cast<VarMeExpr *>(lhs)->ost;
+          if (!ost->IsSymbol()) {
+            break;
+          }
+          MIRSymbol *retSym = ost->GetMIRSymbol();
+
+          // if retSym is null, that means we do not need decref
+          // to offset the incref before function return, just break
+          if (!retSym || retSym->IgnoreRC()) {
+            break;
+          }
+
+          // insert localrefvar for decref on ret
+          MeStmt *backup = irMap->CreateAssignMeStmt(GetMeExprForNewTemp(true), lhs, bb);
+          bb->InsertMeStmtAfter(stmt, backup);
+        } else {
+          // introduce a ret and decref on it
+          RegMeExpr *curTemp = GetRegTemp(PTY_ptr);
+          CHECK_FATAL(stmt->GetMustDefList() != nullptr, "null ptr check");
+          stmt->GetMustDefList()->push_back(MustDefMeNode(curTemp, stmt));
+          MeStmt *decrefCall = CreateIntrinsicWithOneArg(kDecRef, stmt, curTemp);
+          bb->InsertMeStmtAfter(stmt, decrefCall);
+        }
+        break;
+      }
+      case OP_intrinsiccall: {
+        IntrinsiccallMeStmt *intrinsicCall = static_cast<IntrinsiccallMeStmt *>(stmt);
+        if (intrinsicCall->intrinsic == INTRN_MPL_CLEANUP_LOCALREFVARS) {
+          bb->RemoveMeStmt(stmt);
+        }
+        break;
+      }
+      case OP_intrinsiccallwithtypeassigned:
+      case OP_intrinsiccallassigned:
+      case OP_customcallassigned: {
+        CHECK_FATAL(0, "opcode not supported in fastpath yet");
+        break;
+      }
+      default: {
+        break;
+      }
+    }  // end of switch
+  }
+  for (auto iter : exceptionAllocsites) {
+    MeStmt *stmt = iter.second;
+    MeStmt *backup =
+      irMap->CreateAssignMeStmt(GetMeExprForNewTemp(true), static_cast<DassignMeStmt *>(stmt)->lhs, stmt->bb);
+    stmt->bb->InsertMeStmtAfter(stmt, backup);
+  }
+}
+
 AnalysisResult *MeDoRCLowering::Run(MeFunction *func, MeFuncResultMgr *m, ModuleResultMgr *mrm) {
   KlassHierarchy *kh = static_cast<KlassHierarchy *>(mrm->GetAnalysisResult(MoPhase_CHA, &func->mirModule));
   RCLowering rcLowering(func, kh);
@@ -868,6 +1150,21 @@ AnalysisResult *MeDoRCLowering::Run(MeFunction *func, MeFuncResultMgr *m, Module
     string("ref_2FReference_3B_7C_3Cinit_3E_7C_28") + NameMangler::kJavaLangObjectStr +
     NameMangler::kJavaLang + string("ref_2FReferenceQueue_3B_29V");
   rcLowering.rcCheckReferent = (funcname == referenceString);
+
+  bool fastLowering = func->mirFunc->GetAttr(FUNCATTR_rclocalunowned);
+  if (fastLowering) {
+    for (BB *bb : func->bbVec) {
+      if (bb != nullptr) {
+        rcLowering.FastRCLower(bb);
+      }
+    }
+
+    if (DEBUGFUNC(func)) {
+      LogInfo::MapleLogger() << "\n============== After RC LOWERING =============" << endl;
+      func->irMap->Dump();
+    }
+    return nullptr;
+  }
 
   // preparation steps before going through basicblocks
   size_t bitsSize = mirfunction->symTab->GetSymbolTableSize();

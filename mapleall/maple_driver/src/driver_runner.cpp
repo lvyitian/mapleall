@@ -408,6 +408,7 @@ void DriverRunner::ProcessMpl2mplAndMeAndMplCgPhases(const std::string &interimO
         thecg.emitter_->EmitMplPersonalityV0();
       } else if (theModule->srcLang == kSrcLangCPlusPlus) {
         thecg.emitter_->EmitGxxPersonalityV0();
+        thecg.emitter_->EmitInitArraySection();
       }
       thecg.emitter_->CloseOutput();
     } else {

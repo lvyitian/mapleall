@@ -16,7 +16,7 @@
 // {Index, mplname, do_simplify, nativename}
 // inline,
 //{kUknown, "", false, "", NULL},
-#ifndef __OPENJDK__
+#if !defined __OPENJDK__ || __OPENJDK__ == 2
 {kStringCharAt, std::string(NameMangler::kJavaLangStringStr)+NameMangler::kNameSplitterStr+std::string("charAt_7C_28I_29C"), true, ""},
 {kStringEquals, std::string(NameMangler::kJavaLangStringStr)+NameMangler::kNameSplitterStr+std::string("equals_7C_28")+NameMangler::kJavaLangObjectStr+std::string("_29Z"), true, ""},
 {kStringGetChars, std::string(NameMangler::kJavaLangStringStr)+NameMangler::kNameSplitterStr+std::string("getChars_7C_28IIACI_29V"), true, ""},
@@ -24,7 +24,8 @@
 
 // call native func directly.
 {kObjectClone, std::string(NameMangler::kJavaLangObjectStr)+NameMangler::kNameSplitterStr+std::string("clone_7C_28_29")+NameMangler::kJavaLangObjectStr, false, std::string("Native_java_lang_Object_clone_Ljava_lang_Object__")},
-#ifndef __OPENJDK__
+
+#if !defined __OPENJDK__ || __OPENJDK__ == 2
 {kStringCompareTo, std::string(NameMangler::kJavaLangStringStr)+NameMangler::kNameSplitterStr+std::string("compareTo_7C_28")+NameMangler::kJavaLangStringStr+std::string("_29I"), false, "Native_java_lang_String_compareTo__Ljava_lang_String_2"},
 {kStringGetCharsNoCheck, std::string(NameMangler::kJavaLangStringStr)+NameMangler::kNameSplitterStr+"getCharsNoCheck_7C_28IIACI_29V", false, "Native_java_lang_String_getCharsNoCheck__II_3CI"},
 {kStringNewStringFromChars, std::string(NameMangler::kJavaLangStringfactoryStr)+NameMangler::kNameSplitterStr+std::string("newStringFromChars_7C_28IIAC_29")+NameMangler::kJavaLangStringStr, false, "Native_java_lang_StringFactory_newStringFromChars__II_3C"},
@@ -38,6 +39,18 @@
 {kStringFastIndexOf, std::string(NameMangler::kJavaLangStringStr)+NameMangler::kNameSplitterStr+std::string("fastIndexOf_7C_28II_29I"), false, "Native_java_lang_String_fastIndexOf__II"},
 #endif
 
+{kSystemArraycopy, "Ljava_2Flang_2FSystem_3B_7Carraycopy_7C_28Ljava_2Flang_2FObject_3BILjava_2Flang_2FObject_3BII_29V", false, "Native_java_lang_System_arraycopy__Ljava_lang_Object_2ILjava_lang_Object_2II"},
+{kSystemArraycopyChar, "Ljava_2Flang_2FSystem_3B_7CarraycopyCharUnchecked_7C_28ACIACII_29V", false, "Native_java_lang_System_arraycopyCharUnchecked___3CI_3CII"},
+{kSystemArraycopyByte, "Ljava_2Flang_2FSystem_3B_7CarraycopyByteUnchecked_7C_28ABIABII_29V", false, "Native_java_lang_System_arraycopyByteUnchecked___3BI_3BII"},
+{kSystemArraycopyShort, "Ljava_2Flang_2FSystem_3B_7CarraycopyShortUnchecked_7C_28ASIASII_29V", false, "Native_java_lang_System_arraycopyShortUnchecked___3SI_3SII"},
+{kSystemArraycopyInt, "Ljava_2Flang_2FSystem_3B_7CarraycopyIntUnchecked_7C_28AIIAIII_29V", false, "Native_java_lang_System_arraycopyIntUnchecked___3II_3III"},
+{kSystemArraycopyLong, "Ljava_2Flang_2FSystem_3B_7CarraycopyLongUnchecked_7C_28AJIAJII_29V", false, "Native_java_lang_System_arraycopyLongUnchecked___3JI_3JII"},
+{kSystemArraycopyFloat, "Ljava_2Flang_2FSystem_3B_7CarraycopyFloatUnchecked_7C_28AFIAFII_29V", false, "Native_java_lang_System_arraycopyFloatUnchecked___3FI_3FII"},
+{kSystemArraycopyDouble, "Ljava_2Flang_2FSystem_3B_7CarraycopyDoubleUnchecked_7C_28ADIADII_29V", false, "Native_java_lang_System_arraycopyDoubleUnchecked___3DI_3DII"},
+{kSystemArraycopyBoolean, "Ljava_2Flang_2FSystem_3B_7CarraycopyBooleanUnchecked_7C_28AZIAZII_29V", false, "Native_java_lang_System_arraycopyBooleanUnchecked___3ZI_3ZII"},
+
 {kThreadCurrentthread, std::string(NameMangler::kJavaLang)+"Thread_3B_7CcurrentThread_7C_28_29Ljava_2Flang_2FThread_3B", false, "Native_Thread_currentThread"},
+
+{kArrayIterNext, "Ljava_2Futil_2FIterator_3B_7Cnext_7C_28_29Ljava_2Flang_2FObject_3B", true, ""},
 
 {kObjectsRequireNonNull, NameMangler::kJavaUtil + std::string("Objects_3B_7CrequireNonNull_7C_28")+NameMangler::kJavaLangObjectStr+NameMangler::kRightBracketStr+NameMangler::kJavaLangObjectStr, true, ""},

@@ -48,20 +48,24 @@ int main(int argc, char **argv) {
       "usage: ./irbuild [-b] [-dumpfunc=<string>] [-srclang=<string>] <any number of .mplt, .mpl, .bpl or .tmpl files>\n"
       "    By default, the files are converted to corresponding ascii format.\n"
       "    If -b is specified, output is binary format instead.\n"
+      "    If -fold is specified, constant folding is performed before outputing the IR.\n"
       "    If -dumpfunc= is specified, only functions with name containing the string is output.\n"
       "    -dumpfunc= can be specified multiple times to give multiple strings.\n"
-      "    -srclang specifies the src language of the mpl files come from. \n"
+      "    -srclang specifies the source language that produces the mpl file. \n"
       "    Each output file has .irb added after its file stem.\n");
     exit(1);
   }
   std::vector<maple::MIRModule *> themodule(argc, nullptr);
   bool useBinary = false;
+  bool doConstantFold = false;
   MIRSrcLang srcLang = kSrcLangUnknown;
   // process the options which must come first
   maple::int32 i = 1;
   while (argv[i][0] == '-' ) {
     if (argv[i][1] == 'b' && argv[i][2] == '\0') {
       useBinary = true;
+    } else if (strcmp(argv[i], "-fold") == 0) {
+      doConstantFold = true;
     } else if (strncmp(argv[i], "-dumpfunc=", 10) == 0 && strlen(argv[i]) > 10) {
       std::string funcName(&argv[i][10]);
       dumpFuncSet.insert(funcName);
@@ -106,7 +110,9 @@ int main(int argc, char **argv) {
         return 1;
       }
     }
-    /* ConstantFoldModule(themodule[i]); */
+    if (doConstantFold) {
+      ConstantFoldModule(themodule[i]);
+    }
 
     // output the file
     if (!useBinary) {

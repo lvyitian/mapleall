@@ -725,7 +725,7 @@ Operand *X86CGFunc::SelectIread(base_node_t *parent, IreadNode *expr) {
   return result;
 }
 
-Operand *X86CGFunc::SelectIntconst(MIRIntConst *intconst) {
+Operand *X86CGFunc::SelectIntconst(MIRIntConst *intconst, PrimType pty) {
   return GetOrCreateImmOperand(intconst->value, GetPrimTypeSize(intconst->type_->GetPrimType()) * 8, false);
 }
 

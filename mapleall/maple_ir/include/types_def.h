@@ -51,6 +51,8 @@ class StIdx {  // scope nesting level + symbol table index
  public:
   StIdx(): fullIdx(0) {}
 
+  StIdx(uint32 fidx): fullIdx(fidx) {}
+
   StIdx(uint32 level, uint32 i) {
     fullIdx = (i << 8) | (level & 0xffu);
   }

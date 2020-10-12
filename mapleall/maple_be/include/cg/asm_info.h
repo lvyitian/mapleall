@@ -73,6 +73,8 @@ class Asminfo {
     asm_cmnt = "\t#\t";
 #elif TARGARM
     asm_cmnt = "\t@\t";
+#elif TARGRISCV64
+    asm_cmnt = "\t#\t";
 #else
     asm_cmnt = "\t//\t";
 #endif

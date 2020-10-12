@@ -29,11 +29,13 @@ The directory structure as follows:
             doc          : MapleIR documentation
             mapleall     : maple compiler source
             maple_engine : maple engine opcode header file
-            tools        : ninja gn tools
+            bin/ast2mpl  : C frontend: clangAST to MapleIR
+            tools        : ninja, gn and opencc for C frontend
+                         : downloaded by setup_tools.sh
             Makefile     : makefile
             build        : environment set up and build files
             BUILD.gn     : gn build file
-            bin          : created during make install
+            bin          : maple executables during make install
             out          : created during make
 ```
 
@@ -44,7 +46,8 @@ The directory structure as follows:
 
 ### Build compiler
 1. cd $MAPLE_ROOT
-2. choose {TARGET, VERSION} combo from four flavors {arm/ark, release/debug}
+2. choose {TARGET, VERSION} combo from four flavors {arm/engine(or ark), release/debug}
+   where arm for arm64 target .s and engine (or ark) for maple engine target .s
 3. source envsetup.sh TARGET VERSION
 4. make
 5. make install
@@ -53,6 +56,12 @@ The directory structure as follows:
 maple excutables are in $MAPLE_ROOT/bin directory
 
 ### Usage
+refer to examples/ for C language examples
+1. cd examples/C
+2. ./maple_with_ast2mpl.sh
+3. ./maple_with_whirl2mpl.sh
+
+
 refer to maple_engine git repository for java2asm.sh and asm2so.sh scripts
 1. java2asm.sh: .java -> .mpl -> .s
 2. asm2so.sh  : .s -> .so
@@ -60,7 +69,7 @@ refer to maple_engine git repository for java2asm.sh and asm2so.sh scripts
 ### Possible issues
 You might need to install required packages like:
 ```
-        sudo apt-get -y install clang
-        sudo apt-get -y install libelf-dev
-        sudo apt-get -y install libssl-dev
+        sudo apt-get install clang
+        sudo apt-get install libelf-dev
+        sudo apt-get install libssl-dev
 ```

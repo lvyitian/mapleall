@@ -146,7 +146,7 @@ DEF_MIR_INTRINSIC(MCCStringAppendStringString,\
 DEF_MIR_INTRINSIC(MCCStringEqualsNotallCompress,\
                   MCC_String_Equals_NotallCompress, INTRNNOSIDEEFFECT, kArgTyU1, kArgTyPtr, kArgTyPtr)
 DEF_MIR_INTRINSIC(MCCJavaInstanceOf,\
-                  MCC_JavaInstanceOf, INTRNNOSIDEEFFECT, kArgTyU1, kArgTyPtr, kArgTyPtr)
+                  MCC_JavaInstanceOf, INTRNNOSIDEEFFECT, kArgTyI32, kArgTyPtr, kArgTyPtr)
 DEF_MIR_INTRINSIC(MCCReflectCheckCastingArray,\
                   MCC_Reflect_Check_Casting_Array, INTRNNOSIDEEFFECT, kArgTyVoid,  kArgTyPtr, kArgTyPtr, kArgTyI32, kArgTyPtr)
 DEF_MIR_INTRINSIC(MCCThrowStringIndexOutOfBoundsException,\
@@ -164,25 +164,27 @@ DEF_MIR_INTRINSIC(MCCPreNativeCall,\
 DEF_MIR_INTRINSIC(MCCPostNativeCall,\
                   MCC_PostNativeCall, INTRNNOSIDEEFFECT, kArgTyVoid, kArgTyPtr)
 DEF_MIR_INTRINSIC(MCCCannotFindNativeMethod,\
-                  MCC_CannotFindNativeMethod, INTRNNOSIDEEFFECT, kArgTyPtr, kArgTyPtr)
-//DEF_MIR_INTRINSIC(MCCJavaArrayFill,\
-//                  MCC_JavaArrayFill, INTRNNOSIDEEFFECT, kArgTyVoid, kArgTyPtr, kArgTyPtr, kArgTyI32)
+                  MCC_CannotFindNativeMethod, INTRNNOSIDEEFFECT, kArgTyVoid, kArgTyPtr)
+/*DEF_MIR_INTRINSIC(MCCJavaArrayFill,\
+                  MCC_JavaArrayFill, INTRNNOSIDEEFFECT, kArgTyVoid, kArgTyPtr, kArgTyPtr, kArgTyI32)
+                  */
 DEF_MIR_INTRINSIC(MCCStringAppendStringInt,\
                   MCC_StringAppend_StringInt, INTRNNOSIDEEFFECT, kArgTyPtr, kArgTyPtr, kArgTyI32)
 DEF_MIR_INTRINSIC(MCCDecodeReference,\
                   MCC_DecodeReference, INTRNNOSIDEEFFECT, kArgTyPtr, kArgTyPtr)
 DEF_MIR_INTRINSIC(MCCCannotFindNativeMethodA,\
-                  MCC_CannotFindNativeMethod_A, INTRNNOSIDEEFFECT, kArgTyPtr, kArgTyPtr)
+                  MCC_CannotFindNativeMethod_A, INTRNNOSIDEEFFECT, kArgTyVoid, kArgTyPtr)
 DEF_MIR_INTRINSIC(MCCCannotFindNativeMethodS,\
-                  MCC_CannotFindNativeMethod_S, INTRNNOSIDEEFFECT, kArgTyPtr, kArgTyPtr)
+                  MCC_CannotFindNativeMethod_S, INTRNNOSIDEEFFECT, kArgTyVoid, kArgTyPtr)
 DEF_MIR_INTRINSIC(MCCGetCurrentClassLoader,\
                   MCC_GetCurrentClassLoader, INTRNNOSIDEEFFECT, kArgTyPtr, kArgTyPtr)
 DEF_MIR_INTRINSIC(MCCStringAppendStringJcharString,\
                   MCC_StringAppend_StringJcharString, INTRNNOSIDEEFFECT, kArgTyPtr, kArgTyPtr, kArgTyU16,  kArgTyPtr)
-//DEF_MIR_INTRINSIC(MCCJavaPolymorphicCall,\
-//                  MCC_JavaPolymorphicCall, INTRNNOSIDEEFFECT, kArgTyU64, kArgTyPtr, kArgTyPtr, kArgTyI32, kArgTyPtr)
-//DEF_MIR_INTRINSIC(MCCGetClass,\
-//                  MCC_GetClass, INTRNNOSIDEEFFECT, kArgTyPtr, kArgTyPtr, kArgTyPtr)
+/*DEF_MIR_INTRINSIC(MCCJavaPolymorphicCall,\
+                  MCC_JavaPolymorphicCall, INTRNNOSIDEEFFECT, kArgTyU64, kArgTyPtr, kArgTyPtr, kArgTyI32, kArgTyPtr)
+DEF_MIR_INTRINSIC(MCCGetClass,\
+                  MCC_GetClass, INTRNNOSIDEEFFECT, kArgTyPtr, kArgTyPtr, kArgTyPtr)
+                  */
 DEF_MIR_INTRINSIC(MCCNewPermanentObject,\
                   MCC_NewPermanentObject, INTRNNOSIDEEFFECT, kArgTyA64, kArgTyA64)
 DEF_MIR_INTRINSIC(MCCNewPermanentArray,\
