@@ -114,7 +114,7 @@ class ArkCGFunc : public CGFunc {
   Operand *SelectAddroffunc(AddroffuncNode *expr) override { return nullptr; }
   Operand *SelectAddroflabel(AddroflabelNode *expr) override { return nullptr; }
   Operand *SelectIread(BaseNode *parent, IreadNode *expr) override { return nullptr; }
-  Operand *SelectIntconst(MIRIntConst *floatconst) override { return nullptr; }
+  Operand *SelectIntconst(MIRIntConst *intconst, PrimType pty) override { return nullptr; }
   Operand *SelectVectorIntconst(MIRVectorIntConst *vintconst) override { return nullptr; }
   Operand *SelectFloatconst(MIRFloatConst *floatconst) override { return nullptr; }
   Operand *SelectDoubleconst(MIRDoubleConst *doubleconst) override { return nullptr; }
@@ -125,6 +125,7 @@ class ArkCGFunc : public CGFunc {
   Operand *SelectShift(BinaryNode *node, Operand *opnd0, Operand *opnd1) override { return nullptr; }
   Operand *SelectRem(BinaryNode *node, Operand *opnd0, Operand *opnd1) override { return nullptr; }
   Operand *SelectSub(BinaryNode *node, Operand *opnd0, Operand *opnd1) override { return nullptr; }
+  Operand *SelectIntrinOp(IntrinsicopNode *intrinopnode) override { return nullptr; }
   Operand *CreateImmOperand(PrimType primType, int64 val) override { return nullptr; }
   Operand *CreateZeroOperand(PrimType primType) override { return nullptr; }
   RegOperand *GetOrCreateFramePointerRegOperand() override { return nullptr; }

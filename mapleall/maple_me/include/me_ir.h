@@ -103,7 +103,7 @@ class MeExpr {
     return nullptr;
   }
   virtual void SetOpnd(MeExpr *x, uint32 i) {}
-  virtual MIRType *GetType(SSATab *ssaTab) const { return nullptr; }
+  virtual MIRType *GetType() const { return nullptr; }
 
   void UpdateDepth();              // update the depth, suppose all sub nodes have already depth done.
   MeExpr *GetAddrExprBase();       // get the base of the address expression
@@ -210,7 +210,7 @@ class VarMeExpr : public ScalarMeExpr {
   bool IsPureLocal(SSATab *, const MIRFunction *);
   bool IsZeroVersion();
   BB *GetDefByBBMeStmt(Dominance *, MeStmt *&);
-  MIRType *GetType(SSATab *ssaTab) const {
+  MIRType *GetType() const {
     return GlobalTables::GetTypeTable().GetTypeFromTyIdx(ost->tyIdx);
   }
   VarMeExpr *ResolveVarMeValue();
@@ -469,6 +469,10 @@ class AddroffuncMeExpr : public MeExpr {
   size_t GetHashIndex() const {
     return puIdx << 5;
   }
+  MIRType *GetType() const {
+    MIRFunction *func = GlobalTables::GetFunctionTable().funcTable[puIdx];
+    return GlobalTables::GetTypeTable().GetOrCreatePointerType(func->funcType, PTY_ptr);
+  }
 };
 
 class AddroflabelMeExpr : public MeExpr {
@@ -575,7 +579,6 @@ class OpMeExpr : public MeExpr {
     }
     return nullptr;
   }
-  MIRType *GetType(SSATab *ssaTab) const { return GetType(); }
   bool StrengthReducible();
   int64 SRMultiplier();
 
@@ -655,7 +658,6 @@ class IvarMeExpr : public MeExpr {
     }
     return GlobalTables::GetTypeTable().GetTypeFromTyIdx(ptrtype->GetPointedTyidxWithFieldId(fieldID));
   }
-  MIRType *GetType(SSATab *ssaTab) const { return GetType(); }
 
   size_t GetHashIndex() const {
     return static_cast<uint32>(OP_iread) + fieldID + (static_cast<uint32>(base->exprID) << 4);

@@ -23,6 +23,7 @@
 #include "cg_bb.h"
 #include "reg_alloc.h"
 #include "cfi.h"
+#include "dbg.h"
 #include "ebo.h"
 #include "live_analysis.h"
 #include "loop.h"
@@ -318,11 +319,18 @@ class CGFunc {
   Operand *HandleAddroffunc(BaseNode *parent, AddroffuncNode *expr);
   Operand *HandleAddroflabel(BaseNode *parent, AddroflabelNode *expr);
   Operand *HandleIread(BaseNode *parent, IreadNode *expr);
-  Operand *HandleConstval(BaseNode *expr);
+  Operand *HandleConstval(BaseNode *expr, PrimType pty);
   Operand *HandleConststr(BaseNode *expr);
   Operand *HandleConststr16(BaseNode *expr);
   void CreateStartEndLabel();
   void DetermineReturnTypeofCall();
+  void PatchLongBranch();
+  virtual int32 MaxCondBranchDistance() {
+    return INT_MAX;
+  }
+  virtual void InsertJumpPad(Insn *) {
+    return;
+  }
   // handle rc reset
   virtual void HandleRCCall(bool begin, MIRSymbol *retRef = nullptr) = 0;
   virtual void HandleRetCleanup(NaryStmtNode *retnode) = 0;
@@ -343,6 +351,7 @@ class CGFunc {
   virtual void SelectIntrinCall(IntrinsiccallNode *intrinsiccallnode) = 0;
   virtual void SelectMembar(StmtNode *membar) = 0;
   virtual void SelectComment(CommentNode *comment) = 0;
+  virtual Operand *SelectIntrinOp(IntrinsicopNode *ntrinsicopnode) = 0;
   virtual void HandleJavaCatch() {
     return;
   }
@@ -355,7 +364,7 @@ class CGFunc {
   virtual Operand *SelectAddroffunc(AddroffuncNode *expr) = 0;
   virtual Operand *SelectAddroflabel(AddroflabelNode *expr) = 0;
   virtual Operand *SelectIread(BaseNode *parent, IreadNode *expr) = 0;
-  virtual Operand *SelectIntconst(MIRIntConst *floatconst) = 0;
+  virtual Operand *SelectIntconst(MIRIntConst *floatconst, PrimType pty) = 0;
   virtual Operand *SelectVectorIntconst(MIRVectorIntConst *vintconst) = 0;
   virtual Operand *SelectFloatconst(MIRFloatConst *floatconst) = 0;
   virtual Operand *SelectDoubleconst(MIRDoubleConst *doubleconst) = 0;
@@ -467,6 +476,14 @@ class CGFunc {
   }
 
   virtual Operand *SelectBnot(UnaryNode *node, Operand *opnd0) {
+    return nullptr;
+  }
+
+  virtual Operand *SelectSext(ExtractbitsNode *node, Operand *opnd0) {
+    return nullptr;
+  }
+
+  virtual Operand *SelectZext(ExtractbitsNode *node, Operand *opnd0) {
     return nullptr;
   }
 
@@ -710,6 +727,10 @@ class CGFunc {
   }
 #endif
 
+  Operand *CreateDbgImmOperand(int64 val) {
+    return memPool->New<mpldbg::ImmOperand>(val);
+  }
+
   inline uint32_t NumBBs() const {
     return bbcnt;
   }
@@ -740,12 +761,15 @@ class CGFunc {
     return newBB;
   }
 
- protected:
   inline BB *CreateNewBB() {
     return memPool->New<BB>(bbcnt++, funcscope_allocator_);
   }
 
+ protected:
   void SplitCallBB(BB *fromBB) {
+    if (fromBB == curbb) {
+      return;
+    }
     Insn *call = nullptr;
     FOR_BB_INSNS_REV(insn, fromBB) {
       if (insn->IsCall()) {

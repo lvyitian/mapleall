@@ -93,6 +93,7 @@ enum {
   kBinLocalWordsTypeTagged = 64,
   kBinLocalWordsRefCounter = 65,
   kBinKindConstAddrofLabel = 66,
+  kBinKindConstAddrofLocal = 67,
 };
 
 // this value is used to check wether a file is a binary mplt file

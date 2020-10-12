@@ -24,9 +24,8 @@ include_directories = [
     "${MAPLEALL_ROOT}/maple_ipa/include",
     "${MAPLEALL_ROOT}/maple_ir/include",
     "${MAPLEALL_ROOT}/mpl2mpl/include",
-    "${MAPLE_ROOT}/huawei_secure_c/include",
+    "${HUAWEI_SECURE_C_ROOT}/include",
     "${MAPLEALL_ROOT}/maple_phase/include",
-    "${MAPLEALL_ROOT}/mapleradar/include",
     "${MAPLEALL_ROOT}/maple_driver/include",
 ]
 
@@ -126,6 +125,6 @@ executable("mplme"){
         ":libmplmewpo",
         "${MAPLEALL_ROOT}/mempool:libmempool",
         "${MAPLEALL_ROOT}/maple_util:libmplutil",
-        "${MAPLE_ROOT}/huawei_secure_c:libHWSecureC",
+        "${HUAWEI_SECURE_C_ROOT}:libHWSecureC",
     ]
 }

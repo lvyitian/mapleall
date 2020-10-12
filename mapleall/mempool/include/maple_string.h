@@ -24,7 +24,7 @@
 #define MAPLESTRING_H
 #include "mempool.h"
 #include <cstring>
-#include "../../../huawei_secure_c/include/securec.h"
+#include "securec.h"
 #include "../../maple_util/include/mpl_logging.h"
 
 namespace maple {

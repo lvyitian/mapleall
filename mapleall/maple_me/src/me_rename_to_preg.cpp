@@ -208,7 +208,7 @@ void SSARename2Preg::Rename2PregExpr(MeStmt *mestmt, MeExpr *meexpr) {
     case kMeOpIvar:
     case kMeOpOp:
     case kMeOpNary: {
-      for (uint32 i = 0; i < meexpr->NumMeExprOpnds(); i++) {
+      for (int32 i = 0; i < meexpr->NumMeExprOpnds(); i++) {
         Rename2PregExpr(mestmt, meexpr->GetOpnd(i));
       }
       break;
@@ -310,7 +310,6 @@ void SSARename2Preg::RunSelf() {
     if (mebb == nullptr) {
       continue;
     }
-    MeStmt *nextstmt = nullptr;
     // rename the phi'ss
     if (DEBUGFUNC(func)) {
       LogInfo::MapleLogger() << " working on phi part of BB" << mebb->id.idx << endl;
@@ -328,7 +327,6 @@ void SSARename2Preg::RunSelf() {
       LogInfo::MapleLogger() << " working on stmt part of BB" << mebb->id.idx << endl;
     }
     for (auto stmt : mebb->meStmtList) {
-      nextstmt = stmt->next;
       Rename2PregStmt(stmt);
     }
   }

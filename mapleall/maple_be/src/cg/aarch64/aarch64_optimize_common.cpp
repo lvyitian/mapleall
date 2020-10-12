@@ -21,7 +21,7 @@
 namespace maplebe {
 
 bool AArch64InsnVisitor::ModifyBrInsn(maple::LabelIdx targetLabel, BB *&curbb) {
-  int targetIdx = GetJumpTargetIdx(curbb->lastinsn);
+  int targetIdx = curbb->lastinsn->GetJumpTargetIdx();
   MOperator flippedOp;
   try {
     flippedOp = FlipConditionOp(curbb->lastinsn->mop_, targetIdx);
@@ -106,7 +106,20 @@ MOperator AArch64InsnVisitor::FlipConditionOp(MOperator originalOp, int &targetI
 }
 
 void AArch64InsnVisitor::ModifyJumpTarget(Operand *targetOperand, BB *&bb) {
-  int targetIdx = GetJumpTargetIdx(bb->lastinsn);
+  if (bb->GetKind() == BB::kBBIgoto) {
+    bool modified = false;
+    for (Insn *insn = bb->lastinsn; insn != nullptr; insn = insn->prev) {
+      if (insn->GetMachineOpcode() == MOP_adrp_label) {
+        maple::LabelIdx labidx = static_cast<LabelOperand *>(targetOperand)->labidx_;
+        ImmOperand *immopnd = static_cast<AArch64CGFunc *>(GetCGFunc())->CreateImmOperand(labidx, 8, false);
+        insn->SetOperand(1, immopnd);
+        modified = true;
+      }
+    }
+    CHECK_FATAL(modified, "ModifyJumpTarget: Could not change jump target");
+    return;
+  }
+  int targetIdx = bb->lastinsn->GetJumpTargetIdx();
   bb->lastinsn->SetOperand(targetIdx, targetOperand);
 }
 
@@ -116,13 +129,13 @@ void AArch64InsnVisitor::ModifyJumpTarget(maple::LabelIdx targetLabel, BB *&bb) 
 }
 
 void AArch64InsnVisitor::ModifyJumpTarget(BB *newTarget, BB *&bb) {
-  int targetIdx = GetJumpTargetIdx(newTarget->lastinsn);
+  int targetIdx = newTarget->lastinsn->GetJumpTargetIdx();
   Operand *targetOperand = newTarget->lastinsn->GetOperand(targetIdx);
   ModifyJumpTarget(targetOperand, bb);
 }
 
 Insn *AArch64InsnVisitor::CreateGotoInsn(Insn *condBrInsn) {
-  int targetIdx = GetJumpTargetIdx(condBrInsn);
+  int targetIdx = condBrInsn->GetJumpTargetIdx();
   Operand *target = condBrInsn->opnds[targetIdx];
   return new AArch64Insn(MOP_xuncond, target);
 }
@@ -170,65 +183,12 @@ Insn *AArch64InsnVisitor::CloneInsn(Insn *originalInsn) {
 
 /**
  * Precondition: The given insn is a jump instruction.
- * Get the jump target label operand index from the given instruction.
- * Note: MOP_xbr is a jump instruction, but the target is unknown at compile time,
- * because a register instead of label. So we don't take it as a branching instruction.
- */
-int AArch64InsnVisitor::GetJumpTargetIdx(Insn *insn) {
-  int operandIdx = 0;
-  MOperator mop = insn->GetMachineOpcode();
-
-  switch (mop) {
-    // unconditional jump
-    case MOP_xuncond: {
-      operandIdx = 0;
-      break;
-    }
-    // conditional jump
-    case MOP_bmi:
-    case MOP_bvc:
-    case MOP_bls:
-    case MOP_blt:
-    case MOP_ble:
-    case MOP_blo:
-    case MOP_beq:
-    case MOP_bpl:
-    case MOP_bhs:
-    case MOP_bvs:
-    case MOP_bhi:
-    case MOP_bgt:
-    case MOP_bge:
-    case MOP_bal:
-    case MOP_bne:
-    case MOP_wcbz:
-    case MOP_xcbz:
-    case MOP_wcbnz:
-    case MOP_xcbnz: {
-      operandIdx = 1;
-      break;
-    }
-    case MOP_wtbz:
-    case MOP_xtbz:
-    case MOP_wtbnz:
-    case MOP_xtbnz: {
-      operandIdx = 2;
-      break;
-    }
-    default:
-      ASSERT(0, "Not a jump insn");
-  }
-
-  return operandIdx;
-}
-
-/**
- * Precondition: The given insn is a jump instruction.
  * Get the jump target label from the given instruction.
  * Note: MOP_xbr is a branching instruction, but the target is unknown at compile time,
  * because a register instead of label. So we don't take it as a branching instruction.
  */
 LabelIdx AArch64InsnVisitor::GetJumpLabel(Insn *insn) {
-  int operandIdx = GetJumpTargetIdx(insn);
+  int operandIdx = insn->GetJumpTargetIdx();
 
   if (dynamic_cast<LabelOperand *>(insn->opnds[operandIdx])) {
     return static_cast<LabelOperand *>(insn->opnds[operandIdx])->labidx_;

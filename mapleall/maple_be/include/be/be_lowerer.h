@@ -111,6 +111,10 @@ class BELowerer {
  public:
   BaseNode *NodeConvert(PrimType mtype, BaseNode *expr);
   BaseNode *LowerIaddrof(const IreadNode *iaddrof);
+  BaseNode *SplitBinaryNodeOpnd1(BinaryNode *bnode, BlockNode *blknode);
+  BaseNode *SplitTernaryNodeResult(TernaryNode *tnode, BaseNode *parent, BlockNode *blknode);
+  bool IsComplexSelect(TernaryNode *tnode, BaseNode *parent, BlockNode *blknode);
+  BaseNode *LowerComplexSelect(TernaryNode *tnode, BaseNode *parent, BlockNode *blknode);
   BaseNode *LowerFarray(ArrayNode *array);
   BaseNode *LowerArray(ArrayNode *array);
   virtual BaseNode *LowerExpr(BaseNode *, BaseNode *, BaseNode *, BlockNode *);
@@ -233,6 +237,7 @@ class BELowerer {
   virtual bool IsIntrinsicCallHandledAtLowerLevel(MIRIntrinsicID intrinsic) {
     return false;
   }
+  virtual bool IsIntrinsicOpHandledAtLowerLevel(MIRIntrinsicID intrinsic) = 0;
 
 };  // class BELowerer
 

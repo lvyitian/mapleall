@@ -221,6 +221,7 @@ void CGFunc::HandleCondbr(CondGotoNode *stmt) {
   // if condnode is not a cmp node, cmp it with zero.
   if (!kOpcodeInfo.IsCompare(condnode->op)) {
     Operand *opnd0 = HandleExpr(stmt, condnode);
+    curbb->SetKind(BB::kBBIf);
     PrimType primType = condnode->primType;
     Operand *zeroopnd = nullptr;
     if (IsPrimitiveInteger(primType)) {
@@ -452,11 +453,11 @@ Operand *CGFunc::HandleIread(BaseNode *parent, IreadNode *ireadnode) {
   return SelectIread(parent, ireadnode);
 }
 
-Operand *CGFunc::HandleConstval(BaseNode *expr) {
+Operand *CGFunc::HandleConstval(BaseNode *expr, PrimType parentPrimType) {
   ConstvalNode *constvalnode = static_cast<ConstvalNode *>(expr);
   MIRConst *mirconst = constvalnode->constVal;
   if (MIRIntConst *mirintconst = dynamic_cast<MIRIntConst *>(mirconst)) {
-    return SelectIntconst(mirintconst);
+    return SelectIntconst(mirintconst, parentPrimType);
   } else if (MIRFloatConst *mirfloatconst = dynamic_cast<MIRFloatConst *>(mirconst)) {
     return SelectFloatconst(mirfloatconst);
   } else if (MIRDoubleConst *mirdoubleconst = dynamic_cast<MIRDoubleConst *>(mirconst)) {
@@ -491,7 +492,13 @@ Operand *CGFunc::HandleExpr(BaseNode *parent, BaseNode *expr) {
       result = HandleRegread(parent, static_cast<RegreadNode *>(expr));
       break;
     case OP_constval:
-      result = HandleConstval(static_cast<BaseNode *>(expr));
+    {
+      if (kOpcodeInfo.IsCompare(parent->op)) {
+        result = HandleConstval(static_cast<BaseNode *>(expr), static_cast<CompareNode*>(parent)->opndType);
+      } else {
+        result = HandleConstval(static_cast<BaseNode *>(expr), parent->primType);
+      }
+    }
       break;
     case OP_conststr:
       result = HandleConststr(static_cast<BaseNode *>(expr));
@@ -635,6 +642,9 @@ Operand *CGFunc::HandleExpr(BaseNode *parent, BaseNode *expr) {
     case OP_cmpg:
       result =
         SelectCmpOp(static_cast<CompareNode *>(expr), HandleExpr(expr, expr->Opnd(0)), HandleExpr(expr, expr->Opnd(1)));
+      break;
+    case OP_intrinsicop:
+      result = SelectIntrinOp(static_cast<IntrinsicopNode *>(expr));
       break;
     case OP_alloca:
       result = SelectAlloca(static_cast<UnaryNode *>(expr), HandleExpr(expr, expr->Opnd(0)));
@@ -930,6 +940,29 @@ void CGFunc::DetermineReturnTypeofCall() {
   }
 }
 
+void CGFunc::PatchLongBranch() {
+  for (BB *bb = firstbb->next; bb; bb = bb->next) {
+    bb->internal_flag1 += bb->prev->internal_flag1;
+  }
+  BB *next;
+  for (BB *bb = firstbb; bb; bb = next) {
+    next = bb->next;
+    if (bb->GetKind() != BB::kBBIf) {
+      continue;
+    }
+    Insn * insn = bb->lastinsn;
+    while (insn->IsImmaterialInsn()) {
+      insn = insn->prev;
+    }
+    LabelIdx labidx = static_cast<LabelOperand *>(insn->GetOperand(insn->GetJumpTargetIdx()))->labidx_;
+    BB *tbb = lab2bbmap[labidx];
+    if ((tbb->internal_flag1 - bb->internal_flag1) < MaxCondBranchDistance()) {
+      continue;
+    }
+    InsertJumpPad(insn);
+  }
+}
+
 #if !TARGARK
 void CGFunc::HandleFunction(void) {
   BlockNode *block = func->body;
@@ -1205,6 +1238,7 @@ void CGFunc::HandleFunction(void) {
   DetermineReturnTypeofCall();
   theCFG->MarkLabelTakenBB();
   theCFG->UnreachCodeAnalysis();
+  PatchLongBranch();
 }
 
 void CGFunc::DumpCFG(void) {

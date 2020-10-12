@@ -301,6 +301,7 @@ int main(int argc, char **argv) {
         thecg.emitter_->EmitMplPersonalityV0();
       } else if (themodule->srcLang == kSrcLangCPlusPlus) {
         thecg.emitter_->EmitGxxPersonalityV0();
+        thecg.emitter_->EmitInitArraySection();
       }
       thecg.emitter_->CloseOutput();
     } else {

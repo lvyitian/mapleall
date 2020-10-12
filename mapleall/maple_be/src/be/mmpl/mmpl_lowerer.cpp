@@ -80,7 +80,7 @@ BaseNode *MmplLowerer::LowerAddrof(AddrofNode *expr) {
   offset += symbol->IsLocal() ? memlayout->sym_alloc_table[symbol->GetStIndex()].offset
                               : globmemlayout->sym_alloc_table[symbol->GetStIndex()].offset;
   return (offset == 0) ? rrn
-                       : mirModule.mirBuilder->CreateExprBinary(OP_add, globaltable.GetTypeFromTyIdx(PTY_a32), rrn,
+                       : mirModule.mirBuilder->CreateExprBinary(OP_add, GlobalTables::GetTypeTable().GetTypeFromTyIdx((TyIdx)PTY_a32), rrn,
                                                                  mirModule.mirBuilder->GetConstInt(offset));
 }
 
@@ -92,7 +92,7 @@ BaseNode *MmplLowerer::LowerDread(AddrofNode *expr) {
     MIRStructType *structty = dynamic_cast<MIRStructType *>(symbol->GetType());
     CHECK_FATAL(structty, "MmplLowerer::LowerDread: non-zero fieldID for non-structure");
     FieldPair thepair = structty->TraverseToField(expr->fieldID);
-    symty = globaltable.GetTypeFromTyIdx(thepair.second.first)->primType;
+    symty = GlobalTables::GetTypeTable().GetTypeFromTyIdx(thepair.second.first)->primType;
     offset = becommon.GetFieldOffset(structty, expr->fieldID).first;
   }
   // allow dread class reference
@@ -112,33 +112,33 @@ BaseNode *MmplLowerer::LowerDread(AddrofNode *expr) {
 }
 
 static MIRType *GetPointedToType(const MIRPtrType *pointerty) {
-  MIRType *atype = globaltable.GetTypeFromTyIdx(pointerty->pointedTyIdx);
+  MIRType *atype = GlobalTables::GetTypeTable().GetTypeFromTyIdx(pointerty->pointedTyIdx);
   if (atype->GetKind() == kTypeArray) {
     MIRArrayType *arraytype = static_cast<MIRArrayType *>(atype);
-    return globaltable.GetTypeFromTyIdx(arraytype->eTyIdx);
+    return GlobalTables::GetTypeTable().GetTypeFromTyIdx(arraytype->eTyIdx);
   }
   if (atype->GetKind() == kTypeFArray || atype->GetKind() == kTypeJArray) {
     MIRFarrayType *farraytype = static_cast<MIRFarrayType *>(atype);
-    return globaltable.GetTypeFromTyIdx(farraytype->elemTyIdx);
+    return GlobalTables::GetTypeTable().GetTypeFromTyIdx(farraytype->elemTyIdx);
   }
-  return globaltable.GetTypeFromTyIdx(pointerty->pointedTyIdx);
+  return GlobalTables::GetTypeTable().GetTypeFromTyIdx(pointerty->pointedTyIdx);
 }
 
 BaseNode *MmplLowerer::LowerIread(IreadNode *expr) {
   int32 offset = 0;
-  MIRType *type = globaltable.GetTypeFromTyIdx(expr->tyIdx);
+  MIRType *type = GlobalTables::GetTypeTable().GetTypeFromTyIdx(expr->tyIdx);
   MIRPtrType *pointerty = static_cast<MIRPtrType *>(type);
   CHECK_FATAL(pointerty, "expect a pointer type at iread node");
   if (expr->fieldID != 0) {
-    MIRStructType *structty = dynamic_cast<MIRStructType *>(globaltable.GetTypeFromTyIdx(pointerty->pointedTyIdx));
+    MIRStructType *structty = dynamic_cast<MIRStructType *>(GlobalTables::GetTypeTable().GetTypeFromTyIdx(pointerty->pointedTyIdx));
     CHECK_FATAL(structty, "SelectIread: non-zero fieldID for non-structure");
     FieldPair thepair = structty->TraverseToField(expr->fieldID);
-    type = globaltable.GetTypeFromTyIdx(thepair.second.first);
+    type = GlobalTables::GetTypeTable().GetTypeFromTyIdx(thepair.second.first);
     offset = becommon.GetFieldOffset(structty, expr->fieldID).first;
   } else {
     type = GetPointedToType(pointerty);
   }
-  BaseNode *ireadoff = mirModule.mirBuilder->CreateExprIreadoff(type->GetPrimType(), offset, expr->uopnd);
+  BaseNode *ireadoff = mirModule.mirBuilder->CreateExprIreadoff(type->GetPrimType(), offset, expr->uOpnd);
   return ireadoff;
 }
 
@@ -150,11 +150,11 @@ void MmplLowerer::LowerAggDassign(BlockNode *newblk, const DassignNode *dsnode) 
     MIRStructType *structty = dynamic_cast<MIRStructType *>(lhssymbol->GetType());
     CHECK_FATAL(structty, "LowerAggDassign: non-zero fieldID for non-structure");
     FieldPair thepair = structty->TraverseToField(dsnode->fieldID);
-    lhsty = globaltable.GetTypeFromTyIdx(thepair.second.first);
+    lhsty = GlobalTables::GetTypeTable().GetTypeFromTyIdx(thepair.second.first);
     lhsoffset = becommon.GetFieldOffset(structty, dsnode->fieldID).first;
   }
-  uint32 lhsalign = becommon.type_align_table[lhsty->tyIdx.idx];
-  uint32 lhssize = becommon.type_size_table[lhsty->tyIdx.idx];
+  uint32 lhsalign = becommon.type_align_table[lhsty->tyIdx.GetIdx()];
+  uint32 lhssize = becommon.type_size_table[lhsty->tyIdx.GetIdx()];
 
   uint32 rhsalign;
   uint32 alignused;
@@ -169,10 +169,10 @@ void MmplLowerer::LowerAggDassign(BlockNode *newblk, const DassignNode *dsnode) 
       MIRStructType *structty = dynamic_cast<MIRStructType *>(rhssymbol->GetType());
       CHECK_FATAL(structty, "SelectDassign: non-zero fieldID for non-structure");
       FieldPair thepair = structty->TraverseToField(rhsdread->fieldID);
-      rhsty = globaltable.GetTypeFromTyIdx(thepair.second.first);
+      rhsty = GlobalTables::GetTypeTable().GetTypeFromTyIdx(thepair.second.first);
       rhsoffset = becommon.GetFieldOffset(structty, rhsdread->fieldID).first;
     }
-    rhsalign = becommon.type_align_table[rhsty->tyIdx.idx];
+    rhsalign = becommon.type_align_table[rhsty->tyIdx.GetIdx()];
     BaseNode *rRrn = ReadregNodeForSymbol(rhssymbol);
     SymbolAlloc &rsymalloc = rhssymbol->IsLocal() ? memlayout->sym_alloc_table[rhssymbol->GetStIndex()]
                                                   : globmemlayout->sym_alloc_table[rhssymbol->GetStIndex()];
@@ -249,20 +249,20 @@ void MmplLowerer::LowerAggDassign(BlockNode *newblk, const DassignNode *dsnode) 
   } else {  // iread
     IreadNode *rhsiread = static_cast<IreadNode *>(dsnode->GetRhs());
     CHECK_FATAL(rhsiread, "LowerAggDassign: illegal rhs for dassign node of structure type");
-    rhsiread->SetOpnd(LowerExpr(rhsiread, rhsiread, rhsiread->uopnd, newblk), 0);
-    MIRType *rhsRdTy = globaltable.GetTypeFromTyIdx(rhsiread->tyIdx);
+    rhsiread->SetOpnd(LowerExpr(rhsiread, rhsiread, rhsiread->uOpnd, newblk), 0);
+    MIRType *rhsRdTy = GlobalTables::GetTypeTable().GetTypeFromTyIdx(rhsiread->tyIdx);
     MIRPtrType *pointerty = static_cast<MIRPtrType *>(rhsRdTy);
     CHECK_FATAL(pointerty, "LowerAggDassign: expect a pointer type at iread node");
     if (rhsiread->fieldID != 0) {
-      MIRStructType *structty = dynamic_cast<MIRStructType *>(globaltable.GetTypeFromTyIdx(pointerty->pointedTyIdx));
+      MIRStructType *structty = dynamic_cast<MIRStructType *>(GlobalTables::GetTypeTable().GetTypeFromTyIdx(pointerty->pointedTyIdx));
       CHECK_FATAL(structty, "LowerAggDassign: non-zero fieldID for non-structure");
       FieldPair thepair = structty->TraverseToField(rhsiread->fieldID);
-      rhsRdTy = globaltable.GetTypeFromTyIdx(thepair.second.first);
+      rhsRdTy = GlobalTables::GetTypeTable().GetTypeFromTyIdx(thepair.second.first);
       rhsoffset = becommon.GetFieldOffset(structty, rhsiread->fieldID).first;
     } else {
       rhsRdTy = GetPointedToType(pointerty);
     }
-    rhsalign = becommon.type_align_table[rhsRdTy->tyIdx.idx];
+    rhsalign = becommon.type_align_table[rhsRdTy->tyIdx.GetIdx()];
     BaseNode *lRrn = ReadregNodeForSymbol(lhssymbol);
     CHECK(lhssymbol->GetStIndex() < memlayout->sym_alloc_table.size() &&
             lhssymbol->GetStIndex() < globmemlayout->sym_alloc_table.size(),
@@ -275,7 +275,7 @@ void MmplLowerer::LowerAggDassign(BlockNode *newblk, const DassignNode *dsnode) 
     for (uint32 i = 0; i < (lhssize / alignused); i++) {
       // generate the load
       loadnode = mirModule.mirBuilder->CreateExprIreadoff(UnsignedPrimType(alignused), rhsoffset + i * alignused,
-                                                           rhsiread->uopnd);
+                                                           rhsiread->uOpnd);
       // generate the store
       iassignoff = mirModule.mirBuilder->CreateStmtIassignoff(
         UnsignedPrimType(alignused), lsymalloc.offset + lhsoffset + i * alignused, lRrn, loadnode);
@@ -291,7 +291,7 @@ void MmplLowerer::LowerAggDassign(BlockNode *newblk, const DassignNode *dsnode) 
       }
       // generate the load
       loadnode = mirModule.mirBuilder->CreateExprIreadoff(UnsignedPrimType(newalignused), rhsoffset + lhssizeCovered,
-                                                           rhsiread->uopnd);
+                                                           rhsiread->uOpnd);
       // generate the store
       iassignoff = mirModule.mirBuilder->CreateStmtIassignoff(
         UnsignedPrimType(newalignused), lsymalloc.offset + lhsoffset + lhssizeCovered, lRrn, loadnode);
@@ -316,7 +316,7 @@ void MmplLowerer::LowerDassign(DassignNode *dsnode, BlockNode *newblk) {
       CHECK_FATAL(structty, "MmplLowerer::LowerDassign: non-zero fieldID for non-structure");
       offset = becommon.GetFieldOffset(structty, dsnode->fieldID).first;
       TyIdx ftyidx = structty->TraverseToField(dsnode->fieldID).second.first;
-      ptypused = globaltable.GetTypeFromTyIdx(ftyidx)->primType;
+      ptypused = GlobalTables::GetTypeTable().GetTypeFromTyIdx(ftyidx)->primType;
     }
     PregIdx spcreg = GetSpecialRegFromSt(symbol);
     if (spcreg == -kSregFp) {
@@ -338,20 +338,20 @@ void MmplLowerer::LowerDassign(DassignNode *dsnode, BlockNode *newblk) {
 
 void MmplLowerer::LowerAggIassign(BlockNode *newblk, IassignNode *iassign) {
   int32 lhsoffset = 0;
-  MIRType *lhsty = globaltable.GetTypeFromTyIdx(iassign->tyIdx);
+  MIRType *lhsty = GlobalTables::GetTypeTable().GetTypeFromTyIdx(iassign->tyIdx);
   MIRPtrType *pointerty = static_cast<MIRPtrType *>(lhsty);
   CHECK_FATAL(pointerty, "LowerAggIassign: expect a pointer type at iassign node");
   if (iassign->fieldID != 0) {
-    MIRStructType *structty = dynamic_cast<MIRStructType *>(globaltable.GetTypeFromTyIdx(pointerty->pointedTyIdx));
+    MIRStructType *structty = dynamic_cast<MIRStructType *>(GlobalTables::GetTypeTable().GetTypeFromTyIdx(pointerty->pointedTyIdx));
     CHECK_FATAL(structty, "LowerAggDassign: non-zero fieldID for non-structure");
     FieldPair thepair = structty->TraverseToField(iassign->fieldID);
-    lhsty = globaltable.GetTypeFromTyIdx(thepair.second.first);
+    lhsty = GlobalTables::GetTypeTable().GetTypeFromTyIdx(thepair.second.first);
     lhsoffset = becommon.GetFieldOffset(structty, iassign->fieldID).first;
   } else {
     lhsty = GetPointedToType(pointerty);
   }
-  uint32 lhsalign = becommon.type_align_table[lhsty->tyIdx.idx];
-  uint32 lhssize = becommon.type_size_table[lhsty->tyIdx.idx];
+  uint32 lhsalign = becommon.type_align_table[lhsty->tyIdx.GetIdx()];
+  uint32 lhssize = becommon.type_size_table[lhsty->tyIdx.GetIdx()];
 
   uint32 rhsalign;
   uint32 alignused;
@@ -366,10 +366,10 @@ void MmplLowerer::LowerAggIassign(BlockNode *newblk, IassignNode *iassign) {
       MIRStructType *structty = dynamic_cast<MIRStructType *>(rhssymbol->GetType());
       CHECK_FATAL(structty, "SelectDassign: non-zero fieldID for non-structure");
       FieldPair thepair = structty->TraverseToField(rhsdread->fieldID);
-      rhsty = globaltable.GetTypeFromTyIdx(thepair.second.first);
+      rhsty = GlobalTables::GetTypeTable().GetTypeFromTyIdx(thepair.second.first);
       rhsoffset = becommon.GetFieldOffset(structty, rhsdread->fieldID).first;
     }
-    rhsalign = becommon.type_align_table[rhsty->tyIdx.idx];
+    rhsalign = becommon.type_align_table[rhsty->tyIdx.GetIdx()];
     BaseNode *rRrn = ReadregNodeForSymbol(rhssymbol);
     CHECK(rhssymbol->GetStIndex() < memlayout->sym_alloc_table.size() &&
             rhssymbol->GetStIndex() < globmemlayout->sym_alloc_table.size(),
@@ -439,27 +439,27 @@ void MmplLowerer::LowerAggIassign(BlockNode *newblk, IassignNode *iassign) {
   } else {  // iread
     IreadNode *rhsiread = static_cast<IreadNode *>(iassign->rhs);
     CHECK_FATAL(rhsiread, "LowerAggIassign: illegal rhs for dassign node of structure type");
-    rhsiread->SetOpnd(LowerExpr(rhsiread, rhsiread, rhsiread->uopnd, newblk), 0);
-    MIRType *rhsRdTy = globaltable.GetTypeFromTyIdx(rhsiread->tyIdx);
+    rhsiread->SetOpnd(LowerExpr(rhsiread, rhsiread, rhsiread->uOpnd, newblk), 0);
+    MIRType *rhsRdTy = GlobalTables::GetTypeTable().GetTypeFromTyIdx(rhsiread->tyIdx);
     MIRPtrType *pointerty = static_cast<MIRPtrType *>(rhsRdTy);
     CHECK_FATAL(pointerty, "LowerAggIassign: expect a pointer type at iread node");
     if (rhsiread->fieldID != 0) {
-      MIRStructType *structty = dynamic_cast<MIRStructType *>(globaltable.GetTypeFromTyIdx(pointerty->pointedTyIdx));
+      MIRStructType *structty = dynamic_cast<MIRStructType *>(GlobalTables::GetTypeTable().GetTypeFromTyIdx(pointerty->pointedTyIdx));
       CHECK_FATAL(structty, "LowerAggIassign: non-zero fieldID for non-structure");
       FieldPair thepair = structty->TraverseToField(rhsiread->fieldID);
-      rhsRdTy = globaltable.GetTypeFromTyIdx(thepair.second.first);
+      rhsRdTy = GlobalTables::GetTypeTable().GetTypeFromTyIdx(thepair.second.first);
       rhsoffset = becommon.GetFieldOffset(structty, rhsiread->fieldID).first;
     } else {
       rhsRdTy = GetPointedToType(pointerty);
     }
-    rhsalign = becommon.type_align_table[rhsRdTy->tyIdx.idx];
+    rhsalign = becommon.type_align_table[rhsRdTy->tyIdx.GetIdx()];
 
     alignused = std::min(lhsalign, rhsalign);
     alignused = std::min(alignused, 4u);  // max alignment is 32-bit
     for (uint32 i = 0; i < (lhssize / alignused); i++) {
       // generate the load
       loadnode = mirModule.mirBuilder->CreateExprIreadoff(UnsignedPrimType(alignused), rhsoffset + i * alignused,
-                                                           rhsiread->uopnd);
+                                                           rhsiread->uOpnd);
       // generate the store
       iassignoff = mirModule.mirBuilder->CreateStmtIassignoff(UnsignedPrimType(alignused), lhsoffset + i * alignused,
                                                                iassign->addrExpr, loadnode);
@@ -475,7 +475,7 @@ void MmplLowerer::LowerAggIassign(BlockNode *newblk, IassignNode *iassign) {
       }
       // generate the load
       loadnode = mirModule.mirBuilder->CreateExprIreadoff(UnsignedPrimType(newalignused), rhsoffset + lhssizeCovered,
-                                                           rhsiread->uopnd);
+                                                           rhsiread->uOpnd);
       // generate the store
       iassignoff = mirModule.mirBuilder->CreateStmtIassignoff(UnsignedPrimType(newalignused),
                                                                lhsoffset + lhssizeCovered, iassign->addrExpr, loadnode);
@@ -490,15 +490,15 @@ void MmplLowerer::LowerIassign(IassignNode *iassign, BlockNode *newblk) {
   if (iassign->rhs->primType != PTY_agg) {
     iassign->rhs = LowerExpr(iassign, iassign, iassign->rhs, newblk);
     int32 offset = 0;
-    MIRType *type = globaltable.GetTypeFromTyIdx(iassign->tyIdx);
+    MIRType *type = GlobalTables::GetTypeTable().GetTypeFromTyIdx(iassign->tyIdx);
     MIRPtrType *pointerty = static_cast<MIRPtrType *>(type);
     CHECK_FATAL(pointerty, "LowerIassign::expect a pointer type at iassign node");
     if (iassign->fieldID != 0) {
-      MIRStructType *structty = dynamic_cast<MIRStructType *>(globaltable.GetTypeFromTyIdx(pointerty->pointedTyIdx));
+      MIRStructType *structty = dynamic_cast<MIRStructType *>(GlobalTables::GetTypeTable().GetTypeFromTyIdx(pointerty->pointedTyIdx));
       CHECK_FATAL(structty, "LowerAggIassign: non-zero fieldID for non-structure");
       offset = becommon.GetFieldOffset(structty, iassign->fieldID).first;
       TyIdx ftyidx = structty->TraverseToField(iassign->fieldID).second.first;
-      type = globaltable.GetTypeFromTyIdx(ftyidx);
+      type = GlobalTables::GetTypeTable().GetTypeFromTyIdx(ftyidx);
     } else {
       type = GetPointedToType(pointerty);
     }
@@ -524,11 +524,11 @@ void MmplLowerer::LowerAggReturn(NaryStmtNode *retnode, BlockNode *newblk) {
       MIRStructType *structty = dynamic_cast<MIRStructType *>(rhssymbol->GetType());
       CHECK_FATAL(structty, "LowerAggReturn: non-zero fieldID for non-structure");
       FieldPair thepair = structty->TraverseToField(rhsdread->fieldID);
-      rhsty = globaltable.GetTypeFromTyIdx(thepair.second.first);
+      rhsty = GlobalTables::GetTypeTable().GetTypeFromTyIdx(thepair.second.first);
       rhsoffset = becommon.GetFieldOffset(structty, rhsdread->fieldID).first;
     }
-    rhssize = becommon.type_size_table[rhsty->tyIdx.idx];
-    rhsalign = becommon.type_align_table[rhsty->tyIdx.idx];
+    rhssize = becommon.type_size_table[rhsty->tyIdx.GetIdx()];
+    rhsalign = becommon.type_align_table[rhsty->tyIdx.GetIdx()];
     rhsalign = std::min(rhsalign, 4u);  // max alignment is 32-bit
     BaseNode *rRrn = ReadregNodeForSymbol(rhssymbol);
     CHECK_FATAL(rhssymbol->GetStIndex() < memlayout->sym_alloc_table.size() &&
@@ -566,28 +566,28 @@ void MmplLowerer::LowerAggReturn(NaryStmtNode *retnode, BlockNode *newblk) {
   }
   if (retnode->nOpnd[0]->op == OP_iread) {  // rhs is iread
     IreadNode *rhsiread = static_cast<IreadNode *>(retnode->nOpnd[0]);
-    rhsiread->SetOpnd(LowerExpr(rhsiread, rhsiread, rhsiread->uopnd, newblk), 0);
+    rhsiread->SetOpnd(LowerExpr(rhsiread, rhsiread, rhsiread->uOpnd, newblk), 0);
 
-    rhsty = globaltable.GetTypeFromTyIdx(rhsiread->tyIdx);
+    rhsty = GlobalTables::GetTypeTable().GetTypeFromTyIdx(rhsiread->tyIdx);
     MIRPtrType *pointerty = static_cast<MIRPtrType *>(rhsty);
     CHECK_FATAL(pointerty, "expect a pointer type at iread node");
     if (rhsiread->fieldID != 0) {
-      MIRStructType *structty = dynamic_cast<MIRStructType *>(globaltable.GetTypeFromTyIdx(pointerty->pointedTyIdx));
+      MIRStructType *structty = dynamic_cast<MIRStructType *>(GlobalTables::GetTypeTable().GetTypeFromTyIdx(pointerty->pointedTyIdx));
       CHECK_FATAL(structty, "SelectIread: non-zero fieldID for non-structure");
       FieldPair thepair = structty->TraverseToField(rhsiread->fieldID);
-      rhsty = globaltable.GetTypeFromTyIdx(thepair.second.first);
+      rhsty = GlobalTables::GetTypeTable().GetTypeFromTyIdx(thepair.second.first);
       rhsoffset = becommon.GetFieldOffset(structty, rhsiread->fieldID).first;
     } else {
       rhsty = GetPointedToType(pointerty);
     }
-    rhssize = becommon.type_size_table[rhsty->tyIdx.idx];
-    rhsalign = becommon.type_align_table[rhsty->tyIdx.idx];
+    rhssize = becommon.type_size_table[rhsty->tyIdx.GetIdx()];
+    rhsalign = becommon.type_align_table[rhsty->tyIdx.GetIdx()];
     rhsalign = std::min(rhsalign, 4u);  // max alignment is 32-bit
     retnode->nOpnd.pop_back();
     for (uint32 i = 0; i < (rhssize / rhsalign); i++) {
       // generate the load
       retnode->nOpnd.push_back(mirModule.mirBuilder->CreateExprIreadoff(UnsignedPrimType(rhsalign),
-                                                                         rhsoffset + i * rhsalign, rhsiread->uopnd));
+                                                                         rhsoffset + i * rhsalign, rhsiread->uOpnd));
     }
     // take care of extra content at the end less than the unit of rhsalign
     uint32 rhssizeCovered = (rhssize / rhsalign) * rhsalign;
@@ -599,7 +599,7 @@ void MmplLowerer::LowerAggReturn(NaryStmtNode *retnode, BlockNode *newblk) {
       }
       // generate the load
       retnode->nOpnd.push_back(mirModule.mirBuilder->CreateExprIreadoff(UnsignedPrimType(newalignused),
-                                                                         rhsoffset + rhssizeCovered, rhsiread->uopnd));
+                                                                         rhsoffset + rhssizeCovered, rhsiread->uOpnd));
       rhssizeCovered += newalignused;
     }
     return;

@@ -781,7 +781,6 @@ void GenNativeStubFunc::LoadNativeFuncProperty() {
 
   ifstream in(kNativeFuncPropertyFile.c_str(), ios::in | ios::binary);
   if (!in.is_open()) {
-    cerr << "Open native function property file failed: " << kNativeFuncPropertyFile << endl;
     return;
   }
 
@@ -801,7 +800,6 @@ void GenNativeStubFunc::LoadNativeData(const std::string &file, std::unordered_s
   std::ifstream infile;
   infile.open(file);
   if (infile.fail()) {
-    cerr << "Cannot open native stub file " << file << "\n";
     return;
   }
 

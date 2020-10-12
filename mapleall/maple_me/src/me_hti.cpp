@@ -786,8 +786,8 @@ void MeTI::AnalyzeIntrAssigned(MeStmt *mestmt) {
     case INTRN_JSOP_ADD: {
       PrimType inftype0, inftype1;
       InferStatus infstatus0, infstatus1;
-      AnalyzeExpr(inass->GetOpnd(0), &inftype0, &infstatus0);
-      AnalyzeExpr(inass->GetOpnd(1), &inftype1, &infstatus1);
+      AnalyzeExpr(inass->opnds[0], &inftype0, &infstatus0);
+      AnalyzeExpr(inass->opnds[1], &inftype1, &infstatus1);
       if (inftype0 == PTY_simpleobj || inftype1 == PTY_simpleobj) {
         UpdateInferStatus(ret, kPtyInvalid, kMustNotInfer);
         return;
@@ -1427,8 +1427,8 @@ void MeTI::RebuildStmt(MeStmt *stmt) {
         }
         // Change to INTRN_concat when both operands's types are simplestr
         if (infer_status[lhs->vstIdx] == kMustInfer && inferred_type[lhs->vstIdx] == PTY_simplestr) {
-          MeExpr *op0 = StripExpr(RebuildExpr((opnds[0]));
-          MeExpr *op1 = StripExpr(RebuildExpr((opnds[1]));
+          MeExpr *op0 = StripExpr(RebuildExpr((opnds[0])));
+          MeExpr *op1 = StripExpr(RebuildExpr((opnds[1])));
 
           if (op0->primType != PTY_simplestr) {
             if (!IsPrimitiveDynType(op0->primType)) {
@@ -1450,8 +1450,8 @@ void MeTI::RebuildStmt(MeStmt *stmt) {
           CHECK_FATAL(op1->primType == PTY_simplestr, "");
           intrin->intrinsic = INTRN_JSOP_CONCAT;
           intrin->mustDefList[0].lhs = static_cast<VarMeExpr *>(RebuildExpr(lhs));
-          intrin->SetOpnd(op0, 0);
-          intrin->SetOpnd(op1, 1);
+          intrin->opnds[0] = op0;
+          intrin->opnds[1] = op1;
           return;
         }
       }

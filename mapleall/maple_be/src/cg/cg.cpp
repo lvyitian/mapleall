@@ -294,7 +294,7 @@ void CG::LowerIR() {
       mirlowerer.LowerFunc(mirFunc);
     }
 
-    if (!DoItQuietly()) {
+    if (CGOptions::printLowerIR) {
       printf("************* before CGLowerer **************\n");
       mirFunc->Dump();
     }
@@ -302,7 +302,7 @@ void CG::LowerIR() {
     thelowerer.LowerFunc(mirFunc);
     thelowerer.InsertExit(mirFunc);
 
-    if (!DoItQuietly()) {
+    if (CGOptions::printLowerIR) {
       printf("************* after  CGLowerer **************\n");
       mirFunc->Dump();
       printf("************* end    CGLowerer **************\n");

@@ -90,8 +90,14 @@ RegMeExpr *IRMap::CreateRegMeExpr(PrimType primType) {
 }
 
 RegMeExpr *IRMap::CreateRegMeExpr(MIRType *mirType) {
-  if (mirType->primType != PTY_ref) {
+  if (mirType->primType != PTY_ref && mirType->primType != PTY_ptr) {
     return CreateRegMeExpr(mirType->primType);
+  }
+  if (mirType->primType == PTY_ptr) {
+    MIRType *pointedType = static_cast<MIRPtrType *>(mirType)->GetPointedType();
+    if (pointedType == nullptr || pointedType->typeKind != kTypeFunction) {
+      return CreateRegMeExpr(mirType->primType);
+    }
   }
   MIRFunction *mirFunc = mirModule->CurFunction();
   PregIdx regIdx = mirFunc->pregTab->CreatePreg(mirType->primType, mirType);
@@ -355,7 +361,7 @@ bool IRMap::ReplaceMeExprStmt(MeStmt *mestmt, MeExpr *meexpr, MeExpr *repexpr) {
     case OP_icallassigned:
     case OP_return: {
       NaryMeStmt *narymestmt = static_cast<NaryMeStmt *>(mestmt);
-      for (uint32 i = 0; i < narymestmt->NumMeStmtOpnds(); i++) {
+      for (int32 i = 0; i < narymestmt->NumMeStmtOpnds(); i++) {
         MeExpr *opnd = narymestmt->GetMeStmtOpnd(i);
         if (opnd == meexpr) {
           narymestmt->SetMeStmtOpnd(i, repexpr);
@@ -376,7 +382,7 @@ bool IRMap::ReplaceMeExprStmt(MeStmt *mestmt, MeExpr *meexpr, MeExpr *repexpr) {
     case OP_xintrinsiccallassigned:
     case OP_intrinsiccallwithtypeassigned: {
       NaryMeStmt *narymestmt = static_cast<NaryMeStmt *>(mestmt);
-      for (uint32 i = 0; i < narymestmt->NumMeStmtOpnds(); i++) {
+      for (int32 i = 0; i < narymestmt->NumMeStmtOpnds(); i++) {
         MeExpr *opnd = narymestmt->GetMeStmtOpnd(i);
         if (opnd->IsLeaf() && opnd->meOp == kMeOpVar) {
           VarMeExpr *varmeexpr = static_cast<VarMeExpr *>(opnd);

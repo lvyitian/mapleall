@@ -18,7 +18,7 @@
 #include "constant_fold.h"
 #if TARGVM
 #include "mmpl_lowerer.h"
-#include "mmplmem_layout.h"
+#include "mmpl_mem_layout.h"
 #ifndef OUTPUTMMPL
 #include "cmpl_generator.h"
 #endif
@@ -30,7 +30,6 @@
 
 using namespace maplebe;
 
-maple::GlobalTables maple::globaltable;
 
 int main(int argc, char **argv) {
   maple::MIRModule themodule(argv[1]);
@@ -69,7 +68,7 @@ int main(int argc, char **argv) {
       }
 
 #if TARGVM
-      MIRSymbol *funcSt = globaltable.GetSymbolFromStIdx(mirFunc->stIdx.Idx());
+      MIRSymbol *funcSt = GlobalTables::GetGsymTable().GetSymbolFromStIdx(mirFunc->stIdx.Idx());
       MemPool *funcMp = mempoolctrler.NewMemPool(funcSt->GetName().c_str());
       MapleAllocator funcscopeAllocator(funcMp);
       MmplMemLayout *thememlayout = funcMp->New<MmplMemLayout>(becommon, mirFunc, &funcscopeAllocator);
@@ -90,7 +89,7 @@ int main(int argc, char **argv) {
     themodule.flavor = kMmpl;
 #if TARGVM
 #ifdef OUTPUTMMPL
-    themodule.OutputAsciiMpl("");
+    themodule.OutputAsciiMpl(".mmpl", "");
 #else
     std::string::size_type lastdot = fileName.find_last_of(".");
     std::string filestem;
@@ -99,7 +98,7 @@ int main(int argc, char **argv) {
     } else {
       filestem = fileName.substr(0, lastdot);
     }
-    OutputCmpl(themodule, filestem.c_str());
+    // OutputCmpl(themodule, filestem.c_str());
 #endif
 #else
     themodule.Dump();

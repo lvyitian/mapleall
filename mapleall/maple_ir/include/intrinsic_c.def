@@ -79,3 +79,11 @@ DEF_MIR_INTRINSIC(C_va_start,\
                   sinh, INTRNISPURE, kArgTyVoid, kArgTyPtr, kArgTyI32)
 DEF_MIR_INTRINSIC(C_constant_p,\
                   sinh/*dummy*/, 0, kArgTyI32, kArgTyDynany)
+DEF_MIR_INTRINSIC(C_clz32,\
+                  sinh/*dummy*/, INTRNISPURE, kArgTyI32, kArgTyU32)
+DEF_MIR_INTRINSIC(C_clz64,\
+                  sinh/*dummy*/, INTRNISPURE, kArgTyI32, kArgTyU64)
+DEF_MIR_INTRINSIC(C_ctz32,\
+                  sinh/*dummy*/, INTRNISPURE, kArgTyI32, kArgTyU32)
+DEF_MIR_INTRINSIC(C_ctz64,\
+                  sinh/*dummy*/, INTRNISPURE, kArgTyI32, kArgTyU64)

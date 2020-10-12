@@ -134,6 +134,16 @@
 //MOP_xsmullrrr
 {MOP_xsmullrrr, {MOPD_Reg64ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,kLtMul,"smull","0,1,2", 1, 2},
 
+// AARCH64 leading zeros, reverse bits (for trailing zeros)
+// MOP_wclz
+{MOP_wclz, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,kLtAlu,"clz","0,1", 1, 1},
+// MOP_xclz
+{MOP_xclz, {MOPD_Reg64ID,MOPD_Reg64IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,kLtAlu,"clz","0,1", 1, 1},
+// MOP_wrbit
+{MOP_wrbit, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,kLtAlu,"rbit","0,1", 1, 1},
+// MOP_xrbit
+{MOP_xrbit, {MOPD_Reg64ID,MOPD_Reg64IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,kLtAlu,"rbit","0,1", 1, 1},
+
 // AARCH64 Conversions
 // MOP_xsxtb32
 {MOP_xsxtb32, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISCONVERSION,kLtAluShift,"sxtb","0,1", 1, 1},

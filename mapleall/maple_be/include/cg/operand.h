@@ -374,6 +374,17 @@ class ImmOperand : public Operand {
     return is_signed_;
   }
 
+  bool IsInSignedBitSize(uint8 size, uint8 nLowerZeroBits = 0) const {
+    int64 newval = val_;
+    if (val_ < 0) {
+      size --;
+      newval = -val_ - 1;
+    }
+    uint64 mask1 = 0xffffffffffffffffULL << size;
+    uint64 mask2 = (static_cast<uint64>(1) << static_cast<uint64>(nLowerZeroBits)) - 1;
+    return (mask2 & newval) == 0 && (mask1 & ((static_cast<uint64>(newval)) >> nLowerZeroBits)) == 0;
+  }
+
   bool IsInBitSize(uint8 size, uint8 nLowerZeroBits = 0) const {
     uint64 mask1 = 0xffffffffffffffffULL << size;
     uint64 mask2 = (static_cast<uint64>(1) << static_cast<uint64>(nLowerZeroBits)) - 1;
@@ -426,6 +437,7 @@ class ImmOperand : public Operand {
 
   void Negate() {
     val_ = -val_;
+    is_signed_ = true;
   }
 
   void BitwiseNegate() {

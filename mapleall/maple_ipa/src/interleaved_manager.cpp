@@ -13,13 +13,10 @@
  * See the MulanPSL - 2.0 for more details.
  */
 
-
-#include "../include/interleaved_manager.h"
-
 #include <string>
 #include <vector>
 #include <iomanip>
-#include "module_phase.h"
+#include "interleaved_manager.h"
 #include "mir_function.h"
 #include "mir_module.h"
 #include "me_function.h"

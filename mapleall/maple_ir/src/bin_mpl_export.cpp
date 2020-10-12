@@ -37,10 +37,18 @@ void OutputConstInt(MIRConst *constVal, BinaryMplExport *mplExport) {
 }
 
 void OutputConstAddrof(MIRConst *constVal, BinaryMplExport *mplExport) {
-  mplExport->WriteNum(kBinKindConstAddrof);
-  mplExport->OutputConstBase(constVal);
   MIRAddrofConst *addrof = static_cast<MIRAddrofConst*>(constVal);
-  mplExport->OutputSymbol(mplExport->GetMIRModule().CurFunction()->GetLocalOrGlobalSymbol(addrof->GetSymbolIndex()));
+  if (addrof->GetSymbolIndex().IsGlobal()) {
+    mplExport->WriteNum(kBinKindConstAddrof);
+  } else {
+    mplExport->WriteNum(kBinKindConstAddrofLocal);
+  }
+  mplExport->OutputConstBase(constVal);
+  if (addrof->GetSymbolIndex().IsGlobal()) {
+    mplExport->OutputSymbol(mplExport->GetMIRModule().CurFunction()->GetLocalOrGlobalSymbol(addrof->GetSymbolIndex()));
+  } else {
+    mplExport->WriteNum(addrof->GetSymbolIndex().FullIdx());
+  }
   mplExport->WriteNum(addrof->GetFieldID());
   mplExport->WriteNum(addrof->GetOffset());
 }
@@ -175,6 +183,7 @@ void OutputTypeArray(MIRType *ty, BinaryMplExport *mplExport, bool canUseTypenam
     mplExport->WriteNum(type->sizeArray[i]);
   }
   mplExport->OutputType(type->eTyIdx, canUseTypename);
+  mplExport->OutputTypeAttrs(type->typeAttrs);
 }
 
 void OutputTypeFunction(MIRType *ty, BinaryMplExport *mplExport, bool canUseTypename) {
@@ -748,7 +757,7 @@ void BinaryMplExport::WriteStrField(uint64 contentIdx) {
   ExpandFourBuffSize();  /// size of OutputStr
 
   int32 size = 0;
-  for (const auto entity : GlobalTables::GetConstPool().constU16StringPool) {
+  for (const auto& entity : GlobalTables::GetConstPool().constU16StringPool) {
     MIRSymbol *sym = entity.second;
     if (sym->IsLiteral()) {
       OutputStr(sym->GetNameStridx());

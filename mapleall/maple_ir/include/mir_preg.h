@@ -16,8 +16,8 @@
 #ifndef MAPLE_IR_INCLUDE_MIR_PREG_H
 #define MAPLE_IR_INCLUDE_MIR_PREG_H
 
-#include <iostream>
 #if MIR_FEATURE_FULL
+#include <iostream>
 #include "mir_module.h"
 #endif  // MIR_FEATURE_FULL
 
@@ -42,7 +42,7 @@ class MIRPreg {
   PrimType primType : 8;
   bool needRC : 1;  // if it's true, skip reference counting update
   int32 pregNo;  // the number in maple IR after the %
-  MIRType *mirType;  // null if not a ref type
+  MIRType *mirType;  // null if not a ref type and not a function pointer type
 
  public:
   explicit MIRPreg(uint32 n = 0) : primType(kPtyInvalid), needRC(false), pregNo(n), mirType(nullptr) {}
@@ -53,7 +53,7 @@ class MIRPreg {
   ~MIRPreg(){};
 
   bool IsRef() {
-    return mirType != nullptr;
+    return mirType != nullptr && primType == PTY_ref;
   }
 
   bool NeedRC() {
@@ -125,13 +125,10 @@ class MIRPregTable {
     return it->second;
   }
 
-  void DumpRef(int32 indent) {
+  void DumpPregsWithTypes(int32 indent) {
     MapleVector<MIRPreg *> &pregtable = pregTable;
     for (uint32 i = 1; i < pregtable.size(); i++) {
       MIRPreg *mirpreg = pregtable[i];
-      if (mirpreg->primType != PTY_ref) {
-        continue;
-      }
       if (mirpreg->mirType == nullptr) {
         continue;
       }

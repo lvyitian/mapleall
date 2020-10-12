@@ -133,6 +133,7 @@ class AliasClass : public AnalysisResult {
   bool CallHasSideEffect(StmtNode *stmt);
   bool CallHasNoPrivateDefEffect(StmtNode *stmt);
   AliasElem *FindOrCreateAliasElem(OriginalSt *ost);
+  void CreateMirroringAliasElems(OriginalSt *ost1, OriginalSt *ost2);
   virtual bool IsFormalParm(OriginalSt *ost) const {
     return ost->GetMIRSymbol()->storageClass == kScFormal;
   }

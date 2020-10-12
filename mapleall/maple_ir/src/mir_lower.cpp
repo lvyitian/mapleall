@@ -90,8 +90,6 @@ BlockNode *MIRLower::LowerIfStmt(IfStmtNode *ifstmt, bool recursive) {
     blk->AddStatement(brfalsestmt);
 
     blk->AppendStatementsFromBlock(ifstmt->thenPart);
-    CHECK_FATAL(ifstmt->thenPart->GetLast()->op != OP_brtrue && ifstmt->thenPart->GetLast()->op != OP_brfalse,
-           "then or else block should not end with brtrue/brfalse");
     bool fallthruFromThen = !BlockNoFallThru(ifstmt->thenPart);
     LabelIdx gotolidx = 0;
 

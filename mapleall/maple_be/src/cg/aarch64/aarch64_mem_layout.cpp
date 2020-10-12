@@ -62,9 +62,10 @@ uint32 AArch64MemLayout::ComputeStackSpaceRequirementForCall(StmtNode *stmt, int
         MIRSymbol *sym = be.mirModule.CurFunction()->GetLocalOrGlobalSymbol(dread->stIdx);
         ty = GlobalTables::GetTypeTable().GetTypeFromTyIdx(sym->GetTyIdx());
         if (dread->fieldID != 0) {
-          CG_ASSERT(ty->typeKind == kTypeStruct || ty->typeKind == kTypeClass, "");
+          CG_ASSERT(ty->typeKind == kTypeStruct || ty->typeKind == kTypeClass ||
+                    ty->typeKind == kTypeUnion, "");
           FieldPair thepair;
-          if (ty->typeKind == kTypeStruct) {
+          if (ty->typeKind == kTypeStruct || ty->typeKind == kTypeUnion) {
             thepair = static_cast<MIRStructType *>(ty)->TraverseToField(dread->fieldID);
           } else {
             thepair = static_cast<MIRClassType *>(ty)->TraverseToField(dread->fieldID);
@@ -77,9 +78,10 @@ uint32 AArch64MemLayout::ComputeStackSpaceRequirementForCall(StmtNode *stmt, int
         CG_ASSERT(ty->typeKind == kTypePointer, "");
         ty = GlobalTables::GetTypeTable().GetTypeFromTyIdx(static_cast<MIRPtrType *>(ty)->pointedTyIdx);
         if (iread->fieldID != 0) {
-          CG_ASSERT(ty->typeKind == kTypeStruct || ty->typeKind == kTypeClass, "");
+          CG_ASSERT(ty->typeKind == kTypeStruct || ty->typeKind == kTypeClass ||
+                    ty->typeKind == kTypeUnion, "");
           FieldPair thepair;
-          if (ty->typeKind == kTypeStruct) {
+          if (ty->typeKind == kTypeStruct || ty->typeKind == kTypeUnion) {
             thepair = static_cast<MIRStructType *>(ty)->TraverseToField(iread->fieldID);
           } else {
             thepair = static_cast<MIRClassType *>(ty)->TraverseToField(iread->fieldID);
@@ -89,7 +91,7 @@ uint32 AArch64MemLayout::ComputeStackSpaceRequirementForCall(StmtNode *stmt, int
       }
     }
     PLocInfo ploc;
-    structCopySize += parmlocator.LocateNextParm(ty, ploc, anum == 0);
+    structCopySize += parmlocator.LocateNextParm(ty, ploc);
     if (ploc.reg0 != 0) {
       continue;  // passed in register, so no effect on actual area
     }
@@ -157,13 +159,27 @@ void AArch64MemLayout::LayoutStackFrame(int32 &structCopySize, int32 &maxParmSta
   for (uint32 i = 0; i < func->formalDefVec.size(); i++) {
     sym = func->formalDefVec[i].formalSym;
     nostackpara = false;
-    MIRType *ty = GlobalTables::GetTypeTable().GetTypeFromTyIdx(func->formalDefVec[i].formalTyIdx);
-    uint32_t ptyIdx = ty->tyIdx.GetIdx();
-    parmlocator.LocateNextParm(ty, ploc, i == 0);
     uint32 stindex = sym->GetStIndex();
     AArch64SymbolAlloc *symloc = mem_allocator->GetMemPool()->New<AArch64SymbolAlloc>();
     sym_alloc_table[stindex] = symloc;
     CG_ASSERT(symloc, "sym loc should have been defined");
+    if (i == 0) {
+      MIRFunction *func = be.mirModule.CurFunction();
+      if (func->IsReturnStruct()) {
+        auto funcIt = be.funcReturnType.find(func);
+        if (funcIt != be.funcReturnType.end()) {
+          symloc->mem_segment = &seg__args_regpassed;
+          symloc->offset = seg__args_regpassed.size;
+          if (be.type_size_table[funcIt->second.GetIdx()] > 16) {
+            seg__args_regpassed.size += SIZEOFPTR;
+          }
+          continue;
+        }
+      }
+    }
+    MIRType *ty = GlobalTables::GetTypeTable().GetTypeFromTyIdx(func->formalDefVec[i].formalTyIdx);
+    uint32_t ptyIdx = ty->tyIdx.GetIdx();
+    parmlocator.LocateNextParm(ty, ploc, i == 0);
     uint32 align = be.type_align_table[ptyIdx];
     uint32 msize = be.type_size_table[ptyIdx];
     if (be.type_size_table[ptyIdx] > 16) {
@@ -293,6 +309,15 @@ void AArch64MemLayout::LayoutStackFrame(int32 &structCopySize, int32 &maxParmSta
   // for the actual arguments that cannot be pass through registers
   // need to allocate space for caller-save registers
   for (uint32 i = 0; i < func->formalDefVec.size(); i++) {
+    if (i == 0) {
+      MIRFunction *func = be.mirModule.CurFunction();
+      if (func->IsReturnStruct()) {
+        auto funcIt = be.funcReturnType.find(func);
+        if (funcIt != be.funcReturnType.end()) {
+          continue;
+        }
+      }
+    }
     sym = func->formalDefVec[i].formalSym;
     if (sym->IsPreg()) {
       continue;

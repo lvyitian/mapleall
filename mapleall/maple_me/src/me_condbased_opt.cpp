@@ -286,9 +286,7 @@ AnalysisResult *MeDoCondBasedNPC::Run(MeFunction *func, MeFuncResultMgr *m) {
     if (bb == nullptr) {
       continue;
     }
-    MeStmt *nextstmt = nullptr;
     for (auto stmt : bb->meStmtList) {
-      nextstmt = stmt->next;
       if (stmt->op != OP_assertnonnull) {
         continue;
       }

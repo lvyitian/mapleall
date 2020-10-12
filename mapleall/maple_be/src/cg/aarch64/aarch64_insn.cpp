@@ -241,4 +241,55 @@ int32_t AArch64Insn::CopyOperands() {
   return -1;
 }
 
+/*
+ * Precondition: The given insn is a jump instruction.
+ * Get the jump target label operand index from the given instruction.
+ * Note: MOP_xbr is a jump instruction, but the target is unknown at compile time,
+ * because a register instead of label. So we don't take it as a branching instruction.
+ */
+int AArch64Insn::GetJumpTargetIdx() const {
+  int operandIdx = 0;
+  switch (mop_) {
+    // unconditional jump
+    case MOP_xuncond: {
+      operandIdx = 0;
+      break;
+    }
+    // conditional jump
+    case MOP_bmi:
+    case MOP_bvc:
+    case MOP_bls:
+    case MOP_blt:
+    case MOP_ble:
+    case MOP_blo:
+    case MOP_beq:
+    case MOP_bpl:
+    case MOP_bhs:
+    case MOP_bvs:
+    case MOP_bhi:
+    case MOP_bgt:
+    case MOP_bge:
+    case MOP_bal:
+    case MOP_bne:
+    case MOP_wcbz:
+    case MOP_xcbz:
+    case MOP_wcbnz:
+    case MOP_xcbnz: {
+      operandIdx = 1;
+      break;
+    }
+    case MOP_wtbz:
+    case MOP_xtbz:
+    case MOP_wtbnz:
+    case MOP_xtbnz: {
+      operandIdx = 2;
+      break;
+    }
+    default:
+      ASSERT(0, "Not a jump insn");
+  }
+
+  return operandIdx;
+}
+
 }  // namespace maplebe

@@ -78,6 +78,7 @@ std::string Options::profileData = "";
 std::string Options::profileFuncData = "";
 std::string Options::profileClassData = "";
 std::string Options::profile = "";
+std::string Options::classMetaProFile = "";
 std::string Options::methodMetaProFile = "";
 std::string Options::fieldMetaProFile = "";
 std::string Options::reflectStringProFile = "";
@@ -445,6 +446,9 @@ bool Options::ParseOptions(int argc, char **argv, std::string &fileName) const {
         break;
       case kProfileData:
         Options::profileData = opt.Args();
+        break;
+      case kClassmetaProfile:
+        Options::classMetaProFile = opt.Args();
         break;
       case kMethodmetaProfile:
         Options::methodMetaProFile = opt.Args();

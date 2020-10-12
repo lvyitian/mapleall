@@ -123,7 +123,6 @@ enum AArch64reg_t {
 #undef FP_SIMD_EXT_BASE
 #undef FP_SIMD_EXT
 #undef FP_SIMD_REG_ALIAS
-  kNArmRegisters
 };
 
 namespace AArch64isa {

@@ -14,6 +14,16 @@
 # See the MulanPSL - 2.0 for more details.
 #
 
+if [ ! -f ../bin/ast2mpl ]; then
+  cd ../bin/ast2mpl_files
+  cat ast2mpl_aa ast2mpl_ab ast2mpl_ac ast2mpl_ad > ast2mpl.gz
+  gunzip ast2mpl.gz
+  mv ast2mpl ..
+  cd ..
+  chmod 775 ast2mpl
+  cd ../tools
+  echo Merge ast2mpl.
+fi
 if [ ! -f ./ninja_1.9.0/ninja ]; then
   mkdir -p ./ninja_1.9.0
   cd ./ninja_1.9.0 || exit 3
@@ -30,4 +40,9 @@ if [ ! -f ./gn/gn ]; then
   chmod +x gn_binary/gn
   cd ..
   echo Downloaded gn.
+fi
+if [ ! -f ./open64ark/bin/whirl2mpl ]; then
+  git clone https://gitee.com/open64ark/open64ark_prebuilt.git
+  tar zxf open64ark_prebuilt/x86/open64ark.tar.gz
+  echo Downloaded open64ark_prebuilt.
 fi

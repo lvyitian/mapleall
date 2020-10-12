@@ -58,6 +58,7 @@ class DriverRunner final {
         timePhases(mplOptions.HasSetTimePhases()),
         genVtableImpl(mplOptions.HasSetGenVtableImpl()),
         genMeMpl(mplOptions.HasSetGenMeMpl()),
+        hasDebugFlag(mplOptions.HasSetDebugFlag()),
         inputFileType(inpFileType) {}
 
   DriverRunner(MIRModule *theModule, const std::vector<std::string> &exeNames, InputFileType inpFileType, std::string actualInput, MemPool *optMp,
@@ -88,6 +89,7 @@ class DriverRunner final {
   bool timePhases = false;
   bool genVtableImpl = false;
   bool genMeMpl = false;
+  bool hasDebugFlag = false;
   InputFileType inputFileType;
   std::string printOutExe;
 };

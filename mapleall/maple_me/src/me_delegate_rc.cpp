@@ -347,7 +347,7 @@ RegMeExpr *DelegateRC::RHSTempDelegated(MeExpr *rhs, MeStmt *usestmt) {
     }
     // replace temp by a new preg
     rhsvar->defBy = kDefByNo;
-    RegMeExpr *curreg = irMap->CreateRegMeExpr(rhsvar->GetType(ssaTab));
+    RegMeExpr *curreg = irMap->CreateRegMeExpr(rhsvar->GetType());
     refvar2reg_map[rhsvar] = curreg;  // record this replacement
     mustDef->UpdateLhs(curreg);
     return curreg;
@@ -369,7 +369,7 @@ RegMeExpr *DelegateRC::RHSTempDelegated(MeExpr *rhs, MeStmt *usestmt) {
 
     // replace temp by a new preg
     rhsvar->defBy = kDefByNo;
-    RegMeExpr *curreg = irMap->CreateRegMeExpr(rhsvar->GetType(ssaTab));
+    RegMeExpr *curreg = irMap->CreateRegMeExpr(rhsvar->GetType());
     refvar2reg_map[rhsvar] = curreg;  // record this replacement
     // create new regassign statement
     AssignMeStmt *regass = irMap->CreateAssignMeStmt(curreg, rhsexpr, defStmt->bb);
@@ -622,7 +622,7 @@ void DelegateRC::DelegateHandleNoRCStmt(MeStmt *stmt, bool addDecref) {
 
   // replace temp by a new preg
   thelhs->defBy = kDefByNo;
-  RegMeExpr *curreg = irMap->CreateRegMeExpr(thelhs->GetType(ssaTab));
+  RegMeExpr *curreg = irMap->CreateRegMeExpr(thelhs->GetType());
   refvar2reg_map[thelhs] = curreg;  // record this replacement
   if (rhsexpr != nullptr) {
     // create new regassign statement
@@ -783,9 +783,7 @@ AnalysisResult *MeDoDelegateRC::Run(MeFunction *func, MeFuncResultMgr *m) {
     if (bb == nullptr) {
       continue;
     }
-    MeStmt *nextstmt = nullptr;
     for (auto stmt : bb->meStmtList) {
-      nextstmt = stmt->next;
       bool withDecref = false;
       if (delegaterc->CanOmitRC4LHSVar(stmt, withDecref)) {
         delegaterc->DelegateHandleNoRCStmt(stmt, withDecref);  // Form B

@@ -24,12 +24,12 @@ namespace maple {
 
 LogInfo logInfo;
 
-const char *long_log_levels[] = { [kLlDbg] = "D",      [kLlLog] = "L",     [kLlInfo] = "Info ",
-                                  [kLlWarn] = "Warn ", [kLlErr] = "Error", [kLlFatal] = "Fatal" };
+const char *long_log_levels[] = { /*[kLlDbg] =*/  "D",     /*[kLlLog] =*/ "L",     /*[kLlInfo] =*/  "Info ",
+                                  /*[kLlWarn] =*/ "Warn ", /*[kLlErr] =*/ "Error", /*[kLlFatal] =*/ "Fatal" };
 
 const char *tags[] = {
-  [kLtThread] = "TR",
-  [kLtLooper] = "LP",
+  /*[kLtThread] =*/ "TR",
+  /*[kLtLooper] =*/ "LP",
 };
 
 std::ostream& LogInfo::MapleLogger(LogLevel l) {

@@ -22,13 +22,11 @@ namespace maple {
 
 bool May2Dassign::Doit() {
   bool changed = false;
-  MeStmt *nextstmt = nullptr;
   for (BB *bb : func->bbVec) {
     if (bb == nullptr) {
       continue;
     }
     for (auto stmt : bb->meStmtList) {
-      nextstmt = stmt->next;
       if (stmt->op != OP_maydassign) {
         continue;
       }

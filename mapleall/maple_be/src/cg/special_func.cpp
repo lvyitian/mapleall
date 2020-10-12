@@ -141,7 +141,9 @@ bool IsRtCleanupLocalStackCall(const string &name) {
 }
 
 bool IsFuncNeedFrame(const string &funcName) {
-  return false;
+  //TODO: We need IPA information which tells if certain exceptions need to be handled in callee
+  //Otherwise we have to keep all frames.
+  return true;
 }
 
 }  // namespace maplebe

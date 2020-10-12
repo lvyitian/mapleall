@@ -86,7 +86,7 @@ include_directories = [
     "${MAPLEALL_ROOT}/mempool/include",
     "${MAPLEALL_ROOT}/maple_ipa/include",
     "${MAPLEALL_ROOT}/maple_phase/include",
-    "${MAPLE_ROOT}/huawei_secure_c/include",
+    "${HUAWEI_SECURE_C_ROOT}/include",
     "${MAPLE_RE_ROOT}/include",
     "${MAPLEALL_ROOT}/maple_driver/include",
 ]
@@ -336,6 +336,7 @@ source_set("libcgcpu"){
 
 static_library("libcg"){
    sources = [
+       "src/cg/dbg.cpp",
        "src/cg/cg.cpp",
        "src/cg/cg_func.cpp",
        "src/cg/eh_func.cpp",
@@ -392,7 +393,7 @@ executable("mplcg"){
         "${MAPLEALL_ROOT}/maple_phase:libmplphase",
         "${MAPLEALL_ROOT}/mempool:libmempool",
         "${MAPLEALL_ROOT}/maple_util:libmplutil",
-        "${MAPLE_ROOT}/huawei_secure_c:libHWSecureC",
+        "${HUAWEI_SECURE_C_ROOT}:libHWSecureC",
     ]
 
     if(MACHINE == "cortex_a55"){
@@ -417,7 +418,7 @@ executable("mplbe"){
         "${MAPLEALL_ROOT}/maple_phase:libmplphase",
         "${MAPLEALL_ROOT}/mempool:libmempool",
         "${MAPLEALL_ROOT}/maple_util:libmplutil",
-        "${MAPLE_ROOT}/huawei_secure_c:libHWSecureC",
+        "${HUAWEI_SECURE_C_ROOT}:libHWSecureC",
     ]
 
     include_dirs = include_directories
@@ -440,7 +441,7 @@ executable("mplbe-c"){
         "${MAPLEALL_ROOT}/maple_phase:libmplphase",
         "${MAPLEALL_ROOT}/mempool:libmempool",
         "${MAPLEALL_ROOT}/maple_util:libmplutil",
-        "${MAPLE_ROOT}/huawei_secure_c:libHWSecureC",
+        "${HUAWEI_SECURE_C_ROOT}:libHWSecureC",
     ]
 
     include_dirs = include_directories

@@ -31,6 +31,7 @@ static_library("libmplphase"){
         "${MAPLEALL_ROOT}/maple_phase/include",
         "${MAPLEALL_ROOT}/maple_ir/include",
         "${MAPLEALL_ROOT}/mpl2mpl/include",
+        "${HUAWEI_SECURE_C_ROOT}/include",
     ]
 
     output_dir = "${root_out_dir}/lib/${HOST_ARCH}"

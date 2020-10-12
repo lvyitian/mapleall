@@ -1530,6 +1530,9 @@ void SSAPre::BuildWorkListStmt(MeStmt *stmt, uint32 seqStmt, bool isrebuilt, MeE
       if (dassmestmt->isIncDecStmt && prekind == kExprPre) {
         break;
       }
+      if (dassmestmt->rhs->meOp == dassmestmt->lhs->meOp && dassmestmt->lhs->ost == static_cast<ScalarMeExpr *>(dassmestmt->rhs)->ost) {
+        break; // identity assignment converted from phi
+      }
       BuildWorkListExpr(stmt, seqStmt, dassmestmt->rhs, isrebuilt, tempvar, true);
       BuildWorkListLHSOcc(stmt, seqStmt);
       break;

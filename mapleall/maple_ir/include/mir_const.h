@@ -48,7 +48,7 @@ class MIRConst {
 
   virtual ~MIRConst() {}
 
-  virtual void Dump() const;
+  virtual void Dump(const MIRSymbolTable *localsymtab = nullptr) const;
 
   virtual bool IsZero() {
     return false;
@@ -135,7 +135,7 @@ class MIRIntConst : public MIRConst {
     }
   }
 
-  void Dump() const;
+  void Dump(const MIRSymbolTable *localsymtab = nullptr) const;
   bool IsZero() {
     return value == 0 && IsPrimitiveInteger(type->GetPrimType());
   }
@@ -175,7 +175,7 @@ class MIRVectorIntConst : public MIRConst {
     CHECK_FATAL(index < vecSize, "wrong index");
     this->vecElems[index] = val;
   }
-  void Dump() const;
+  void Dump(const MIRSymbolTable *localsymtab = nullptr) const;
 };
 
 class MIRAddrofConst : public MIRConst {
@@ -207,7 +207,7 @@ class MIRAddrofConst : public MIRConst {
   }
 
   /* virtual */
-  void Dump() const;
+  void Dump(const MIRSymbolTable *localsymtab = nullptr) const;
   /* virtual */
   bool operator==(MIRConst &rhs) const;
 };
@@ -227,7 +227,7 @@ class MIRAddroffuncConst : public MIRConst {
   }
 
   /* virtual */
-  void Dump() const;
+  void Dump(const MIRSymbolTable *localsymtab = nullptr) const;
   /* virtual */
   bool operator==(MIRConst &rhs) const;
 };
@@ -242,7 +242,7 @@ class MIRLblConst : public MIRConst {
 
   ~MIRLblConst() {}
 
-  void Dump() const;
+  void Dump(const MIRSymbolTable *localsymtab = nullptr) const;
   bool operator==(MIRConst &rhs) const;
 };
 
@@ -258,7 +258,7 @@ class MIRStrConst : public MIRConst {
 
   ~MIRStrConst() {}
 
-  void Dump() const;
+  void Dump(const MIRSymbolTable *localsymtab = nullptr) const;
   bool operator==(MIRConst &rhs) const;
 };
 
@@ -275,7 +275,7 @@ class MIRStr16Const : public MIRConst {
 
   ~MIRStr16Const() {}
 
-  void Dump() const;
+  void Dump(const MIRSymbolTable *localsymtab = nullptr) const;
   bool operator==(MIRConst &rhs) const;
 };
 
@@ -310,7 +310,7 @@ class MIRFloatConst : public MIRConst {
     return GetFloatValue();
   }
 
-  void Dump() const;
+  void Dump(const MIRSymbolTable *localsymtab = nullptr) const;
   bool IsZero() {
     return fabs(value.floatValue) <= 1e-6;
   }
@@ -369,7 +369,7 @@ class MIRDoubleConst : public MIRConst {
     return value.dValue;
   }
 
-  void Dump() const;
+  void Dump(const MIRSymbolTable *localsymtab = nullptr) const;
   bool IsZero() {
     return fabs(value.dValue) <= 1e-15;
   }
@@ -423,7 +423,7 @@ class MIRFloat128Const : public MIRConst {
     return (value[0] == 0xffffffffffffffff && value[1] == 0xffffffffffffffff);
   };
   bool operator==(MIRConst &rhs) const;
-  void Dump() const;
+  void Dump(const MIRSymbolTable *localsymtab = nullptr) const;
 };
 
 class MIRAggConst : public MIRConst {
@@ -454,7 +454,7 @@ class MIRAggConst : public MIRConst {
     return nullptr;
   }
 
-  void Dump() const;
+  void Dump(const MIRSymbolTable *localsymtab = nullptr) const;
   bool operator==(MIRConst &rhs) const;
 };
 

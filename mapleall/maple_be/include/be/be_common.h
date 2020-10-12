@@ -63,6 +63,7 @@ class BECommon {
   MIRModule &mirModule;
   MapleVector<uint64> type_size_table;           // index is TyIdx
   MapleVector<uint8> type_align_table;           // index is TyIdx
+  MapleVector<uint8> type_natural_align_table;   // index is TyIdx
   MapleVector<bool> type_has_flexible_array;           // index is TyIdx
   MapleVector<FieldID> struct_fieldcount_table;  // gives number of fields inside
                                                  // each struct inclusive of nested structs, for speeding up

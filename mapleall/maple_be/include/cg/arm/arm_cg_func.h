@@ -131,7 +131,7 @@ class ArmCGFunc : public CGFunc {
   Operand *SelectAddrof(AddrofNode *expr) override;
   Operand *SelectAddroffunc(AddroffuncNode *expr) override;
   Operand *SelectIread(base_node_t *parent, IreadNode *expr) override;
-  Operand *SelectIntconst(MIRIntConst *expr) override;
+  Operand *SelectIntconst(MIRIntConst *expr, PrimType pty) override;
   Operand *SelectFloatconst(MIRFloatConst *floatconst) override;
   Operand *SelectDoubleconst(MIRDoubleConst *doubleconst) override;
   Operand *SelectVectorIntconst(MIRVectorIntConst *expr) override {

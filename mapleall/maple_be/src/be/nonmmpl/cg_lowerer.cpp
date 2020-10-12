@@ -537,7 +537,7 @@ StmtNode *CGLowerer::LowerIntrinsicopDassign(const DassignNode *dsnode, Intrinsi
   st->SetTyIdx(becommon.BeGetOrCreateFunctionType(ty->tyIdx, fntyvec, fntavec)->tyIdx);
   CHECK_FATAL(ty->typeKind == kTypeStruct, "");
   CHECK_FATAL(dsnode->fieldID == 0, "NYI");
-  AddrofNode *addrofnode = mirbuilder->CreateAddrof(dst, PTY_a32);
+ AddrofNode *addrofnode = mirbuilder->CreateAddrof(dst, PTY_a32);
   MapleVector<BaseNode *> newopnd(mirModule.CurFuncCodeMemPoolAllocator()->Adapter());
   newopnd.push_back(addrofnode);
   newopnd.insert(newopnd.end(), nopnds.begin(), nopnds.end());
@@ -967,8 +967,7 @@ BaseNode *CGLowerer::LowerIntrinsicop(BaseNode *parent, IntrinsicopNode *intrinn
   } else if (intrnid == INTRN_C_constant_p) {
     BaseNode *opnd = intrinnode->nOpnd[0];
     return mirbuilder->CreateIntConst(opnd->op == OP_constval || opnd->op == OP_sizeoftype ||
-                  opnd->op == OP_conststr || opnd->op == OP_conststr16 ||
-                  opnd->op == OP_addrof || opnd->op == OP_addroffunc, PTY_i32);
+                  opnd->op == OP_conststr || opnd->op == OP_conststr16, PTY_i32);
   } else {
     if (intrinFuncIds.find(intrindesc) == intrinFuncIds.end()) {
       // add funcid into map
@@ -1610,6 +1609,17 @@ void CGLowerer::LowerJarrayMalloc(StmtNode *stmt, const JarrayMallocNode *node, 
   blknode->AppendStatementsFromBlock(LowerCallAssignedStmt(callassign));
 }
 
+bool CGLowerer::IsIntrinsicOpHandledAtLowerLevel(MIRIntrinsicID intrinsic) {
+  switch (intrinsic) {
+  case INTRN_C_clz32:
+  case INTRN_C_clz64:
+  case INTRN_C_ctz32:
+  case INTRN_C_ctz64:
+    return true;
+  default:
+    return false;
+  }
+}
 bool CGLowerer::IsIntrinsicCallHandledAtLowerLevel(MIRIntrinsicID intrinsic) {
   switch (intrinsic) {
     case INTRN_MPL_ATOMIC_EXCHANGE_PTR:

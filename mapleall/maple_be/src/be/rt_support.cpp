@@ -21,6 +21,6 @@
 namespace maplebe {
 
 const char *RTSupport::OBJECT_MAP_SECTION_NAME = ".maple.objectmap";
-const char *RTSupport::GCTIB_LABEL_ARRAY_OF_OBJECT = (GCTIB_PREFIX_STR + string(NameMangler::kArrayObject)).c_str();
-const char *RTSupport::GCTIB_LABEL_JAVA_OBJECT = (GCTIB_PREFIX_STR + string(NameMangler::kJavaLangObjectStr)).c_str();
+const char *RTSupport::GCTIB_LABEL_ARRAY_OF_OBJECT = static_cast<const char*>(strdup((GCTIB_PREFIX_STR + string(NameMangler::kArrayObject)).c_str()));
+const char *RTSupport::GCTIB_LABEL_JAVA_OBJECT = static_cast<const char*>(strdup((GCTIB_PREFIX_STR + string(NameMangler::kJavaLangObjectStr)).c_str()));
 }  // namespace maplebe

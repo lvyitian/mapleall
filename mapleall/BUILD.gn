@@ -88,7 +88,7 @@ group("mapleall"){
         "${MAPLEALL_ROOT}/maple_be:mplcg",
         "${MAPLEALL_ROOT}/maple_be:mplbe",
         "${MAPLEALL_ROOT}/maple_be:mplbe-c",
-        "${MAPLE_ROOT}/huawei_secure_c:libHWSecureC",
+        "${HUAWEI_SECURE_C_ROOT}:libHWSecureC",
         "${MAPLEALL_ROOT}/mpl2mpl:mpl2mpl",
         "${MAPLEALL_ROOT}/maple_ipa:mplipa",
         "${MAPLEALL_ROOT}/maple_me:mplme",

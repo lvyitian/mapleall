@@ -36,7 +36,7 @@ void LowerGlobals::LowerGlobalDreads(MeStmt *stmt, MeExpr *x) {
     case kMeOpIvar:
     case kMeOpOp:
     case kMeOpNary: {
-      for (uint32 i = 0; i < x->NumMeExprOpnds(); i++) {
+      for (int32 i = 0; i < x->NumMeExprOpnds(); i++) {
         LowerGlobalDreads(stmt, x->GetOpnd(i));
       }
       break;
@@ -106,10 +106,7 @@ void LowerGlobals::Run() {
     if (bb == nullptr) {
       continue;
     }
-    MeStmt *nextstmt = nullptr;
     for (auto stmt : bb->meStmtList) {
-      nextstmt = stmt->next;
-
       if (stmt->op == OP_dassign) { // skip identify assignment because it will be deleted
         DassignMeStmt *dass = static_cast<DassignMeStmt *>(stmt);
         OriginalSt *ost = dass->lhs->ost;
@@ -127,6 +124,9 @@ void LowerGlobals::Run() {
         OriginalSt *ost = dass->lhs->ost;
         if (ost->isLocal) {
           continue;
+        }
+        if (dass->rhs->meOp == dass->lhs->meOp && dass->lhs->ost == static_cast<ScalarMeExpr *>(dass->rhs)->ost) {
+          continue; // identity assignment converted from phi
         }
         // lower to iassign to expose addrof
         OriginalSt *baseost = ost;

@@ -27,14 +27,14 @@ namespace maple {
 
 using std::isnan;
 
-void MIRConst::Dump() const {
+void MIRConst::Dump(const MIRSymbolTable *localsymtab) const {
   if (fieldID) {
     LogInfo::MapleLogger() << fieldID << "= ";
   }
 }
 
-void MIRIntConst::Dump() const {
-  MIRConst::Dump();
+void MIRIntConst::Dump(const MIRSymbolTable *localsymtab) const {
+  MIRConst::Dump(localsymtab);
   if (value <= 1024) {
     LogInfo::MapleLogger() << value;
   } else {
@@ -50,7 +50,7 @@ bool MIRIntConst::operator==(MIRConst &rhs) const {
   return (intconst && (intconst->type == type) && (intconst->value == value));
 }
 
-void MIRVectorIntConst::Dump() const {
+void MIRVectorIntConst::Dump(const MIRSymbolTable *localsymtab) const {
   LogInfo::MapleLogger()<<"[";
   CHECK_FATAL(this->vecSize > 0, "");
   for (uint32 i = 0; i < this->vecSize; i++) {
@@ -60,18 +60,20 @@ void MIRVectorIntConst::Dump() const {
     } else {
       LogInfo::MapleLogger()<<std::hex<<"0x"<<val<<std::dec;
     }
-    if (i != (this->vecSize - 1))
+    if (i != (uint32)(this->vecSize - 1))
       LogInfo::MapleLogger()<<",";
   }
   LogInfo::MapleLogger()<<"]";
 }
 
-void MIRAddrofConst::Dump() const {
-  MIRConst::Dump();
+void MIRAddrofConst::Dump(const MIRSymbolTable *localsymtab) const {
+  MIRConst::Dump(localsymtab);
   LogInfo::MapleLogger() << "addrof " << GetPrimTypeName(PTY_ptr);
-  CHECK_FATAL(stIdx.IsGlobal(), "MIRAddrofConst can only point to a global symbol");
-  MIRSymbol *sym = GlobalTables::GetGsymTable().GetSymbolFromStIdx(stIdx.Idx());
-  LogInfo::MapleLogger() << " $" << sym->GetName();
+  MIRSymbol *sym = stIdx.IsGlobal() ? GlobalTables::GetGsymTable().GetSymbolFromStIdx(stIdx.Idx())
+                        : localsymtab->GetSymbolFromStIdx(stIdx.Idx());
+  CHECK_FATAL(stIdx.IsGlobal() || sym->storageClass == kScPstatic || sym->storageClass == kScFstatic,
+              "MIRAddrofConst can only point to a global symbol");
+  LogInfo::MapleLogger() << (stIdx.IsGlobal() ? " $" : " %") << sym->GetName();
   if (fldID > 0) {
     LogInfo::MapleLogger() << fldID;
   }
@@ -94,8 +96,8 @@ bool MIRAddrofConst::operator==(MIRConst &rhs) const {
   return (stIdx == rhsA->stIdx && fldID == rhsA->fldID);
 }
 
-void MIRAddroffuncConst::Dump() const {
-  MIRConst::Dump();
+void MIRAddroffuncConst::Dump(const MIRSymbolTable *localsymtab) const {
+  MIRConst::Dump(localsymtab);
   LogInfo::MapleLogger() << "addroffunc " << GetPrimTypeName(PTY_ptr);
   MIRFunction *func = GlobalTables::GetFunctionTable().funcTable.at(puIdx);
   LogInfo::MapleLogger() << " &" << GlobalTables::GetGsymTable().GetSymbolFromStIdx(func->stIdx.Idx())->GetName();
@@ -112,8 +114,8 @@ bool MIRAddroffuncConst::operator==(MIRConst &rhs) const {
   return (type == rhs.type && puIdx == rhsAf->puIdx);
 }
 
-void MIRLblConst::Dump() const {
-  MIRConst::Dump();
+void MIRLblConst::Dump(const MIRSymbolTable *localsymtab) const {
+  MIRConst::Dump(localsymtab);
   LogInfo::MapleLogger() << "addroflabel " << GetPrimTypeName(PTY_ptr);
   MIRFunction *func = GlobalTables::GetFunctionTable().funcTable.at(puIdx);
   LogInfo::MapleLogger() << " @" << func->GetLabelName(value);
@@ -194,29 +196,29 @@ bool MIRAggConst::operator==(MIRConst &rhs) const {
   return true;
 }
 
-void MIRFloatConst::Dump() const {
-  MIRConst::Dump();
+void MIRFloatConst::Dump(const MIRSymbolTable *localsymtab) const {
+  MIRConst::Dump(localsymtab);
   LogInfo::MapleLogger() << std::setprecision(std::numeric_limits<float>::max_digits10) << value.floatValue << "f";
 }
 
-void MIRDoubleConst::Dump() const {
-  MIRConst::Dump();
+void MIRDoubleConst::Dump(const MIRSymbolTable *localsymtab) const {
+  MIRConst::Dump(localsymtab);
   LogInfo::MapleLogger() << std::setprecision(std::numeric_limits<double>::max_digits10) << value.dValue;
 }
 
-void MIRFloat128Const::Dump() const {
-  MIRConst::Dump();
+void MIRFloat128Const::Dump(const MIRSymbolTable *localsymtab) const {
+  MIRConst::Dump(localsymtab);
   LogInfo::MapleLogger().setf(std::ios::uppercase);
   LogInfo::MapleLogger() << "0xL" << std::hex << std::setfill('0') << std::setw(16) << value[0]
                                  << std::setfill('0') << std::setw(16) << value[1];
 }
 
-void MIRAggConst::Dump() const {
-  MIRConst::Dump();
+void MIRAggConst::Dump(const MIRSymbolTable *localsymtab) const {
+  MIRConst::Dump(localsymtab);
   LogInfo::MapleLogger() << "[";
   uint32 size = constVec.size();
   for (uint32 i = 0; i < size; i++) {
-    constVec[i]->Dump();
+    constVec[i]->Dump(localsymtab);
     if (i != size - 1) {
       LogInfo::MapleLogger() << ", ";
     }
@@ -229,8 +231,8 @@ MIRStrConst::MIRStrConst(const std::string &str, MIRType *type, uint32 fieldID)
   kind = kConstStrConst;
 }
 
-void MIRStrConst::Dump() const {
-  MIRConst::Dump();
+void MIRStrConst::Dump(const MIRSymbolTable *localsymtab) const {
+  MIRConst::Dump(localsymtab);
   LogInfo::MapleLogger() << "conststr " << GetPrimTypeName(type->primType);
   const std::string kStr = GlobalTables::GetUStrTable().GetStringFromStrIdx(value);
   PrintString(kStr);
@@ -252,8 +254,8 @@ MIRStr16Const::MIRStr16Const(const std::u16string &str, MIRType *type, uint32 fi
   kind = kConstStr16Const;
 }
 
-void MIRStr16Const::Dump() const {
-  MIRConst::Dump();
+void MIRStr16Const::Dump(const MIRSymbolTable *localsymtab) const {
+  MIRConst::Dump(localsymtab);
   LogInfo::MapleLogger() << "conststr16 " << GetPrimTypeName(type->primType);
   std::u16string str16 = GlobalTables::GetU16StrTable().GetStringFromStrIdx(U16StrIdx(value.GetIdx()));
   // UTF-16 string are dumped as UTF-8 string in mpl to keep the printable chars in ascii form

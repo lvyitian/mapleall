@@ -19,7 +19,7 @@ configs = [
 
 include_directories = [
     "${MAPLEALL_ROOT}/maple_util/include",
-    "${MAPLE_ROOT}/huawei_secure_c/include"
+    "${HUAWEI_SECURE_C_ROOT}/include",
 ]
 static_library("libmempool"){
    sources = [
@@ -42,6 +42,6 @@ executable("MemPool"){
     deps = [
         ":libmempool",
         "${MAPLEALL_ROOT}/maple_util:libmplutil",
-        "${MAPLE_ROOT}/huawei_secure_c:libHWSecureC",
+        "${HUAWEI_SECURE_C_ROOT}:libHWSecureC",
     ]
 }

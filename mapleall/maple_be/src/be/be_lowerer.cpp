@@ -48,6 +48,7 @@ static ext_func_descr_t extFnDescrs[] = {
 };
 
 static std::vector<std::pair<ext_func_t, PUIdx>> extFuncs;
+static StmtNode *curStmt;
 
 MIRSymbol *BELowerer::CreateNewRetVar(const MIRType *ty, const char *prefix) {
   std::string buf(prefix);
@@ -143,6 +144,132 @@ BaseNode *BELowerer::LowerIaddrof(const IreadNode *iaddrof) {
   addnode->bOpnd[0] = iaddrof->Opnd(0);
   addnode->bOpnd[1] = offsetnode;
   return addnode;
+}
+
+// Put result of node into a local.
+BaseNode *BELowerer::SplitBinaryNodeOpnd1(BinaryNode *bnode, BlockNode *blknode) {
+  if (becommon.optim_level != 0) {
+    return bnode;
+  }
+  MIRBuilder *mirbuilder = mirModule.mirBuilder;
+  static uint32 val = 0;
+  std::string name("bnaryTmp");
+  name.append(std::to_string(val++));
+
+  BaseNode *opnd1 = bnode->Opnd(1);
+  MIRSymbol *dnodeSt = mirbuilder->GetOrCreateLocalDecl(name, GlobalTables::GetTypeTable().GetTypeFromTyIdx((TyIdx)(opnd1->primType)));
+  DassignNode *dnode = mirbuilder->CreateStmtDassign(dnodeSt, 0, opnd1);
+  blknode->InsertAfter(blknode->GetLast(), dnode);
+
+  BaseNode *dreadNode = mirbuilder->CreateExprDread(dnodeSt);
+  bnode->SetOpnd(dreadNode, 1);
+
+  return bnode;
+}
+
+// Put result of node into a local.
+BaseNode *BELowerer::SplitTernaryNodeResult(TernaryNode *tnode, BaseNode *parent, BlockNode *blknode) {
+  if (becommon.optim_level != 0) {
+    return tnode;
+  }
+  MIRBuilder *mirbuilder = mirModule.mirBuilder;
+  static uint32 val = 0;
+  std::string name("tnaryTmp");
+  name.append(std::to_string(val++));
+
+  MIRSymbol *dassignNodeSym = mirbuilder->GetOrCreateLocalDecl(name, GlobalTables::GetTypeTable().GetTypeFromTyIdx((TyIdx)(tnode->primType)));
+  DassignNode *dassignNode = mirbuilder->CreateStmtDassign(dassignNodeSym, 0, tnode);
+  blknode->InsertAfter(blknode->GetLast(), dassignNode);
+
+  BaseNode *dreadNode = mirbuilder->CreateExprDread(dassignNodeSym);
+  for (int32 i = 0; i < parent->NumOpnds(); i++) {
+    if (parent->Opnd(i) == tnode) {
+      parent->SetOpnd(dreadNode, i);
+      break;
+    }
+  }
+
+  return dreadNode;
+}
+
+
+// Check if the operand of the select node is complex enough for either functionality or performance reason so we need to lower it to if-then-else.
+bool BELowerer::IsComplexSelect(TernaryNode *tnode, BaseNode *parent, BlockNode *blknode) {
+    if (tnode->primType == PTY_agg)
+      return true;
+
+    // Iread may have side effect which may cause correctness issue.
+    if (tnode->Opnd(1)->op == OP_iread ||tnode->Opnd(2)->op == OP_iread)
+      return true;
+
+    return false;
+}
+
+// Lower agg select node back to if-then-else stmt.
+BaseNode *BELowerer::LowerComplexSelect(TernaryNode *tnode, BaseNode *parent, BlockNode *blknode) {
+  MIRBuilder *mirbuilder = mirModule.mirBuilder;
+  static uint32 val = 0;
+  std::string name("ComplexSelectTmp");
+  name.append(std::to_string(val++));
+
+  MIRType *resultTy = 0;
+  if (tnode->primType == PTY_agg) {
+    if (tnode->Opnd(1)->op == OP_dread) {
+      DreadNode *trueNode = static_cast<DreadNode *>(tnode->Opnd(1));
+      resultTy = mirModule.CurFunction()->GetLocalOrGlobalSymbol(trueNode->stIdx)->GetType();
+    } else if (tnode->Opnd(1)->op == OP_iread) {
+      IreadNode *trueNode = static_cast<IreadNode *>(tnode->Opnd(1));
+      MIRPtrType *ptrty = static_cast<MIRPtrType *>(GlobalTables::GetTypeTable().GetTypeFromTyIdx(trueNode->tyIdx));
+      resultTy = static_cast<MIRStructType *>(GlobalTables::GetTypeTable().GetTypeFromTyIdx(ptrty->pointedTyIdx));
+      if (trueNode->fieldID != 0) {
+        MIRStructType *structty = static_cast<MIRStructType *>(resultTy);
+        FieldPair thepair = structty->TraverseToField(trueNode->fieldID);
+        resultTy = GlobalTables::GetTypeTable().GetTypeFromTyIdx(thepair.second.first);
+      }
+    } else {
+      CHECK_FATAL(false, "NYI: LowerComplexSelect");
+    }
+  } else {
+    resultTy =  GlobalTables::GetTypeTable().GetTypeFromTyIdx((TyIdx)(tnode->primType));
+  }
+
+  MIRSymbol * resultSym = mirbuilder->GetOrCreateLocalDecl(name, resultTy);
+  CondGotoNode *brTargetStmt = mirModule.CurFuncCodeMemPool()->New<CondGotoNode>(OP_brfalse);
+  brTargetStmt->uOpnd = tnode->Opnd(0);
+  LabelIdx targetIdx = mirModule.CurFunction()->labelTab->CreateLabel();
+  mirModule.CurFunction()->labelTab->AddToStringLabelMap(targetIdx);
+  brTargetStmt->offset = targetIdx;
+  blknode->InsertAfter(blknode->GetLast(), brTargetStmt);
+
+  DassignNode *dassignTrue = mirbuilder->CreateStmtDassign(resultSym, 0, tnode->Opnd(1));
+  blknode->InsertAfter(blknode->GetLast(), dassignTrue);
+
+  GotoNode *gotoStmt = mirModule.CurFuncCodeMemPool()->New<GotoNode>(OP_goto);
+  LabelIdx EndIdx = mirModule.CurFunction()->labelTab->CreateLabel();
+  mirModule.CurFunction()->labelTab->AddToStringLabelMap(EndIdx);
+  gotoStmt->offset = EndIdx;
+  blknode->InsertAfter(blknode->GetLast(), gotoStmt);
+
+  LabelNode *lableStmt = mirModule.CurFuncCodeMemPool()->New<LabelNode>();
+  lableStmt->labelIdx = targetIdx;
+  blknode->InsertAfter(blknode->GetLast(), lableStmt);
+
+  DassignNode *dassignFalse = mirbuilder->CreateStmtDassign(resultSym, 0, tnode->Opnd(2));
+  blknode->InsertAfter(blknode->GetLast(), dassignFalse);
+
+  lableStmt = mirModule.CurFuncCodeMemPool()->New<LabelNode>();
+  lableStmt->labelIdx = EndIdx;
+  blknode->InsertAfter(blknode->GetLast(), lableStmt);
+
+  BaseNode *dreadNode = mirbuilder->CreateExprDread(resultSym);
+  for (int32 i = 0; i < parent->NumOpnds(); i++) {
+    if (parent->Opnd(i) == tnode) {
+      parent->SetOpnd(dreadNode, i);
+      break;
+    }
+  }
+
+  return dreadNode;
 }
 
 BaseNode *BELowerer::LowerFarray(ArrayNode *array) {
@@ -250,7 +377,8 @@ BaseNode *BELowerer::LowerArray(ArrayNode *array) {
       nestedArray = true;
       do {
         innerArrayType = static_cast<MIRArrayType *>(innerType);
-        elemSize = becommon.type_size_table[innerArrayType->eTyIdx.GetIdx()];
+        elemSize = RoundUp(becommon.type_size_table[innerArrayType->eTyIdx.GetIdx()],
+                           becommon.type_align_table[arraytype->tyIdx.GetIdx()]);
         dim++;
         innerType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(innerArrayType->eTyIdx);
       } while (innerType->GetKind() == kTypeArray);
@@ -387,14 +515,27 @@ BaseNode *BELowerer::LowerDreadBitfield(DreadNode *dread) {
   ireadnode->uOpnd = addnode;
   MIRType pointedtype(kTypeScalar, ftype->primType);
   TyIdx pointedTyIdx = GlobalTables::GetTypeTable().GetOrCreateMIRType(&pointedtype);
-  MIRPtrType pointtype(pointedTyIdx);
-  ireadnode->tyIdx = GlobalTables::GetTypeTable().GetOrCreateMIRType(&pointtype);
+  MIRType *pointtype = becommon.BeGetOrCreatePointerType(GlobalTables::GetTypeTable().GetTypeFromTyIdx(pointedTyIdx));
+  ireadnode->tyIdx = pointtype->tyIdx;
 
   ExtractbitsNode *extrbitsnode = mirModule.CurFuncCodeMemPool()->New<ExtractbitsNode>(OP_extractbits);
   extrbitsnode->primType = GetRegPrimType(ftype->primType);
   extrbitsnode->bitsOffset = bytebitoffsets.second;
   extrbitsnode->bitsSize = static_cast<MIRBitfieldType *>(ftype)->fieldSize;
   extrbitsnode->uOpnd = ireadnode;
+
+  PrimType ptype = extrbitsnode->primType;
+  if (ptype == PTY_u8 || ptype == PTY_u16 || ptype == PTY_u32 || ptype == PTY_u64) {
+    uint32 bitSz = extrbitsnode->bitsSize;
+    uint32 byteSz = (bitSz <= 8) ? 1 : ((bitSz <= 16) ? 2 : ((bitSz <= 32) ? 4 : 8));
+    if (GetPrimTypeSize(extrbitsnode->primType) > byteSz) {
+      TypeCvtNode *cvtNode = mirModule.CurFuncCodeMemPool()->New<TypeCvtNode>(OP_cvt);
+      cvtNode->fromPrimType = ftype->primType;
+      cvtNode->primType = (byteSz == 1) ? PTY_u8 : (byteSz == 2) ? PTY_u16 : (byteSz == 4) ? PTY_u32 : PTY_u64;
+      cvtNode->uOpnd = extrbitsnode;
+      return cvtNode;
+    }
+  }
 
   return extrbitsnode;
 }
@@ -433,8 +574,8 @@ BaseNode *BELowerer::LowerIreadBitfield(IreadNode *iread) {
   ireadnode->uOpnd = addnode;
   MIRType pointedtype(kTypeScalar, ftype->primType);
   TyIdx pointedTyIdx = GlobalTables::GetTypeTable().GetOrCreateMIRType(&pointedtype);
-  MIRPtrType pointtype(pointedTyIdx);
-  ireadnode->tyIdx = GlobalTables::GetTypeTable().GetOrCreateMIRType(&pointtype);
+  MIRType *pointtype = becommon.BeGetOrCreatePointerType(GlobalTables::GetTypeTable().GetTypeFromTyIdx(pointedTyIdx));
+  ireadnode->tyIdx = pointtype->tyIdx;
 
   ExtractbitsNode *extrbitsnode = mirModule.CurFuncCodeMemPool()->New<ExtractbitsNode>(OP_extractbits);
   extrbitsnode->primType = GetRegPrimType(ftype->primType);
@@ -589,6 +730,14 @@ BaseNode *BELowerer::LowerExpr(BaseNode *originParent, BaseNode *parent, BaseNod
     case OP_iaddrof:
       return LowerIaddrof(static_cast<IreadNode *>(expr));
 
+    case OP_select:
+      if (IsComplexSelect(static_cast<TernaryNode *>(expr), parent, blknode)) {
+        return LowerComplexSelect(static_cast<TernaryNode *>(expr), parent, blknode);
+      }
+      else {
+        return SplitTernaryNodeResult(static_cast<TernaryNode *>(expr), parent, blknode);
+      }
+
     case OP_sizeoftype: {
       CHECK(static_cast<SizeoftypeNode *>(expr)->tyIdx.GetIdx() < becommon.type_size_table.size(),
             "index out of range in BELowerer::LowerExpr");
@@ -597,6 +746,9 @@ BaseNode *BELowerer::LowerExpr(BaseNode *originParent, BaseNode *parent, BaseNod
     }
 
     case OP_intrinsicop:
+      if (IsIntrinsicOpHandledAtLowerLevel(static_cast<IntrinsicopNode *>(expr)->intrinsic)) {
+        return expr;
+      }
       return LowerIntrinsicop(parent, static_cast<IntrinsicopNode *>(expr), blknode);
 
     case OP_stackmalloc: {
@@ -614,10 +766,10 @@ BaseNode *BELowerer::LowerExpr(BaseNode *originParent, BaseNode *parent, BaseNod
 
     case OP_cand:
       expr->op = OP_land;
-      return expr;
+      return SplitBinaryNodeOpnd1(static_cast<BinaryNode *>(expr), blknode);
     case OP_cior:
       expr->op = OP_lior;
-      return expr;
+      return SplitBinaryNodeOpnd1(static_cast<BinaryNode *>(expr), blknode);
     default:
       return expr;
   }
@@ -724,8 +876,8 @@ StmtNode *BELowerer::LowerDassignBitfield(DassignNode *dassign, BlockNode *newbl
   ireadnode->uOpnd = addnode;
   MIRType pointedtype(kTypeScalar, ftype->primType);
   TyIdx pointedTyIdx = GlobalTables::GetTypeTable().GetOrCreateMIRType(&pointedtype);
-  MIRPtrType pointtype(pointedTyIdx);
-  ireadnode->tyIdx = GlobalTables::GetTypeTable().GetOrCreateMIRType(&pointtype);
+  MIRType *pointtype = becommon.BeGetOrCreatePointerType(GlobalTables::GetTypeTable().GetTypeFromTyIdx(pointedTyIdx));
+  ireadnode->tyIdx = pointtype->tyIdx;
 
   DepositbitsNode *depositbits = mirModule.CurFuncCodeMemPool()->New<DepositbitsNode>();
   depositbits->primType = GetRegPrimType(ftype->primType);
@@ -735,7 +887,7 @@ StmtNode *BELowerer::LowerDassignBitfield(DassignNode *dassign, BlockNode *newbl
   depositbits->bOpnd[1] = dassign->GetRhs();
 
   IassignNode *iassignstmt = mirModule.CurFuncCodeMemPool()->New<IassignNode>();
-  iassignstmt->tyIdx = GlobalTables::GetTypeTable().GetOrCreateMIRType(&pointtype);
+  iassignstmt->tyIdx = pointtype->tyIdx;
   iassignstmt->addrExpr = addnode->CloneTree(&mirModule);
   iassignstmt->rhs = depositbits;
 
@@ -780,8 +932,8 @@ StmtNode *BELowerer::LowerIassignBitfield(IassignNode *iassign, BlockNode *newbl
   ireadnode->uOpnd = addnode;
   MIRType pointedtype(kTypeScalar, ftype->primType);
   TyIdx pointedTyIdx = GlobalTables::GetTypeTable().GetOrCreateMIRType(&pointedtype);
-  MIRPtrType pointtype(pointedTyIdx);
-  ireadnode->tyIdx = GlobalTables::GetTypeTable().GetOrCreateMIRType(&pointtype);
+  MIRType *pointtype = becommon.BeGetOrCreatePointerType(GlobalTables::GetTypeTable().GetTypeFromTyIdx(pointedTyIdx));
+  ireadnode->tyIdx = pointtype->tyIdx;
 
   DepositbitsNode *depositbits = mirModule.CurFuncCodeMemPool()->New<DepositbitsNode>();
   depositbits->primType = GetRegPrimType(ftype->primType);
@@ -791,7 +943,7 @@ StmtNode *BELowerer::LowerIassignBitfield(IassignNode *iassign, BlockNode *newbl
   depositbits->bOpnd[1] = iassign->rhs;
 
   IassignNode *iassignstmt = mirModule.CurFuncCodeMemPool()->New<IassignNode>();
-  iassignstmt->tyIdx = GlobalTables::GetTypeTable().GetOrCreateMIRType(&pointtype);
+  iassignstmt->tyIdx = pointtype->tyIdx;
   iassignstmt->addrExpr = addnode->CloneTree(&mirModule);
   iassignstmt->rhs = depositbits;
 
@@ -1124,9 +1276,8 @@ BlockNode *BELowerer::LowerBlock(BlockNode *block) {
   StmtNode *nextstmt = block->GetFirst();
   do {
     StmtNode *stmt = nextstmt;
-#if !TARGARK
-    stmt->Dump(&mirModule, 0);
-#endif
+    //stmt->Dump(&mirModule, 0);
+    curStmt = stmt;
     nextstmt = stmt->GetNext();
     stmt->SetNext(nullptr);
     current_blk_ = newblk;

@@ -817,9 +817,7 @@ void MeStmtPre::BuildWorkListBB(BB *bb) {
 
   // traverse statements
   uint32 seqStmt = 0;
-  MeStmt *nextstmt = nullptr;
   for (auto stmt : bb->meStmtList) {
-    nextstmt = stmt->next;
     seqStmt++;
     switch (stmt->op) {
       case OP_jstry:

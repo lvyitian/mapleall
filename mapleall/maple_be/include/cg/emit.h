@@ -128,6 +128,7 @@ class Emitter {
   void EmitLiterals(std::vector<std::pair<MIRSymbol *, bool>> &literals,
                     const std::map<GStrIdx, MIRType *> &stridx2type);
   void EmitFuncLayoutInfo(const MIRSymbol *layout);
+  void EmitSpecialChar(std::string str, size_t startPos, size_t endPos);
   void EmitStringPointers();
   void EmitGlobalVars(std::vector<std::pair<MIRSymbol *, bool>> &globalvars);
   void EmitGlobalVar(MIRSymbol *globalvar);
@@ -150,8 +151,21 @@ class Emitter {
   void EmitGlobalRootList(const MIRSymbol *st);
   void EmitMuidTable(const std::vector<MIRSymbol *> &ve, const std::map<GStrIdx, MIRType *> &stridx2type,
                      const std::string &sectionName);
+  void EmitInitArraySection();
 
   Emitter &Emit(int64 val) {
+    out << val;
+    return *this;
+  }
+  Emitter &Emit(uint64 val) {
+    out << val;
+    return *this;
+  }
+  Emitter &Emit(int32 val) {
+    out << val;
+    return *this;
+  }
+  Emitter &Emit(uint32 val) {
     out << val;
     return *this;
   }
@@ -169,6 +183,7 @@ class Emitter {
 
   void EmitLabelRef(const char *, LabelIdx);
   void EmitStmtLabel(const char *, LabelIdx);
+  void EmitBBHeaderLabel(const char *, const char *, LabelIdx, CGFunc &);
   void EmitLabelPair(const char *, const LabelPair &);
 
   // Emit alignment directive (".align")

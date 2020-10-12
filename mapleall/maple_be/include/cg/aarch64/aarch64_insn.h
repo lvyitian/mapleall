@@ -153,6 +153,8 @@ class AArch64Insn : public Insn {
 
   uint32 GetLatencyType() const override;
 
+  int GetJumpTargetIdx() const override;
+
  private:
   void CheckOpnd(Operand *opnd, OpndProp *mopd);
   void EmitClinit(CG &, Emitter &);

@@ -189,6 +189,7 @@ class CGOptions {
   static bool insertYieldpoint;
   static bool maplelinker;
   static bool replaceasm;
+  static bool printLowerIR;
   static bool printFunction;
   static bool doSimplePrint;
   static unsigned int maplelinkerSuffix;

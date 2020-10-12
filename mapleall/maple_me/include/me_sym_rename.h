@@ -37,9 +37,9 @@ class SymRename {
   uint32 numNewOriginalSts = 0;         // count of newly created OriginalSt's
 
   bool IsSymRenameCand(OriginalSt *ost) {
-    ASSERT(ost->IsSymbol(), "IsSymRenameCand: unexpected ost_type");
     if (ost->indirectLev != 0 || !ost->isLocal)
       return false;
+    ASSERT(ost->IsSymbol(), "IsSymRenameCand: unexpected ost_type");
     if (// !func->placementRCOn &&
         GlobalTables::GetTypeTable().GetTypeFromTyIdx(ost->tyIdx)->GetPrimType() == PTY_ref) {
       // cannot rename localrefvars because it conflicts with analyzerc

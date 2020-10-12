@@ -80,7 +80,7 @@ clean:
 
 .PHONY: cleanall
 cleanall:
-	@rm -rf out bin
+	@rm -rf out bin/*-clang-*
 
 .PHONY: clobber
 clobber: cleanall

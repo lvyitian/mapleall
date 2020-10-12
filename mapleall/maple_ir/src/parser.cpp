@@ -296,6 +296,10 @@ bool MIRParser::ParseArrayType(TyIdx &arrayTyIdx) {
   }
   CHECK_FATAL(tyIdx != 0, "something wrong with parsing element type ");
   MIRArrayType arrayType(tyIdx, vec);
+  if (!ParseTypeAttrs(arrayType.typeAttrs)) {
+    Error("bad type attribute in pointer type specification");
+    return false;
+  }
   arrayTyIdx = GlobalTables::GetTypeTable().GetOrCreateMIRType(&arrayType);
   return true;
 }
@@ -1194,7 +1198,7 @@ bool MIRParser::ParsePointType(TyIdx &ptyidx) {
   }
   ASSERT(pptyidx != TyIdx(0), "something wrong with parsing element type ");
   PrimType pty = mod.IsJavaModule() ? PTY_ref : PTY_ptr;
-  if (pdtk == maple::TK_constStr) {
+  if (pdtk == maple::TK_constStr || pdtk == maple::TK_func) {
     pty = PTY_ptr;
   }
   MIRPtrType pointtype(pptyidx, pty);  // use reference type here
@@ -1218,7 +1222,21 @@ bool MIRParser::ParseFuncType(TyIdx &tyIdx) {
   std::vector<TyIdx> vecTy;
   std::vector<TypeAttrs> vecAt;
   TokenKind tk = lexer.NextToken();
+  bool varargs = false;
   while (tk != TK_rparen) {
+    if (tk == TK_dotdotdot) {
+      if (vecTy.size() == 0) {
+        Error("variable arguments can only appear after fixed parameters ");
+        return false;
+      }
+      varargs = true;
+      tk = lexer.NextToken();
+      if (tk != TK_rparen) {
+        Error("expect ) after ... but get");
+        return false;
+      }
+      break;
+    }
     TyIdx tyIdx(0);
     if (!ParseType(tyIdx)) {
       Error("expect type parsing function parameters ");
@@ -1251,6 +1269,7 @@ bool MIRParser::ParseFuncType(TyIdx &tyIdx) {
     return false;
   }
   MIRFuncType functype(rettypeidx, vecTy, vecAt);
+  functype.isVarArgs = varargs;
   tyIdx = GlobalTables::GetTypeTable().GetOrCreateMIRType(&functype);
   return true;
 }

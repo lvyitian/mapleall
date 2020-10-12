@@ -25,6 +25,7 @@
 #include "moduleipa.h"
 #include "interleaved_manager.h"
 #include "option.h"
+#include "simplify.h"
 #include "bin_mpl_import.h"
 
 /*
@@ -120,6 +121,8 @@ void DoIpaSideEffectAnalysis(MIRModule *mirModule) {
   modphases.push_back(string("classhierarchy"));
   modphases.push_back(string("ipodevirtulize"));
   modphases.push_back(string("callgraph"));
+  Simplify::doclinitopt = true;
+  modphases.push_back(string("Simplify"));
   MInline::level = 2;
   modphases.push_back(string("inline"));
   mgr.AddPhases(modphases, true, timePhases);

@@ -1110,6 +1110,11 @@ void MirGenerator::EmitAsmFuncInfo(MIRFunction *func) {
   }
   EmitAsmAutoVarsNameInfo(func);
 
+  for (std::pair<GStrIdx, MIRAliasVars> it : curFunc.func->aliasVarMap) {
+      os << "\t// ALIAS %" << GlobalTables::GetStrTable().GetStringFromStrIdx(it.first) << " %"
+         << GlobalTables::GetStrTable().GetStringFromStrIdx(it.second.memPoolStrIdx) << "\n";
+  }
+
   os << "\t.p2align 1\n";
   os << codeLabel << ":\n";
 }
@@ -1232,6 +1237,14 @@ void MirGenerator::EmitAsmCall(CallNode *fstmt) {
     node.primType = pType;
     node.param.intrinsic.numOpnds = fstmt->numOpnds;
     node.param.intrinsic.intrinsicId = static_cast<uint8>(intrn);
+
+    IntrinDesc *intrinDesc = &IntrinDesc::intrintable[intrn];
+    MIRType *retTyp = intrinDesc->GetReturnType();
+    if (retTyp->primType != PTY_void && 
+        pType != retTyp->primType && 
+        IsAddress(pType) != IsAddress(retTyp->primType)) {
+      fprintf(stderr, "Warning: Intrinsic Call ID %d return type is %d in IR but %d in def\n", intrn, pType, retTyp->primType);
+    }
     EmitAsmBaseNode(node, GetIntrinsicName(intrn));
   }
 }

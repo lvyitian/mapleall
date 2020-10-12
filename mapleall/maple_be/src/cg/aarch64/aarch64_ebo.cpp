@@ -20,6 +20,7 @@ namespace maplebe {
 
 using namespace maple;
 #define EBODUMP CGDEBUGFUNC(cgfunc)
+#define CLANG (cgfunc->func->module->IsCModule())
 
 // return the regno of the low 32bit. e.g opnd= d10, return v10.s[0]
 regno_t AArch64Ebo::GetLowVec(Operand *opnd) {
@@ -971,6 +972,9 @@ bool AArch64Ebo::ChangeLdrMop(Insn *insn, Operand *opnd) {
  * load Rxx, base, offset
  */
 bool AArch64Ebo::RemoveRedundantLoad(BB *bb, Insn *insn, Operand **opnds, OpndInfo **opndInfo, OpndInfo **origInfo) {
+  if (CLANG) {
+    return false;
+  }
   if (insn == bb->firstinsn) {
     return false;
   }

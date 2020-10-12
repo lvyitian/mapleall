@@ -383,7 +383,7 @@ bool FlipBRPattern::Optimize(BB *&curbb) {
       CG_ASSERT(brInsn, "FlipBRPattern: ftbb has no branch");
 
       // Reverse the branch
-      int targetIdx = 1;
+      int targetIdx = cbrInsn->GetJumpTargetIdx();
       MOperator mop = cgfunc->theCFG->GetInsnModifier()->FlipConditionOp(cbrInsn->mop_, targetIdx);
       if (mop == 0) {
         return false;
@@ -395,7 +395,7 @@ bool FlipBRPattern::Optimize(BB *&curbb) {
            (!cgfunc->theCFG->InLSDA(tgtBB->labidx, cgfunc->ehfunc) &&
             !cgfunc->theCFG->InSwitchTable(tgtBB->labidx, cgfunc) && cgfunc->theCFG->CanMerge(ftBB, tgtBB)))) {
         cbrInsn->mop_ = mop;
-        Operand *brTarget = brInsn->GetOperand(0);
+        Operand *brTarget = brInsn->GetOperand(brInsn->GetJumpTargetIdx());
         cbrInsn->SetOperand(targetIdx, brTarget);
         // Insert ftBB's insn at the beginning of tgtBB.
         if (!cgfunc->theCFG->IsSoloGoto(ftBB)) {
