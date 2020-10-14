@@ -726,8 +726,16 @@ void MirGenerator::EmitStmt(StmtNode *fstmt) {
     case OP_jstry: {
       JsTryNode *jstry = static_cast<JsTryNode *>(fstmt);
       EmitAsmBaseNode(stmt);
-      if (jstry->catchOffset) EmitAsmLabel(jstry->catchOffset, true);
-      if (jstry->finallyOffset) EmitAsmLabel(jstry->finallyOffset, true);
+      if (jstry->catchOffset) {
+        EmitAsmLabel(jstry->catchOffset, true);
+      } else {
+        EmitString(".long 0", 4);
+      }
+      if (jstry->finallyOffset) {
+        EmitAsmLabel(jstry->finallyOffset, true);
+      } else {
+        EmitString(".long 0", 4);
+      }
       break;
     }
     case OP_jscatch: {
