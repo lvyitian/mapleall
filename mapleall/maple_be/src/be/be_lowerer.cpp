@@ -1419,9 +1419,7 @@ BlockNode *BELowerer::LowerBlock(BlockNode *block) {
       }
       // Do not leave comment stmt to mmpl.
       case OP_comment:
-        if (!IsTargetMMPL()) {
-          newblk->AddStatement(stmt);
-        }
+        newblk->AddStatement(stmt);
         break;
       case OP_try:
       case OP_javatry:
