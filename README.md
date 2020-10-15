@@ -1,5 +1,4 @@
 ```
-#
 # Copyright (C) [2020] Futurewei Technologies, Inc. All rights reverved.
 #
 # Licensed under the Mulan Permissive Software License v2.
@@ -12,18 +11,18 @@
 # EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
 # FIT FOR A PARTICULAR PURPOSE.
 # See the MulanPSL - 2.0 for more details.
-#
 ```
 
 ## MAPLE - Multiple Architecture and Programming Language Environment
 
-Let MAPLE_ROOT be the top directory for mapleall repository.
+Let **MAPLE_ROOT** be the top directory for mapleall repository.
 
 The directory structure as follows:
 
 ```
       $MAPLE_ROOT
             README.md    : this file
+            Tutorial.md  : Tutorial & FAQ
             Copyright    : Copyright file
             license      : Mulan license file
             doc          : MapleIR documentation
@@ -46,9 +45,9 @@ The directory structure as follows:
 
 ### Build compiler
 1. cd $MAPLE_ROOT
-2. choose {TARGET, VERSION} combo from four flavors {arm/engine(or ark), release/debug}
-   where arm for arm64 target .s and engine (or ark) for maple engine target .s
-3. source envsetup.sh TARGET VERSION
+2. choose {**TARGET**, **VERSION**} combo from four flavors {**arm**/**engine**(or **ark**), **release**/**debug**}
+   where **arm** for arm64 target .s and **engine** (or **ark**) for maple engine target .s
+3. source envsetup.sh **TARGET** **VERSION**
 4. make
 5. make install
 
@@ -66,6 +65,9 @@ refer to maple_engine git repository for java2asm.sh and asm2so.sh scripts
 1. java2asm.sh: .java -> .mpl -> .s
 2. asm2so.sh  : .s -> .so
 
+### Tutorial
+Please find step by step instructions to build Maple and run examples in the [Tutorial.md](Tutorial.md). 
+
 ### Possible issues
 You might need to install required packages like:
 ```
@@ -73,3 +75,5 @@ You might need to install required packages like:
         sudo apt-get install libelf-dev
         sudo apt-get install libssl-dev
 ```
+
+Please refer to the [FAQ](Tutorial.md#faq-and-errors) page for anwswers to more questions and issues.
