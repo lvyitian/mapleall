@@ -24,16 +24,16 @@ cd $WORKDIR
 name=printHuawei
 
 echo ========================================================================
-echo ============= Use opencc/whirl2mpl as C Frontend =======================
+echo ============= Use clangfe/whirl2mpl as C Frontend =======================
 echo ========================================================================
 
 cp $CURRDIR/$name.c .
 
-echo $MAPLE_ROOT/tools/open64ark/bin/opencc -O0 -fe -keep -show -std=gnu99 $name.c
-$MAPLE_ROOT/tools/open64ark/bin/opencc -O0 -fe -keep -show -std=gnu99 $name.c > doit.log 2>&1
+echo $MAPLE_ROOT/tools/aarch64/bin/clangfe -cc1 -emit-llvm -triple aarch64-linux-gnu -D__clang__ -D__BLOCKS__ -isystem /usr/aarch64-linux-gnu/include -isystem /usr/lib/gcc-cross/aarch64-linux-gnu/5/include $name.c
+$MAPLE_ROOT/tools/aarch64/bin/clangfe -cc1 -emit-llvm -triple aarch64-linux-gnu -D__clang__ -D__BLOCKS__ -isystem /usr/aarch64-linux-gnu/include -isystem /usr/lib/gcc-cross/aarch64-linux-gnu/5/include $name.c > doit.log 2>&1
 
-echo $MAPLE_ROOT/tools/open64ark/bin/whirl2mpl $name.B
-$MAPLE_ROOT/tools/open64ark/bin/whirl2mpl $name.B >> doit.log 2>&1
+echo $MAPLE_ROOT/tools/aarch64/bin/whirl2mpl $name.B
+$MAPLE_ROOT/tools/aarch64/bin/whirl2mpl $name.B >> doit.log 2>&1
 
 echo $MAPLE_ROOT/bin/arm64-clang-release/maple -exe=me,mplcg -option=\"-O2 --quiet:-quiet\" $name.mpl
 $MAPLE_ROOT/bin/arm64-clang-release/maple -exe=me,mplcg -option="-O2 --quiet:-quiet" $name.bpl >> doit.log 2>&1
