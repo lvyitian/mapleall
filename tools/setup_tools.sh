@@ -18,12 +18,12 @@ if [ ! -f ../bin/ast2mpl ]; then
   cd ../bin/ast2mpl_files
   cat ast2mpl_aa ast2mpl_ab ast2mpl_ac ast2mpl_ad > ast2mpl.gz
   gunzip ast2mpl.gz
-  mv ast2mpl ..
-  cd ..
   chmod 775 ast2mpl
-  cd ../tools
-  echo Merge ast2mpl.
+  mv ast2mpl ..
+  cd ../../tools
+  echo Merged ast2mpl.
 fi
+
 if [ ! -f ./ninja_1.9.0/ninja ]; then
   mkdir -p ./ninja_1.9.0
   cd ./ninja_1.9.0 || exit 3
@@ -32,15 +32,13 @@ if [ ! -f ./ninja_1.9.0/ninja ]; then
   cd ..
   echo Downloaded ninja 1.9.0.
 fi
+
 if [ ! -f ./gn/gn ]; then
-  mkdir -p gn
-  cd gn || exit 4
-  git clone https://gitee.com/xlnb/gn_binary.git
-  ln -sf gn_binary/gn .
-  chmod +x gn_binary/gn
-  cd ..
+  git clone https://gitee.com/xlnb/gn_binary.git gn
+  chmod +x gn/gn
   echo Downloaded gn.
 fi
+
 if [ ! -f ./aarch64/bin/whirl2mpl ]; then
   git clone https://gitee.com/open64ark/open64_prebuilt.git
   tar zxf open64_prebuilt/x86/open64ark-aarch64.tar.gz

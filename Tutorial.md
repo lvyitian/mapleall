@@ -8,6 +8,8 @@ Here is a step by step example of building Maple for ARM relase and running a re
         Kernel:                 4.15.0
         GCC:                    7.5.0
 
+        Note: ubuntu 16.04.4 LTS with gcc 5.4.0 also works
+
 1. Clone the repository from the gitee to your local environment.
 
         git clone https://gitee.com/openarkcompiler-incubator/mapleall.git
@@ -17,10 +19,10 @@ Here is a step by step example of building Maple for ARM relase and running a re
 
         cd tools/
         ./setup_tools.sh
+        cd ..
 
 3. Initialize the environment for building the Maple for ARM with the release version.
 
-        cd ..
         source envsetup.sh arm release
 
 4. Now, can we make and install the Maple, and all maple excutables are in **$MAPLE_ROOT/bin** directory
@@ -43,7 +45,7 @@ Here is a step by step example of building Maple for ARM relase and running a re
         ========================================================================
         INC=/usr/bin/../lib/gcc/x86_64-linux-gnu/7.5.0
         /home/lin/mapleall/bin/ast2mpl printHuawei.c -I /usr/bin/../lib/gcc/x86_64-linux-gnu/7.5.0/include
-        /home/lin/mapleall/bin/arm64-clang-release/maple -exe=me,mplcg -option="-O2 --quiet:-quiet" printHuawei.mpl
+        /home/lin/mapleall/bin/arm64-clang-release/maple -exe=me,mplcg -option="-O2 --quiet:-O2 -quiet" printHuawei.mpl
         /usr/bin/aarch64-linux-gnu-gcc -o printHuawei.out printHuawei.s -lm
         qemu-aarch64 -L /usr/aarch64-linux-gnu/ printHuawei.out
 
@@ -81,7 +83,7 @@ Here is a step by step example of building Maple for ARM relase and running a re
         ========================================================================
         /home/lin/mapleall/tools/aarch64/bin/clangfe -cc1 -emit-llvm -triple aarch64-linux-gnu -D__clang__ -D__BLOCKS__ -isystem /usr/aarch64-linux-gnu/include -isystem /usr/lib/gcc-cross/aarch64-linux-gnu/5/include printHuawei.c
         /home/lin/mapleall/tools/aarch64/bin/whirl2mpl printHuawei.B
-        /home/lin/mapleall/bin/arm64-clang-release/maple -exe=me,mplcg -option="-O2 --quiet:-quiet" printHuawei.mpl
+        /home/lin/mapleall/bin/arm64-clang-release/maple -exe=me,mplcg -option="-O2 --quiet:-O2 -quiet" printHuawei.mpl
         /usr/bin/aarch64-linux-gnu-gcc -o printHuawei.out printHuawei.s -lm
         qemu-aarch64 -L /usr/aarch64-linux-gnu/ printHuawei.out
 
@@ -137,6 +139,8 @@ Here is a step by step example of building Maple for ARM relase and running a re
 
         sudo apt install -y gcc-7-aarch64-linux-gnu
         sudo ln -s /usr/bin/aarch64-linux-gnu-gcc-7 /usr/bin/aarch64-linux-gnu-gcc
+
+        note: using gcc-5-aarch64-linux-gnu for ubuntu 16.04.4 works as well
 
 4. If the execution of example complains the missing command **qemu-aarch64** as below, we need install the QEMU for ARM.
 
