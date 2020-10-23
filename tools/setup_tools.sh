@@ -41,8 +41,8 @@ if [ ! -f ./gn/gn ]; then
   cd ..
   echo Downloaded gn.
 fi
-if [ ! -f ./open64ark/bin/whirl2mpl ]; then
-  git clone https://gitee.com/open64ark/open64ark_prebuilt.git
-  tar zxf open64ark_prebuilt/x86/open64ark.tar.gz
-  echo Downloaded open64ark_prebuilt.
+if [ ! -f ./aarch64/bin/whirl2mpl ]; then
+  git clone https://gitee.com/open64ark/open64_prebuilt.git
+  tar zxf open64_prebuilt/x86/open64ark-aarch64.tar.gz
+  echo Downloaded open64_prebuilt.
 fi

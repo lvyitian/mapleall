@@ -1,5 +1,5 @@
 # A Tutorial and FAQ for Building Maple for ARM and Compiling C Programs
-last updated: 2020-10-13
+last updated: 2020-10-22
 
 ## A General Guidance with Step by Step Instructions
 Here is a step by step example of building Maple for ARM relase and running a real example which wiil print some ASCII text. We did this demo in the environment below:
@@ -77,10 +77,10 @@ Here is a step by step example of building Maple for ARM relase and running a re
 
         cd /home/lin/mapleall/examples/C/use_whirl2mpl
         ========================================================================
-        ============= Use opencc/whirl2mpl as C Frontend =======================
+        ============= Use clangfe/whirl2mpl as C Frontend =======================
         ========================================================================
-        /home/lin/mapleall/tools/open64ark/bin/opencc -O0 -fe -keep -show -std=gnu99 printHuawei.c
-        /home/lin/mapleall/tools/open64ark/bin/whirl2mpl printHuawei.B
+        /home/lin/mapleall/tools/aarch64/bin/clangfe -cc1 -emit-llvm -triple aarch64-linux-gnu -D__clang__ -D__BLOCKS__ -isystem /usr/aarch64-linux-gnu/include -isystem /usr/lib/gcc-cross/aarch64-linux-gnu/5/include printHuawei.c
+        /home/lin/mapleall/tools/aarch64/bin/whirl2mpl printHuawei.B
         /home/lin/mapleall/bin/arm64-clang-release/maple -exe=me,mplcg -option="-O2 --quiet:-quiet" printHuawei.mpl
         /usr/bin/aarch64-linux-gnu-gcc -o printHuawei.out printHuawei.s -lm
         qemu-aarch64 -L /usr/aarch64-linux-gnu/ printHuawei.out
