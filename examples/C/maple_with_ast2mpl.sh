@@ -36,12 +36,12 @@ echo $MAPLE_ROOT/bin/ast2mpl $name.c -I $INC/include
 $MAPLE_ROOT/bin/ast2mpl $name.c -I $INC/include
 
 # .mpl -> .s
-echo $MAPLE_ROOT/bin/arm64-clang-release/maple -exe=me,mplcg -option=\"-O2 --quiet:-quiet\" $name.mpl
-$MAPLE_ROOT/bin/arm64-clang-release/maple -exe=me,mplcg -option="-O2 --quiet:-quiet" $name.mpl > doit.log
+echo $MAPLE_ROOT/bin/arm64-clang-release/maple -exe=me,mplcg -option=\"-O2 --quiet:-O2 -quiet\" $name.mpl
+$MAPLE_ROOT/bin/arm64-clang-release/maple -exe=me,mplcg -option="-O2 --quiet:-O2 -quiet" $name.mpl > doit.log
 
 # .s -> .out
-echo /usr/bin/aarch64-linux-gnu-gcc -o $name.out $name.s -lm
-/usr/bin/aarch64-linux-gnu-gcc -o $name.out $name.s -lm
+echo /usr/bin/aarch64-linux-gnu-gcc -o $name.out $name.s
+/usr/bin/aarch64-linux-gnu-gcc -o $name.out $name.s
 
 # execute .out either with qemu or native
 echo qemu-aarch64 -L /usr/aarch64-linux-gnu/ $name.out

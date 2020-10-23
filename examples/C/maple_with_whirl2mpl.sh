@@ -35,11 +35,11 @@ $MAPLE_ROOT/tools/aarch64/bin/clangfe -cc1 -emit-llvm -triple aarch64-linux-gnu 
 echo $MAPLE_ROOT/tools/aarch64/bin/whirl2mpl $name.B
 $MAPLE_ROOT/tools/aarch64/bin/whirl2mpl $name.B >> doit.log 2>&1
 
-echo $MAPLE_ROOT/bin/arm64-clang-release/maple -exe=me,mplcg -option=\"-O2 --quiet:-quiet\" $name.mpl
-$MAPLE_ROOT/bin/arm64-clang-release/maple -exe=me,mplcg -option="-O2 --quiet:-quiet" $name.bpl >> doit.log 2>&1
+echo $MAPLE_ROOT/bin/arm64-clang-release/maple -exe=me,mplcg -option=\"-O2 --quiet:-O2 -quiet\" $name.mpl
+$MAPLE_ROOT/bin/arm64-clang-release/maple -exe=me,mplcg -option="-O2 --quiet:-O2 -quiet" $name.bpl >> doit.log 2>&1
 
-echo /usr/bin/aarch64-linux-gnu-gcc -o $name.out $name.s -lm
-/usr/bin/aarch64-linux-gnu-gcc -o $name.out $name.s -lm
+echo /usr/bin/aarch64-linux-gnu-gcc -o $name.out $name.s
+/usr/bin/aarch64-linux-gnu-gcc -o $name.out $name.s
 
 echo qemu-aarch64 -L /usr/aarch64-linux-gnu/ $name.out
 qemu-aarch64 -L /usr/aarch64-linux-gnu/ $name.out
