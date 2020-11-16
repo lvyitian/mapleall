@@ -116,3 +116,5 @@ DEF_MIR_INTRINSIC(JSOP_MORE_ITERATOR,\
                   __jsop_more_iterator, INTRNISJS, kArgTyU32, kArgTyPtr, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
 DEF_MIR_INTRINSIC(JS_ADDSYSEVENTLISTENER,\
                   __js_add_sysevent_listener, INTRNISJS, kArgTyU32, kArgTyDynany, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JS_GET_ARGUMENTOBJECT,\
+                  __jsobj_get_or_create_argument, INTRNISJS | INTRNISPURE, kArgTySimpleobj, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
