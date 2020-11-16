@@ -22,6 +22,13 @@ if(TARGET == "aarch64"){
   ]
 }
 
+if(TARGET == "riscv64"){
+  cflags_cc += [
+      "-DTARGRISCV64",
+      "-DMAPLE_ROOT=\"${MAPLE_ROOT}\"",
+  ]
+}
+
 if(TARGET == "ark"){
   cflags_cc += [
       "-DTARGARK",
@@ -47,6 +54,7 @@ include_directories = [
   "${MAPLE_RE_ROOT}/include",
   "${MAPLEALL_ROOT}/mempool/include",
   "${HUAWEI_SECURE_C_ROOT}/include",
+  "${DWARF_ROOT}/include",
 ]
 
 executable("maple") {

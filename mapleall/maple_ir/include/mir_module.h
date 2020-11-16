@@ -46,6 +46,7 @@ class MIRSymbolTable;
 class MIRTypeNameTable;
 class MIRFloatConst;
 class MIRDoubleConst;
+class DebugInfo;
 class BinaryMplt;
 using MIRInfoPair = std::pair<GStrIdx, uint32>;
 using MIRInfoVector = MapleVector<MIRInfoPair>;
@@ -114,6 +115,8 @@ class MIRModule : public mir_module_t {
 
   TyIdx throwableTyidx;  // a special type that is the base of java exception type. only used for java
 
+  DebugInfo *dbgInfo;
+  bool withDbgInfo;
   bool withProfileInfo;
 
   ////   for cg in mplt

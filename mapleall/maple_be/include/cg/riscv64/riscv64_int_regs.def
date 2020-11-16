@@ -1,0 +1,76 @@
+/*
+ * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ *
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
+ *
+ *   https://opensource.org/licenses/MulanPSL-2.0
+ *
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
+ * FIT FOR A PARTICULAR PURPOSE.
+ * See the MulanPSL - 2.0 for more details.
+ */
+
+/*
+  ARM Compiler armasm User Guide version 6.6.
+  http://infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.dui0473j/deb1353594352617.html
+  (retrieved on 3/24/2017)
+
+  $ 4.1 Registers in Riscv64 state
+
+  There is no register named W31 or X31.
+  Depending on the instruction, register 31 is either the stack
+  pointer or the zero register. When used as the stack pointer,
+  you refer to it as "SP". When used as the zero register, you refer
+  to it as WZR in a 32-bit context or XZR in a 64-bit context.
+  The zero register returns 0 when read and discards data when
+  written (e.g., when setting the status register for testing).
+ */
+// ID, 32-bit prefix, 64-bit prefix
+INT_REG(0 , "", "X")
+INT_REG(1 , "", "X")
+INT_REG(2 , "", "X")
+INT_REG(3 , "", "X")
+INT_REG(4 , "", "X")
+INT_REG(5 , "", "X")
+INT_REG(6 , "", "X")
+INT_REG(7 , "", "X")
+INT_REG(8 , "", "X")
+INT_REG(9 , "", "X")
+INT_REG(10, "", "X")
+INT_REG(11, "", "X")
+INT_REG(12, "", "X")
+INT_REG(13, "", "X")
+INT_REG(14, "", "X")
+INT_REG(15, "", "X")
+INT_REG(16, "", "X")
+INT_REG(17, "", "X")
+INT_REG(18, "", "X")
+INT_REG(19, "", "X")
+INT_REG(20, "", "X")
+INT_REG(21, "", "X")
+INT_REG(22, "", "X")
+INT_REG(23, "", "X")
+INT_REG(24, "", "X")
+INT_REG(25, "", "X")
+INT_REG(26, "", "X")
+INT_REG(27, "", "X")
+INT_REG(28, "", "X")
+INT_REG(29, "", "X")
+INT_REG(30, "", "X")
+INT_REG(31, "", "X")
+
+// Alias ID, ID, 32-bit prefix, 64-bit prefix
+INT_REG_ALIAS(ZERO, 0, "", "" )
+INT_REG_ALIAS(RA, 1, "", "" )
+INT_REG_ALIAS(SP, 2, "", "" )
+INT_REG_ALIAS(GP, 3, "", "" )
+INT_REG_ALIAS(TP, 4, "", "" )
+INT_REG_ALIAS(FP, 8, "", "" )
+
+// R19 is reserved for yieldpoint
+INT_REG_ALIAS(YP, 0, "", "" )
+
+INT_REG_ALIAS(LAST_INT_REG, 31, "", "" )

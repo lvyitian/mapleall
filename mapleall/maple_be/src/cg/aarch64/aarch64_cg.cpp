@@ -29,9 +29,11 @@ using namespace std;
 namespace maplebe {
 
 #include "aarch64_opnd.def"
+#define DEFINE_MOP(op,a2,a3,a4,a5,a6,a7,a8,a9,aa,ab,ac) {op,a2,a3,a4,a5,a6,a7,a8,a9,aa,ab,ac},
 const AArch64MD AArch64CG::kMd[kMopLast] = {
 #include "aarch64_md.def"
 };
+#undef DEFINE_MOP
 
 bool AArch64CG::IsExclusiveFunc(MIRFunction *mirFunc) {
   const std::string &funcname = mirFunc->GetName();

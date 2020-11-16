@@ -1,0 +1,626 @@
+/*
+ * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ *
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
+ *
+ *   https://opensource.org/licenses/MulanPSL-2.0
+ *
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
+ * FIT FOR A PARTICULAR PURPOSE.
+ * See the MulanPSL - 2.0 for more details.
+ */
+
+// MOP_undef,
+DEFINE_MOP(MOP_undef, {MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"","")
+// MOP_Tbadcrrr
+DEFINE_MOP(MOP_Tbadcrrr, {MOPD_Reg32IDS,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_RegCCS,MOPD_Undef},0,"adc","0,1,2")
+// MOP_Tbaddrri8
+DEFINE_MOP(MOP_Tbaddrri8, {MOPD_Reg32ID,MOPD_Reg32IS, MOPD_Imm8,MOPD_Undef,MOPD_Undef},0,"add","0,1,2")
+// MOP_Tbaddrri3s
+DEFINE_MOP(MOP_Tbaddrri3s, {MOPD_RegCCD,MOPD_Reg32ID,MOPD_Reg32IS, MOPD_Imm32,MOPD_Undef},0,"adds","1,2,3")
+// MOP_Tbaddri8
+DEFINE_MOP(MOP_Tbaddri8, {MOPD_RegCCD,MOPD_Reg32IDS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"adds","")
+// MOP_Tbaddrrr
+DEFINE_MOP(MOP_Tbaddrrr, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,"add","0,1,2")
+// MOP_Tbadd64rrrs
+DEFINE_MOP(MOP_Tbadd64rrrs, {MOPD_RegCCD,MOPD_Reg64IDL,MOPD_Reg64ISL,MOPD_Reg64ISL,MOPD_Undef},0,"adds","1,2,3")
+DEFINE_MOP(MOP_Tbadd64rris, {MOPD_RegCCD,MOPD_Reg64IDL,MOPD_Reg64ISL,MOPD_Imm12,MOPD_Undef},0,"adds","1,2,3")
+// MOP_Tbaddrrlh
+DEFINE_MOP(MOP_Tbaddrrlh, {MOPD_Reg32IDS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"add","")
+// MOP_Tbaddrrhl
+DEFINE_MOP(MOP_Tbaddrrhl, {MOPD_Reg32IDS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"add","")
+// MOP_Tbaddrrhh
+DEFINE_MOP(MOP_Tbaddrrhh, {MOPD_Reg32IDS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"add","")
+// MOP_Tbaddpcrel
+DEFINE_MOP(MOP_Tbaddpcrel, {MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISBRANCH,"add","")
+// MOP_Tbaddsprel
+DEFINE_MOP(MOP_Tbaddsprel, {MOPD_Reg32ID,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"add","")
+// MOP_Tbaddspi7
+DEFINE_MOP(MOP_Tbaddspi7, {MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"add","")
+// MOP_Tbandrr
+DEFINE_MOP(MOP_Tbandrr, {MOPD_RegCCD,MOPD_Reg32IDS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,"ands","")
+// MOP_Tbasrrri5
+DEFINE_MOP(MOP_Tbasrrri5, {MOPD_RegCCD,MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,"asrs","")
+// MOP_Tbasrsrrr
+DEFINE_MOP(MOP_Tbasrsrrr, {MOPD_RegCCD,MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef},0,"asrs","1,2,3")
+// MOP_Tbbcond
+DEFINE_MOP(MOP_Tbbcond, {MOPD_RegCCS,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISBRANCH,"b!1c","")
+// MOP_Tbbuncond
+DEFINE_MOP(MOP_Tbbuncond, {MOPD_Label,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISBRANCH,"b","0")
+// MOP_Tbbicrr
+DEFINE_MOP(MOP_Tbbicrr, {MOPD_RegCCD,MOPD_Reg32IDS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,"bics","")
+// MOP_Tbbkpt
+DEFINE_MOP(MOP_Tbbkpt, {MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISBRANCH,"bkpt","")
+// MOP_Tbbl
+DEFINE_MOP(MOP_Tbbl, {MOPD_Mem32S,MOPD_LISTS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISCALL,"bl","0")
+// MOP_Tbblx2
+DEFINE_MOP(MOP_Tbblx2, {MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISBRANCH,"blx_2","")
+// MOP_Tbbl1
+DEFINE_MOP(MOP_Tbbl1, {MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISBRANCH,"bl_1","")
+// MOP_Tbbl2
+DEFINE_MOP(MOP_Tbbl2, {MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISBRANCH,"bl_2","")
+// MOP_Tbblxr
+DEFINE_MOP(MOP_Tbblxr, {MOPD_Reg32IS,MOPD_LISTS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISBRANCH,"blx","0")
+// MOP_Tbbx
+DEFINE_MOP(MOP_Tbbx, {MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISBRANCH,"bx","0")
+// MOP_Tbcmnrr
+DEFINE_MOP(MOP_Tbcmnrr, {MOPD_RegCCD,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,"cmn","")
+// MOP_Tbcmpri8
+DEFINE_MOP(MOP_Tbcmpri8, {MOPD_RegCCD,MOPD_Reg32IS,MOPD_Imm32,MOPD_Undef,MOPD_Undef},0,"cmp","1,2")
+// MOP_Tbcmprr
+DEFINE_MOP(MOP_Tbcmprr, {MOPD_RegCCD,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,"cmp","1,2")
+// MOP_Tbcmplh
+DEFINE_MOP(MOP_Tbcmplh, {MOPD_RegCCD,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,"cmp","")
+// MOP_Tbcmphl
+DEFINE_MOP(MOP_Tbcmphl, {MOPD_RegCCD,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,"cmp","")
+// MOP_Tbcmphh
+DEFINE_MOP(MOP_Tbcmphh, {MOPD_RegCCD,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,"cmp","")
+// MOP_Tbeorrr
+DEFINE_MOP(MOP_Tbeorrr, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,"eors","")
+// MOP_Tbldmia
+DEFINE_MOP(MOP_Tbldmia, {MOPD_Reg32IDS,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD,"ldmia","")
+// MOP_Tbld
+DEFINE_MOP(MOP_Tbld, {MOPD_Reg32ID,MOPD_Mem32S,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD,"ldr","0, 1")
+// MOP_Tbldwb
+DEFINE_MOP(MOP_Tbldwb, {MOPD_Reg32ID, MOPD_Reg32ID, MOPD_Mem32S,MOPD_Undef,MOPD_Undef},ISLOAD,"ldr","0, 2")
+// MOP_Tbld64l
+DEFINE_MOP(MOP_Tbld64l, {MOPD_Reg64IDL,MOPD_Mem32S,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD,"ldr","0, 1")
+// MOP_Tbld64h
+DEFINE_MOP(MOP_Tbld64h, {MOPD_Reg64IDSH,MOPD_Mem32S,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD,"ldr","0, 1")
+// MOP_Tbldrbrri5
+DEFINE_MOP(MOP_Tbldrbrri5, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD,"ldrb","")
+// MOP_Tbldrb
+DEFINE_MOP(MOP_Tbldrb, {MOPD_Reg32ID,MOPD_Mem8S,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD,"ldrb","0,1")
+// MOP_Tbldrhrri5
+DEFINE_MOP(MOP_Tbldrhrri5, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD,"ldrh","")
+// MOP_Tbldrh
+DEFINE_MOP(MOP_Tbldrh, {MOPD_Reg32ID, MOPD_Mem16S, MOPD_Undef, MOPD_Undef,MOPD_Undef},ISLOAD,"ldrh","0,1")
+// MOP_Tbldrsb
+DEFINE_MOP(MOP_Tbldrsb, {MOPD_Reg32ID,MOPD_Mem8S,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD,"ldrsb","0,1")
+// MOP_Tbldrsh
+DEFINE_MOP(MOP_Tbldrsh, {MOPD_Reg32ID,MOPD_Mem16S,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},ISLOAD,"ldrsh","0,1")
+// MOP_Tblslrri5
+DEFINE_MOP(MOP_Tblslrri5, {MOPD_RegCCD,MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,"lsls","")
+// MOP_Tblslsrrr
+DEFINE_MOP(MOP_Tblslsrrr, {MOPD_RegCCD,MOPD_Reg32IDS,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef},0,"lsls","1,2,3")
+// MOP_Tblsrrri5
+DEFINE_MOP(MOP_Tblsrrri5, {MOPD_RegCCD,MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,"lsrs","")
+// MOP_Tblsrsrrr
+DEFINE_MOP(MOP_Tblsrsrrr, {MOPD_RegCCD,MOPD_Reg32IDS,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef},0,"lsrs","1,2,3")
+// MOP_Tbmovimm8
+DEFINE_MOP(MOP_Tbmovimm8, {MOPD_RegCCD,MOPD_Reg32ID,MOPD_Imm8,MOPD_Undef,MOPD_Undef},0,"movs","1,2")
+// MOP_Tbmovrr
+DEFINE_MOP(MOP_Tbmovrr, {MOPD_RegCCD,MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},ISMOVE,"movs","")
+// MOP_Tbmovrr_h2h
+DEFINE_MOP(MOP_Tbmovrr_h2h, {MOPD_Reg64IDSH,MOPD_Reg64ISH,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"mov","0,1")
+// MOP_Tbmovrr_l2l
+DEFINE_MOP(MOP_Tbmovrr_l2l, {MOPD_Reg64IDL,MOPD_Reg64ISL,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"mov","0,1")
+// MOP_Tbmovrr_l2h
+DEFINE_MOP(MOP_Tbmovrr_l2h, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISMOVE,"mov","")
+// MOP_Tbmov64ri12h
+DEFINE_MOP(MOP_Tbmov64ri12h, {MOPD_Reg64IDSH,MOPD_Imm12,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"mov","0,1")
+// MOP_Tbmov64ri12l
+DEFINE_MOP(MOP_Tbmov64ri12l, {MOPD_Reg64IDL,MOPD_Imm12,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"mov","0,1")
+// MOP_Tbmul
+DEFINE_MOP(MOP_Tbmul, {MOPD_RegCCD,MOPD_Reg32IDS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,"muls","")
+// MOP_Tbmvn
+DEFINE_MOP(MOP_Tbmvn, {MOPD_RegCCD,MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,"mvns","")
+// MOP_Tbmvn64i12l
+DEFINE_MOP(MOP_Tbmvn64i12l, {MOPD_Reg64IDL,MOPD_Imm12,MOPD_Undef,MOPD_Undef},0,"mvn","0,1")
+// MOP_Tbmvn64i12h
+DEFINE_MOP(MOP_Tbmvn64i12h, {MOPD_Reg64IDSH,MOPD_Imm12,MOPD_Undef,MOPD_Undef},0,"mvn","0,1")
+// MOP_Tbneg
+DEFINE_MOP(MOP_Tbneg, {MOPD_RegCCD,MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,"negs","")
+// MOP_Tborr
+DEFINE_MOP(MOP_Tborr, {MOPD_RegCCD,MOPD_Reg32IDS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,"orrs","")
+// MOP_Tbpop
+DEFINE_MOP(MOP_Tbpop, {MOPD_RSPD,MOPD_LISTS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD,"pop","1")
+// MOP_Tbpush
+DEFINE_MOP(MOP_Tbpush, {MOPD_RSPD,MOPD_LISTS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE,"push","1")
+// MOP_Tbrev
+DEFINE_MOP(MOP_Tbrev, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"rev","")
+// MOP_Tbrevsh
+DEFINE_MOP(MOP_Tbrevsh, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"rev","")
+// MOP_Tbrorrr
+DEFINE_MOP(MOP_Tbrorrr, {MOPD_RegCCD,MOPD_Reg32IDS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,"rors","")
+// MOP_Tbsbc
+DEFINE_MOP(MOP_Tbsbc, {MOPD_RegCCDS,MOPD_Reg32IDS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,"sbcs","")
+// MOP_Tbstmia
+DEFINE_MOP(MOP_Tbstmia, {MOPD_Reg32IDS,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE,"stmia","")
+// MOP_Tbstr
+DEFINE_MOP(MOP_Tbstr, {MOPD_Reg32IS,MOPD_Mem32S,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE,"str","0,1")
+// MOP_Tbstrsprel
+DEFINE_MOP(MOP_Tbstrsprel, {MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE,"str","")
+// MOP_Tbstrbrri5
+DEFINE_MOP(MOP_Tbstrbrri5, {MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE,"strb","")
+// MOP_Tbstrb
+DEFINE_MOP(MOP_Tbstrb, {MOPD_Reg32IS,MOPD_Mem8S,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE,"strb","0,1")
+// MOP_Tbstrhrri5
+DEFINE_MOP(MOP_Tbstrhrri5, {MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE,"strh","")
+// MOP_Tbstrh
+DEFINE_MOP(MOP_Tbstrh, {MOPD_Reg32IS,MOPD_Mem16S,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE,"strh","0,1")
+// MOP_Tbsubrri3
+DEFINE_MOP(MOP_Tbsubrri3, {MOPD_RegCCD,MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,"subs","")
+// MOP_Tbsubri8
+DEFINE_MOP(MOP_Tbsubri8, {MOPD_RegCCD,MOPD_Reg32IDS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"subs","")
+// MOP_Tbsubrrr
+DEFINE_MOP(MOP_Tbsubrrr, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,"sub","0,1,2")
+// MOP_Tbsubspi7
+DEFINE_MOP(MOP_Tbsubspi7, {MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"sub","")
+// MOP_Tbswi
+DEFINE_MOP(MOP_Tbswi, {MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISBRANCH,"swi","")
+// MOP_Tbtst
+DEFINE_MOP(MOP_Tbtst, {MOPD_RegCCD,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,"tst","")
+// MOP_Tb2vldrs
+DEFINE_MOP(MOP_Tb2vldrs, {MOPD_Reg32FD,MOPD_Mem32S,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD,"flds","0,1")
+// MOP_Tb2vldrd
+DEFINE_MOP(MOP_Tb2vldrd, {MOPD_Reg64FD,MOPD_Mem64S,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD,"fldd","0,1")
+// MOP_Tb2vmuls
+DEFINE_MOP(MOP_Tb2vmuls, {MOPD_Reg32FD,MOPD_Reg32FS,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef},0,"fmuls","0,1,2")
+// MOP_Tb2vmuld
+DEFINE_MOP(MOP_Tb2vmuld, {MOPD_Reg64FD,MOPD_Reg64FS,MOPD_Reg64FS,MOPD_Undef,MOPD_Undef},0,"fmuld","0,1,2")
+// MOP_Tb2vmlas
+DEFINE_MOP(MOP_Tb2vmlas, {MOPD_Reg32FDS,MOPD_Reg32FS,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef},0,"vmlas","")
+// MOP_Tb2vmlad
+DEFINE_MOP(MOP_Tb2vmlad, {MOPD_Reg64FDS,MOPD_Reg64FS,MOPD_Reg64FS,MOPD_Undef,MOPD_Undef},0,"vmlad","")
+// MOP_Tb2vmlss
+DEFINE_MOP(MOP_Tb2vmlss, {MOPD_Reg32FDS,MOPD_Reg32FS,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef},0,"vmlss","")
+// MOP_Tb2vmlsd
+DEFINE_MOP(MOP_Tb2vmlsd, {MOPD_Reg64FDS,MOPD_Reg64FS,MOPD_Reg64FS,MOPD_Undef,MOPD_Undef},0,"vmlsd","")
+// MOP_Tb2vstrs
+DEFINE_MOP(MOP_Tb2vstrs, {MOPD_Reg32FS,MOPD_Mem32S,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE,"fsts","0,1")
+// MOP_Tb2vstrd
+DEFINE_MOP(MOP_Tb2vstrd, {MOPD_Reg64FS,MOPD_Mem64S,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE,"fstd","0,1")
+// MOP_Tb2vsubs
+DEFINE_MOP(MOP_Tb2vsubs, {MOPD_Reg32FD,MOPD_Reg32FS,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef},0,"fsubs","0,1,2")
+// MOP_Tb2vsubd
+DEFINE_MOP(MOP_Tb2vsubd, {MOPD_Reg64FD,MOPD_Reg64FS,MOPD_Reg64FS,MOPD_Undef,MOPD_Undef},0,"fsubd","0,1,2")
+// MOP_Tb2vadds
+DEFINE_MOP(MOP_Tb2vadds, {MOPD_Reg32FD,MOPD_Reg32FS,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef},0,"fadds","0,1,2")
+// MOP_Tb2vaddd
+DEFINE_MOP(MOP_Tb2vaddd, {MOPD_Reg64FD,MOPD_Reg64FS,MOPD_Reg64FS,MOPD_Undef,MOPD_Undef},0,"faddd","0,1,2")
+// MOP_Tb2vdivs
+DEFINE_MOP(MOP_Tb2vdivs, {MOPD_Reg32FD,MOPD_Reg32FS,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef},0,"fdivs","0,1,2")
+// MOP_Tb2vdivd
+DEFINE_MOP(MOP_Tb2vdivd, {MOPD_Reg64FD,MOPD_Reg64FS,MOPD_Reg64FS,MOPD_Undef,MOPD_Undef},0,"fdivd","0,1,2")
+// MOP_Tb2vmlaf64
+DEFINE_MOP(MOP_Tb2vmlaf64, {MOPD_Reg64FDS,MOPD_Reg64FS,MOPD_Reg64FS,MOPD_Undef,MOPD_Undef},0,"vmla","")
+// MOP_Tb2vcvtif
+DEFINE_MOP(MOP_Tb2vcvtif, {MOPD_Reg32FD,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"ftosizs","0,1")
+// MOP_Tb2vcvtuf
+DEFINE_MOP(MOP_Tb2vcvtuf, {MOPD_Reg32FD,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"ftouizs","0,1")
+// MOP_Tb2vcvtid
+DEFINE_MOP(MOP_Tb2vcvtid, {MOPD_Reg32FD,MOPD_Reg64FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"ftosizd","0,1")
+// MOP_Tb2vcvtud
+DEFINE_MOP(MOP_Tb2vcvtud, {MOPD_Reg32FD,MOPD_Reg64FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"ftouizd","0,1")
+// MOP_Tb2vcvtfi
+DEFINE_MOP(MOP_Tb2vcvtfi, {MOPD_Reg32FD,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"fsitos","0,1")
+// MOP_Tb2vcvtfu
+DEFINE_MOP(MOP_Tb2vcvtfu, {MOPD_Reg32FD,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"fuitos","0,1")
+// MOP_Tb2vcvtdi
+DEFINE_MOP(MOP_Tb2vcvtdi, {MOPD_Reg64FD,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"fsitod","0,1")
+// MOP_Tb2vcvtdu
+DEFINE_MOP(MOP_Tb2vcvtdu, {MOPD_Reg64FD,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"fuitod","0,1")
+// MOP_Tb2vcvtfd
+DEFINE_MOP(MOP_Tb2vcvtfd, {MOPD_Reg32FD,MOPD_Reg64FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"fcvtsd","0,1")
+// MOP_Tb2vcvtdf
+DEFINE_MOP(MOP_Tb2vcvtdf, {MOPD_Reg64FD,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"fcvtds","0,1")
+// MOP_Tb2vcvtf64s32
+DEFINE_MOP(MOP_Tb2vcvtf64s32, {MOPD_Reg64FD,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"vcvt.f64.s32 ","")
+// MOP_Tb2vcvtf64u32
+DEFINE_MOP(MOP_Tb2vcvtf64u32, {MOPD_Reg64FD,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"vcvt.f64.u32 ","")
+// MOP_Tb2vsqrts
+DEFINE_MOP(MOP_Tb2vsqrts, {MOPD_Reg32FD,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"fsqrts","0,1")
+// MOP_Tb2vsqrtd
+DEFINE_MOP(MOP_Tb2vsqrtd, {MOPD_Reg64FD,MOPD_Reg64FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"fsqrtd","0,1")
+DEFINE_MOP(MOP_Tb2movimm8, {MOPD_Reg32ID,MOPD_Imm8,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"mov","0,1")
+// MOP_Tb2movi8m
+DEFINE_MOP(MOP_Tb2movi8m, {MOPD_Reg32ID,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"mov","")
+// MOP_Tb2movimm12
+DEFINE_MOP(MOP_Tb2movimm12, {MOPD_Reg32ID,MOPD_Imm12,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"mov","0,1")
+// MOP_Tb2strrri12
+DEFINE_MOP(MOP_Tb2strrri12, {MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE,"str","")
+// MOP_Tb2ldrrri12
+DEFINE_MOP(MOP_Tb2ldrrri12, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD,"ldr","")
+// MOP_Tb2strrri8predec
+DEFINE_MOP(MOP_Tb2strrri8predec, {MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE,"str","")
+// MOP_Tb2ldrrri8predec
+DEFINE_MOP(MOP_Tb2ldrrri8predec, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD,"ldr","")
+// MOP_Tb2cbnz
+DEFINE_MOP(MOP_Tb2cbnz, {MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISBRANCH,"cbnz","")
+// MOP_Tb2cbz
+DEFINE_MOP(MOP_Tb2cbz, {MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISBRANCH,"cbz","")
+// MOP_Tb2addrri12
+DEFINE_MOP(MOP_Tb2addrri12, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Imm12,MOPD_Undef,MOPD_Undef},0,"addw","0,1,2")
+// MOP_Tb2movrr
+DEFINE_MOP(MOP_Tb2movrr, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISMOVE,"mov","0,1")
+// MOP_Tb2vmovs
+DEFINE_MOP(MOP_Tb2vmovs, {MOPD_Reg32FD,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISMOVE,"fcpys","0,1")
+// MOP_Tb2vmovd
+DEFINE_MOP(MOP_Tb2vmovd, {MOPD_Reg64FD,MOPD_Reg64FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISMOVE,"fcpyd","0,1")
+// MOP_Tb2vmovsc
+DEFINE_MOP(MOP_Tb2vmovsc, {MOPD_Reg32FD,MOPD_Reg32FS,MOPD_RegCCS,MOPD_Undef,MOPD_Undef},0,"fcpyseq","0,1")
+// MOP_Tb2vmovdc
+DEFINE_MOP(MOP_Tb2vmovdc, {MOPD_Reg64FD,MOPD_Reg64FS,MOPD_RegCCS,MOPD_Undef,MOPD_Undef},0,"fcpydeq","0,1")
+// MOP_Tb2ldmia
+DEFINE_MOP(MOP_Tb2ldmia, {MOPD_Reg32IDS,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD,"ldmia","")
+// MOP_Tb2stmia
+DEFINE_MOP(MOP_Tb2stmia, {MOPD_Reg32IDS,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE,"stmia","")
+// MOP_Tb2addrrr
+DEFINE_MOP(MOP_Tb2addrrr, {MOPD_RegCCD,MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef},0,"adds","1,2,3")
+// MOP_Tb2subrrr
+DEFINE_MOP(MOP_Tb2subrrr, {MOPD_RegCCD,MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef},0,"subs","1,2,3")
+// MOP_Tb2sbcrrr
+DEFINE_MOP(MOP_Tb2sbcrrr, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS, MOPD_RegCCS, MOPD_Undef},0,"sbc","0,1,2")
+// MOP_Tb2cmprr
+DEFINE_MOP(MOP_Tb2cmprr, {MOPD_RegCCD,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,"cmp","")
+// MOP_Tb2subrri12
+DEFINE_MOP(MOP_Tb2subrri12, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Imm12,MOPD_Undef,MOPD_Undef},0,"sub","0,1,2")
+// MOP_Tb2mvni12
+DEFINE_MOP(MOP_Tb2mvni12, {MOPD_Reg32ID,MOPD_Imm12,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"mvn","0,1")
+// MOP_Tb2sel
+DEFINE_MOP(MOP_Tb2sel, {MOPD_RegCCS,MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef},0,"sel","")
+// MOP_Tb2ubfx
+DEFINE_MOP(MOP_Tb2ubfx, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"ubfx","")
+// MOP_Tb2sbfx
+DEFINE_MOP(MOP_Tb2sbfx, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"sbfx","")
+// MOP_Tb2ldrrrr
+DEFINE_MOP(MOP_Tb2ldrrrr, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},ISLOAD,"ldr","")
+// MOP_Tb2ldrhrrr
+DEFINE_MOP(MOP_Tb2ldrhrrr, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},ISLOAD,"ldrh","")
+// MOP_Tb2ldrsh
+DEFINE_MOP(MOP_Tb2ldrsh, {MOPD_Reg32ID,MOPD_Mem16S, MOPD_Undef, MOPD_Undef,MOPD_Undef},ISLOAD,"ldrsh","0,1")
+// MOP_Tb2ldrbrrr
+DEFINE_MOP(MOP_Tb2ldrbrrr, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},ISLOAD,"ldrb","")
+// MOP_Tb2ldrsbrrr
+DEFINE_MOP(MOP_Tb2ldrsbrrr, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},ISLOAD,"ldrsb","")
+// MOP_Tb2strrrr
+DEFINE_MOP(MOP_Tb2strrrr, {MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},ISSTORE,"str","")
+// MOP_Tb2strh
+DEFINE_MOP(MOP_Tb2strh, {MOPD_Reg32IS,MOPD_Mem16S,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE,"strh","")
+// MOP_Tb2strb
+DEFINE_MOP(MOP_Tb2strb, {MOPD_Reg32IS,MOPD_Mem8S,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE,"strb","0,1")
+// MOP_Tb2ldrhrri12
+DEFINE_MOP(MOP_Tb2ldrhrri12, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD,"ldrh","")
+// MOP_Tb2ldrshrri12
+DEFINE_MOP(MOP_Tb2ldrshrri12, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD,"ldrsh","")
+// MOP_Tb2ldrbrri12
+DEFINE_MOP(MOP_Tb2ldrbrri12, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD,"ldrb","")
+// MOP_Tb2ldrsbrri12
+DEFINE_MOP(MOP_Tb2ldrsbrri12, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD,"ldrsb","")
+// MOP_Tb2strhrri12
+DEFINE_MOP(MOP_Tb2strhrri12, {MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE,"strh","")
+// MOP_Tb2strbrri12
+DEFINE_MOP(MOP_Tb2strbrri12, {MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE,"strb","")
+// MOP_Tb2pop
+DEFINE_MOP(MOP_Tb2pop, {MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD,"pop","")
+// MOP_Tb2push
+DEFINE_MOP(MOP_Tb2push, {MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE,"push","")
+// MOP_Tb2cmpri8m
+DEFINE_MOP(MOP_Tb2cmpri8m, {MOPD_RegCCD,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"cmp","")
+// MOP_Tb2cmnri8m
+DEFINE_MOP(MOP_Tb2cmnri8m, {MOPD_RegCCD,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"cmn","")
+// MOP_Tb2adc64rrr
+DEFINE_MOP(MOP_Tb2adc64rrr, {MOPD_Reg64IDSH,MOPD_Reg64ISH,MOPD_Reg64ISH,MOPD_RegCCD,MOPD_Undef},0,"adc","0,1,2")
+// MOP_Tb2adc64rri
+DEFINE_MOP(MOP_Tb2adc64rri, {MOPD_Reg64IDSH,MOPD_Reg64ISH,MOPD_Imm8,MOPD_RegCCD,MOPD_Undef},0,"adc","0,1,2")
+// MOP_Tb2orr64lrrr
+DEFINE_MOP(MOP_Tb2orr64lrrr,{MOPD_Reg64ISL,MOPD_Reg64ISL,MOPD_Reg64ISL,MOPD_Undef,MOPD_Undef},0,"orr","0,1,2")
+// MOP_Tb2orr64hrrr
+DEFINE_MOP(MOP_Tb2orr64hrrr, {MOPD_Reg64IDSH,MOPD_Reg64ISH,MOPD_Reg64ISH,MOPD_Undef,MOPD_Undef},0,"orr","0,1,2")
+// MOP_Tb2and64lrrr
+DEFINE_MOP(MOP_Tb2and64lrrr,{MOPD_Reg64ISL,MOPD_Reg64ISL,MOPD_Reg64ISL,MOPD_Undef,MOPD_Undef},0,"and","0,1,2")
+// MOP_Tb2and64hrrr
+DEFINE_MOP(MOP_Tb2and64hrrr, {MOPD_Reg64IDSH,MOPD_Reg64ISH,MOPD_Reg64ISH,MOPD_Undef,MOPD_Undef},0,"and","0,1,2")
+// MOP_Tb2andrrr
+DEFINE_MOP(MOP_Tb2andrrr, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,"and","0,1,2")
+// MOP_Tb2bicrrr
+DEFINE_MOP(MOP_Tb2bicrrr, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,"bic","")
+// MOP_Tb2cmnrr
+DEFINE_MOP(MOP_Tb2cmnrr, {MOPD_RegCCD,MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,"cmn","")
+// MOP_Tb2eorrrr
+DEFINE_MOP(MOP_Tb2eorrrr, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,"eor","0,1,2")
+// MOP_Tb2mulrrr
+DEFINE_MOP(MOP_Tb2mulrrr, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,"mul","0,1,2")
+// MOP_Tb2sdivrrr
+DEFINE_MOP(MOP_Tb2sdivrrr, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,"sdiv","")
+// MOP_Tb2udivrrr
+DEFINE_MOP(MOP_Tb2udivrrr, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,"udiv","")
+// MOP_Tb2mnvrr
+DEFINE_MOP(MOP_Tb2mnvrr, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"mvn","0,1")
+// MOP_Tb2rsubrri8
+DEFINE_MOP(MOP_Tb2rsubrri8, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Imm8,MOPD_Undef,MOPD_Undef},0,"rsb","0,1,2")
+// MOP_Tb2rsubsrri8
+DEFINE_MOP(MOP_Tb2rsubsrri8, {MOPD_RegCCD, MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Imm8,MOPD_Undef},0,"rsbs","1,2,3")
+// MOP_Tb2negrr
+DEFINE_MOP(MOP_Tb2negrr, {MOPD_Reg32ID,MOPD_Reg32IS, MOPD_Undef, MOPD_Undef,MOPD_Undef},0,"neg","0,1")
+// MOP_Tb2orrrrr
+DEFINE_MOP(MOP_Tb2orrrrr, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,"orr","0,1,2")
+// MOP_Tb2tstrr
+DEFINE_MOP(MOP_Tb2tstrr, {MOPD_RegCCD,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,"tst","")
+// MOP_Tb2lslrrr
+DEFINE_MOP(MOP_Tb2lslrrr, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,"lsl","0,1,2")
+// MOP_Tb2lsrrrr
+DEFINE_MOP(MOP_Tb2lsrrrr, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,"lsr","0,1,2")
+// MOP_Tb2asrrrr
+DEFINE_MOP(MOP_Tb2asrrrr, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,"asr","0,1,2")
+// MOP_Tb2rorrrr
+DEFINE_MOP(MOP_Tb2rorrrr, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,"ror","0,1,2")
+// MOP_Tb2lslrri5
+DEFINE_MOP(MOP_Tb2lslrri5, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Imm8,MOPD_Undef,MOPD_Undef},0,"lsl","0,1,2")
+// MOP_Tb2lsrrri5
+DEFINE_MOP(MOP_Tb2lsrrri5, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Imm8,MOPD_Undef,MOPD_Undef},0,"lsr","0,1,2")
+// MOP_Tb2asrrri5
+DEFINE_MOP(MOP_Tb2asrrri5, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Imm8,MOPD_Undef,MOPD_Undef},0,"asr","0,1,2")
+// MOP_Tb2rorrri5
+DEFINE_MOP(MOP_Tb2rorrri5, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Imm8,MOPD_Undef,MOPD_Undef},0,"ror","0,1,2")
+// MOP_Tb2bicrri8m
+DEFINE_MOP(MOP_Tb2bicrri8m, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"bic","")
+// MOP_Tbandrri8
+DEFINE_MOP(MOP_Tbandrri8, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Imm8,MOPD_Undef,MOPD_Undef},0,"and","0,1,2")
+// MOP_Tbandrri8l
+DEFINE_MOP(MOP_Tbandrri8l, {MOPD_Reg64ISL,MOPD_Reg64ISL,MOPD_Imm8,MOPD_Undef,MOPD_Undef},0,"and","0,1,2")
+// MOP_Tbandrri8h
+DEFINE_MOP(MOP_Tbandrri8h, {MOPD_Reg64ISH,MOPD_Reg64ISH,MOPD_Imm8,MOPD_Undef,MOPD_Undef},0,"and","0,1,2")
+// MOP_Tb2andrri8m
+DEFINE_MOP(MOP_Tb2andrri8m, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"and","")
+// MOP_Tborrri8l
+DEFINE_MOP(MOP_Tborrri8l, {MOPD_Reg64ISL,MOPD_Reg64ISL,MOPD_Imm8,MOPD_Undef,MOPD_Undef},0,"orr","0,1,2")
+// MOP_Tborrri8h
+DEFINE_MOP(MOP_Tborrri8h, {MOPD_Reg64ISH,MOPD_Reg64ISH,MOPD_Imm8,MOPD_Undef,MOPD_Undef},0,"orr","0,1,2")
+// MOP_Tborrri8
+DEFINE_MOP(MOP_Tborrri8, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Imm8,MOPD_Undef,MOPD_Undef},0,"orr","0,1,2")
+// MOP_Tb2orrrri8m
+DEFINE_MOP(MOP_Tb2orrrri8m, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"orr","")
+// MOP_Tb2eorrri8m
+DEFINE_MOP(MOP_Tb2eorrri8m, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Imm8,MOPD_Undef,MOPD_Undef},0,"eor","0,1,2")
+// MOP_Tb2addrri8m
+DEFINE_MOP(MOP_Tb2addrri8m, {MOPD_RegCCD,MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,"adds","")
+// MOP_Tb2adcrri8m
+DEFINE_MOP(MOP_Tb2adcrri8m, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Imm12, MOPD_RegCCS,MOPD_Undef},0,"adc","0,1,2")
+// MOP_Tb2subsrri8
+DEFINE_MOP(MOP_Tb2subsrri8, {MOPD_RegCCD,MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Imm8,MOPD_Undef},0,"subs","1,2,3")
+// MOP_Tb2sbcrri8m
+DEFINE_MOP(MOP_Tb2sbcrri8m, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Imm8,MOPD_RegCCS,MOPD_Undef},0,"sbc","0,1,2")
+// MOP_Tb2revrr
+DEFINE_MOP(MOP_Tb2revrr, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,"rev","")
+// MOP_Tb2revshrr
+DEFINE_MOP(MOP_Tb2revshrr, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,"revsh","")
+// MOP_Tb2it
+DEFINE_MOP(MOP_Tb2it, {MOPD_RegCCS,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"it:!1b","")
+// MOP_Tb2fmstat
+DEFINE_MOP(MOP_Tb2fmstat, {MOPD_RegCCDS,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"fmstat","")
+// MOP_Tb2vcmpd
+DEFINE_MOP(MOP_Tb2vcmpd, {MOPD_RegCCD,MOPD_Reg64FS,MOPD_Reg64FS,MOPD_Undef,MOPD_Undef},0,"fcmped","1,2")
+// MOP_Tb2vcmps
+DEFINE_MOP(MOP_Tb2vcmps, {MOPD_RegCCD,MOPD_Reg32FS,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef},0,"fcmpes","1,2")
+// MOP_Tb2ldrpcrel12
+DEFINE_MOP(MOP_Tb2ldrpcrel12, {MOPD_Reg32ID,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD,"ldr","")
+// MOP_Tb2bcond
+DEFINE_MOP(MOP_Tb2bcond, {MOPD_RegCCS,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISBRANCH,"b!1c","")
+// MOP_Tb2fmrs
+DEFINE_MOP(MOP_Tb2fmrs, {MOPD_Reg32ID,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"fmrs","0,1")
+// MOP_Tb2fmsr
+DEFINE_MOP(MOP_Tb2fmsr, {MOPD_Reg32FD,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"fmsr","0,1")
+// MOP_Tb2fmrrd
+DEFINE_MOP(MOP_Tb2fmrrd, {MOPD_Reg32ID,MOPD_Reg32ID,MOPD_Reg64FS,MOPD_Undef,MOPD_Undef},0,"fmrrd","0,1,2")
+// MOP_Tb2fmdrr
+DEFINE_MOP(MOP_Tb2fmdrr, {MOPD_Reg64FD,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,"fmdrr","0,1,2")
+// MOP_Tb2vabsd
+DEFINE_MOP(MOP_Tb2vabsd, {MOPD_Reg64FD,MOPD_Reg64FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"fabsd","0,1")
+// MOP_Tb2vabss
+DEFINE_MOP(MOP_Tb2vabss, {MOPD_Reg32FD,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"fabss","0,1")
+// MOP_Tb2vnegd
+DEFINE_MOP(MOP_Tb2vnegd, {MOPD_Reg64FD,MOPD_Reg64FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"fnegd","0,1")
+// MOP_Tb2vnegs
+DEFINE_MOP(MOP_Tb2vnegs, {MOPD_Reg32FD,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"fnegs","0,1")
+// MOP_Tb2vmovs_imm8
+DEFINE_MOP(MOP_Tb2vmovs_imm8, {MOPD_Reg32FD,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"vmov.f32","")
+// MOP_Tb2vmovd_imm8
+DEFINE_MOP(MOP_Tb2vmovd_imm8, {MOPD_Reg64FD,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"vmov.f64","")
+// MOP_Tb2mla
+DEFINE_MOP(MOP_Tb2mla, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef},0,"mla","0,1,2,3")
+// MOP_Tb2mls
+DEFINE_MOP(MOP_Tb2mls, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef},0,"mls","")
+// MOP_Tb2umull
+DEFINE_MOP(MOP_Tb2umull, {MOPD_Reg32ID,MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef},0,"umull","0,1,2,3")
+// MOP_Tb2ldrex
+DEFINE_MOP(MOP_Tb2ldrex, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD,"ldrex","")
+// MOP_Tb2ldrexd
+DEFINE_MOP(MOP_Tb2ldrexd, {MOPD_Reg32ID,MOPD_Undef,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},ISLOAD,"ldrexd","")
+// MOP_Tb2strex
+DEFINE_MOP(MOP_Tb2strex, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},ISSTORE,"strex","")
+// MOP_Tb2strexd
+DEFINE_MOP(MOP_Tb2strexd, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef},ISSTORE,"strexd","")
+// MOP_Tb2clrex
+DEFINE_MOP(MOP_Tb2clrex, {MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"clrex","")
+// MOP_Tb2bfi
+DEFINE_MOP(MOP_Tb2bfi, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"bfi","")
+// MOP_Tb2bfc
+DEFINE_MOP(MOP_Tb2bfc, {MOPD_Reg32ID,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"bfc","")
+// MOP_Tb2dmb
+DEFINE_MOP(MOP_Tb2dmb, {MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"dmb","")
+// MOP_Tb2ldrpcreln12
+DEFINE_MOP(MOP_Tb2ldrpcreln12, {MOPD_Reg32ID,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD,"ldr","")
+// MOP_Tb2stm
+DEFINE_MOP(MOP_Tb2stm, {MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE,"stm","")
+// MOP_Tbundefined
+DEFINE_MOP(MOP_Tbundefined, {MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"undefined","")
+// MOP_Tb2vpopcs
+DEFINE_MOP(MOP_Tb2vpopcs, {MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD,"vpop","")
+// MOP_Tb2vpushcs
+DEFINE_MOP(MOP_Tb2vpushcs, {MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE,"vpush","")
+// MOP_Tb2vldms
+DEFINE_MOP(MOP_Tb2vldms, {MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD,"vldms","")
+// MOP_Tb2vstms
+DEFINE_MOP(MOP_Tb2vstms, {MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE,"vstms","")
+// MOP_Tb2buncond
+DEFINE_MOP(MOP_Tb2buncond, {MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISBRANCH,"b","")
+// MOP_Tb2movimm16h
+DEFINE_MOP(MOP_Tb2movimm16h, {MOPD_Reg32IDS,MOPD_Imm16,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"movt","0,1")
+// MOP_Tb2movimm16l
+DEFINE_MOP(MOP_Tb2movimm16l, {MOPD_Reg32ID,MOPD_Imm16,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"movw","0,1")
+// MOP_Tb2addpcr
+DEFINE_MOP(MOP_Tb2addpcr, {MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISBRANCH,"add","")
+// MOP_Tb2adr
+DEFINE_MOP(MOP_Tb2adr, {MOPD_Reg32ID,MOPD_Mem32S,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"adr","0,1")
+// MOP_Tb2movimm16lst
+DEFINE_MOP(MOP_Tb2movimm16lst, {MOPD_Reg32ID,MOPD_Mem32SL,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"movw","0,1")
+// MOP_Tb2movimm16hst
+DEFINE_MOP(MOP_Tb2movimm16hst, {MOPD_Reg32IDS,MOPD_Mem32SH,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"movt","0,1")
+// MOP_Tb2ldmiawb
+DEFINE_MOP(MOP_Tb2ldmiawb, {MOPD_Reg32IDS,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD,"ldmia","")
+// MOP_Tb2orrsrrr
+DEFINE_MOP(MOP_Tb2orrsrrr, {MOPD_RegCCD,MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef},0,"orrs","1,2,3")
+// MOP_Tb2push1
+DEFINE_MOP(MOP_Tb2push1, {MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE,"push1","")
+// MOP_Tb2pop1
+DEFINE_MOP(MOP_Tb2pop1, {MOPD_Reg32ID,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD,"pop1","")
+// MOP_Tb2rsubrrr
+DEFINE_MOP(MOP_Tb2rsubrrr, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,"rsb","0,1,2")
+// MOP_Tb2smull
+DEFINE_MOP(MOP_Tb2smull, {MOPD_Reg32ID,MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef},0,"smull","")
+// MOP_Tb2ldrd
+DEFINE_MOP(MOP_Tb2ldrd, {MOPD_Reg64ID,MOPD_Mem64S,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD,"ldrd","0,1")
+// MOP_Tb2strd
+DEFINE_MOP(MOP_Tb2strd, {MOPD_Reg64IS,MOPD_Mem64S,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE,"strd","0,1")
+// MOP_beq
+DEFINE_MOP(MOP_beq, {MOPD_RegCCS,MOPD_Label,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISBRANCH,"beq","1")
+// MOP_bne
+DEFINE_MOP(MOP_bne, {MOPD_RegCCS,MOPD_Label,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISBRANCH,"bne","1")
+// MOP_blt
+DEFINE_MOP(MOP_blt, {MOPD_RegCCS,MOPD_Label,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISBRANCH,"blt","1")
+// MOP_ble
+DEFINE_MOP(MOP_ble, {MOPD_RegCCS,MOPD_Label,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISBRANCH,"ble","1")
+// MOP_bgt
+DEFINE_MOP(MOP_bgt, {MOPD_RegCCS,MOPD_Label,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISBRANCH,"bgt","1")
+// MOP_bge
+DEFINE_MOP(MOP_bge, {MOPD_RegCCS,MOPD_Label,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISBRANCH,"bge","1")
+// MOP_blo equal to MOP_blt for unsigned comparison
+DEFINE_MOP(MOP_blo, {MOPD_RegCCS,MOPD_Label,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISBRANCH,"blo","1")
+// MOP_bls equal to MOP_bls for unsigned comparison
+DEFINE_MOP(MOP_bls, {MOPD_RegCCS,MOPD_Label,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISBRANCH,"bls","1")
+// MOP_bhs equal to MOP_bge for unsigned comparison
+DEFINE_MOP(MOP_bhs, {MOPD_RegCCS,MOPD_Label,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISBRANCH,"bhs","1")
+// MOP_bhi equal to MOP_bgt for float comparison
+DEFINE_MOP(MOP_bhi, {MOPD_RegCCS,MOPD_Label,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISBRANCH,"bhi","1")
+// MOP_bpl equal to MOP_bge for float comparison
+DEFINE_MOP(MOP_bpl, {MOPD_RegCCS,MOPD_Label,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISBRANCH,"bpl","1")
+// MOP_Tb2mul64rlh
+DEFINE_MOP(MOP_Tb2mul64rlh, {MOPD_Reg32ID,MOPD_Reg64ISL,MOPD_Reg64ISH,MOPD_Undef, MOPD_Undef},0,"mul","0,1,2")
+// MOP_Tb2mla64rhlr
+DEFINE_MOP(MOP_Tb2mla64rhlr, {MOPD_Reg32ID,MOPD_Reg64ISH,MOPD_Reg64ISL,MOPD_Reg32IS, MOPD_Undef},0,"mla","0,1,2,3")
+// MOP_Tb2umull64rrll
+DEFINE_MOP(MOP_Tb2umull64rrll, {MOPD_Reg32ID,MOPD_Reg32ID,MOPD_Reg64ISL, MOPD_Reg64ISL,MOPD_Undef},0,"umull","0,1,2,3")
+// MOP_Tb2mov64lr
+DEFINE_MOP(MOP_Tb2mov64lr, {MOPD_Reg64IDL,MOPD_Reg32IS, MOPD_Undef, MOPD_Undef,MOPD_Undef},0,"mov","0,1")
+// MOP_Tb2add64hrr
+DEFINE_MOP(MOP_Tb2add64hrr, {MOPD_Reg64IDH,MOPD_Reg32IS,MOPD_Reg32IS, MOPD_Undef,MOPD_Undef},0,"add","0,1,2")
+// MOP_Tbrsbmiri
+DEFINE_MOP(MOP_Tbrsbmiri, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Imm8, MOPD_RegCCS,MOPD_Undef},0,"rsbmi","0,1,2")
+// MOP_Tbitle
+DEFINE_MOP(MOP_Tbitle, {MOPD_Undef,MOPD_Undef,MOPD_Undef, MOPD_Undef,MOPD_Undef},0,"it le","")
+// MOP_Tbitls
+DEFINE_MOP(MOP_Tbitls, {MOPD_Undef,MOPD_Undef,MOPD_Undef, MOPD_Undef,MOPD_Undef},0,"it ls","")
+// MOP_Tbitlt
+DEFINE_MOP(MOP_Tbitlt, {MOPD_Undef,MOPD_Undef,MOPD_Undef, MOPD_Undef,MOPD_Undef},0,"it lt","")
+// MOP_Tbitcc
+DEFINE_MOP(MOP_Tbitcc, {MOPD_Undef,MOPD_Undef,MOPD_Undef, MOPD_Undef,MOPD_Undef},0,"it cc","")
+// MOP_Tbitge
+DEFINE_MOP(MOP_Tbitge, {MOPD_Undef,MOPD_Undef,MOPD_Undef, MOPD_Undef,MOPD_Undef},0,"it ge","")
+// MOP_Tbitcs
+DEFINE_MOP(MOP_Tbitcs, {MOPD_Undef,MOPD_Undef,MOPD_Undef, MOPD_Undef,MOPD_Undef},0,"it cs","")
+// MOP_Tbitgt
+DEFINE_MOP(MOP_Tbitgt, {MOPD_Undef,MOPD_Undef,MOPD_Undef, MOPD_Undef,MOPD_Undef},0,"it gt","")
+// MOP_Tbithi
+DEFINE_MOP(MOP_Tbithi, {MOPD_Undef,MOPD_Undef,MOPD_Undef, MOPD_Undef,MOPD_Undef},0,"it hi","")
+// MOP_Tbitmi
+DEFINE_MOP(MOP_Tbitmi, {MOPD_Undef,MOPD_Undef,MOPD_Undef, MOPD_Undef,MOPD_Undef},0,"it mi","")
+// MOP_Tbiteq
+DEFINE_MOP(MOP_Tbiteq, {MOPD_Undef,MOPD_Undef,MOPD_Undef, MOPD_Undef,MOPD_Undef},0,"it eq","")
+// MOP_Tbitne
+DEFINE_MOP(MOP_Tbitne, {MOPD_Undef,MOPD_Undef,MOPD_Undef, MOPD_Undef,MOPD_Undef},0,"it ne","")
+// MOP_Tbitpl
+DEFINE_MOP(MOP_Tbitpl, {MOPD_Undef,MOPD_Undef,MOPD_Undef, MOPD_Undef,MOPD_Undef},0,"it pl","")
+// MOP_Tbittpl
+DEFINE_MOP(MOP_Tbittpl, {MOPD_RegCCD,MOPD_Undef,MOPD_Undef, MOPD_Undef,MOPD_Undef},0,"itt pl","")
+// MOP_Tbitele
+DEFINE_MOP(MOP_Tbitele, {MOPD_Undef,MOPD_Undef,MOPD_Undef, MOPD_Undef,MOPD_Undef},0,"ite le","")
+// MOP_Tbitels
+DEFINE_MOP(MOP_Tbitels, {MOPD_Undef,MOPD_Undef,MOPD_Undef, MOPD_Undef,MOPD_Undef},0,"ite ls","")
+// MOP_Tbitelt
+DEFINE_MOP(MOP_Tbitelt, {MOPD_Undef,MOPD_Undef,MOPD_Undef, MOPD_Undef,MOPD_Undef},0,"ite lt","")
+// MOP_Tbitecc
+DEFINE_MOP(MOP_Tbitecc, {MOPD_Undef,MOPD_Undef,MOPD_Undef, MOPD_Undef,MOPD_Undef},0,"ite cc","")
+// MOP_Tbitege
+DEFINE_MOP(MOP_Tbitege, {MOPD_Undef,MOPD_Undef,MOPD_Undef, MOPD_Undef,MOPD_Undef},0,"ite ge","")
+// MOP_Tbitecs
+DEFINE_MOP(MOP_Tbitecs, {MOPD_Undef,MOPD_Undef,MOPD_Undef, MOPD_Undef,MOPD_Undef},0,"ite cs","")
+// MOP_Tbitegt
+DEFINE_MOP(MOP_Tbitegt, {MOPD_Undef,MOPD_Undef,MOPD_Undef, MOPD_Undef,MOPD_Undef},0,"ite gt","")
+// MOP_Tbitehi
+DEFINE_MOP(MOP_Tbitehi, {MOPD_Undef,MOPD_Undef,MOPD_Undef, MOPD_Undef,MOPD_Undef},0,"ite hi","")
+// MOP_Tbitemi
+DEFINE_MOP(MOP_Tbitemi, {MOPD_Undef,MOPD_Undef,MOPD_Undef, MOPD_Undef,MOPD_Undef},0,"ite mi","")
+// MOP_Tbiteeq
+DEFINE_MOP(MOP_Tbiteeq, {MOPD_Undef,MOPD_Undef,MOPD_Undef, MOPD_Undef,MOPD_Undef},0,"ite eq","")
+// MOP_Tbitene
+DEFINE_MOP(MOP_Tbitene, {MOPD_Undef,MOPD_Undef,MOPD_Undef, MOPD_Undef,MOPD_Undef},0,"ite ne","")
+// MOP_Tbitepl
+DEFINE_MOP(MOP_Tbitepl, {MOPD_Undef,MOPD_Undef,MOPD_Undef, MOPD_Undef,MOPD_Undef},0,"ite pl","")
+// MOP_Tb2asrplrrr
+DEFINE_MOP(MOP_Tb2asrplrrr, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_RegCCS,MOPD_Undef},0,"asrpl","0,1,2")
+// MOP_Tb2orrplrrr
+DEFINE_MOP(MOP_Tb2orrplrrr, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_RegCCS,MOPD_Undef},0,"orrpl","0,1,2")
+// MOP_Tb2moveqimm12
+DEFINE_MOP(MOP_Tb2moveqimm12, {MOPD_Reg32ID,MOPD_Imm12,MOPD_RegCCS,MOPD_Undef,MOPD_Undef},0,"moveq","0,1")
+// MOP_Tb2movneimm12
+DEFINE_MOP(MOP_Tb2movneimm12, {MOPD_Reg32ID,MOPD_Imm12,MOPD_RegCCS,MOPD_Undef,MOPD_Undef},0,"movne","0,1")
+// MOP_Tb2movleimm12
+DEFINE_MOP(MOP_Tb2movleimm12, {MOPD_Reg32ID,MOPD_Imm12,MOPD_RegCCS,MOPD_Undef,MOPD_Undef},0,"movle","0,1")
+// MOP_Tb2movlsimm12
+DEFINE_MOP(MOP_Tb2movlsimm12, {MOPD_Reg32ID,MOPD_Imm12,MOPD_RegCCS,MOPD_Undef,MOPD_Undef},0,"movls","0,1")
+// MOP_Tb2movltimm12
+DEFINE_MOP(MOP_Tb2movltimm12, {MOPD_Reg32ID,MOPD_Imm12,MOPD_RegCCS,MOPD_Undef,MOPD_Undef},0,"movlt","0,1")
+// MOP_Tb2movccimm12
+DEFINE_MOP(MOP_Tb2movccimm12, {MOPD_Reg32ID,MOPD_Imm12,MOPD_RegCCS,MOPD_Undef,MOPD_Undef},0,"movcc","0,1")
+// MOP_Tb2movgeimm12
+DEFINE_MOP(MOP_Tb2movgeimm12, {MOPD_Reg32ID,MOPD_Imm12,MOPD_RegCCS,MOPD_Undef,MOPD_Undef},0,"movge","0,1")
+// MOP_Tb2movcsimm12
+DEFINE_MOP(MOP_Tb2movcsimm12, {MOPD_Reg32ID,MOPD_Imm12,MOPD_RegCCS,MOPD_Undef,MOPD_Undef},0,"movcs","0,1")
+// MOP_Tb2movgtimm12
+DEFINE_MOP(MOP_Tb2movgtimm12, {MOPD_Reg32ID,MOPD_Imm12,MOPD_RegCCS,MOPD_Undef,MOPD_Undef},0,"movgt","0,1")
+// MOP_Tb2movhiimm12
+DEFINE_MOP(MOP_Tb2movhiimm12, {MOPD_Reg32ID,MOPD_Imm12,MOPD_RegCCS,MOPD_Undef,MOPD_Undef},0,"movhi","0,1")
+// MOP_Tb2movmiimm12
+DEFINE_MOP(MOP_Tb2movmiimm12, {MOPD_Reg32ID,MOPD_Imm12,MOPD_RegCCS,MOPD_Undef,MOPD_Undef},0,"movmi","0,1")
+// MOP_Tb2movplimm12
+DEFINE_MOP(MOP_Tb2movplimm12, {MOPD_Reg32ID,MOPD_Imm12,MOPD_RegCCS,MOPD_Undef,MOPD_Undef},0,"movpl","0,1")
+DEFINE_MOP(MOP_Tb2moveqrr, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_RegCCS,MOPD_Undef,MOPD_Undef},0,"moveq","0,1")
+// MOP_Tb2fconsts
+DEFINE_MOP(MOP_Tb2fconsts, {MOPD_Reg32FD,MOPD_Imm8,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"fconsts","0,1")
+// MOP_Tb2fconstd
+DEFINE_MOP(MOP_Tb2fconstd, {MOPD_Reg64FD,MOPD_Imm8,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,"fconstd","0,1")

@@ -79,7 +79,7 @@ Asmlabel Emitter::GetTypeAsmInfoName(PrimType pty) {
     case 1:
       return kAsmByte;
     case 2:
-#if TARGAARCH64 || TARGARK
+#if TARGAARCH64 || TARGARK || TARGRISCV64
       return kAsmShort;
 #else
       return kAsmValue;
@@ -201,7 +201,7 @@ void Emitter::EmitAsmLabel(Asmlabel al) {
 void Emitter::EmitAsmLabel(const MIRSymbol *st, Asmlabel al) {
   MIRType *ty = st->GetType();
   std::string syName;
-  if (st->storageClass == kScPstatic) {
+  if (st->storageClass == kScPstatic && st->IsLocal()) {
     syName = st->GetName() + to_string(CG::curPuIdx);
   } else {
     syName = st->GetName();
@@ -245,7 +245,7 @@ void Emitter::EmitAsmLabel(const MIRSymbol *st, Asmlabel al) {
       Emit(size.c_str());
       Emit(", ");
 #if PECOFF
-#if TARGARM || TARGAARCH64 || TARGARK
+#if TARGARM || TARGAARCH64 || TARGARK || TARGRISCV64
       std::string align = std::to_string(static_cast<int>(log2(g->becommon->type_align_table[ty->tyIdx.GetIdx()])));
 #else
       std::string align = std::to_string(g->becommon->type_align_table[ty->tyIdx.GetIdx()]);
@@ -284,7 +284,7 @@ void Emitter::EmitAsmLabel(const MIRSymbol *st, Asmlabel al) {
         align = "3";
       } else {
 
-#if TARGARM || TARGAARCH64 || TARGARK
+#if TARGARM || TARGAARCH64 || TARGARK || TARGRISCV64
         align = std::to_string(static_cast<int>(log2(g->becommon->type_align_table[ty->tyIdx.GetIdx()])));
 #else
         align = std::to_string(g->becommon->type_align_table[ty->tyIdx.GetIdx()]);
@@ -387,46 +387,36 @@ void Emitter::EmitBitFieldConstant(StructEmitInfo *semitinfo, MIRConst *ct, cons
   }
 }
 
-void Emitter::EmitStrConstant(MIRStrConst *ct, bool isAscii, bool isIndirect) {
-  if (isIndirect) {
-    uint32 strId = ct->value.GetIdx();
-    if (stringPtr[strId] == 0) {
-      stringPtr[strId] = ct->value;
-    }
-    Emit("\t.dword\t").Emit(".LSTR__").Emit(std::to_string(strId).c_str());
-    return;
+void Emitter::EmitStr(const std::string& mplStr, bool emitAscii, bool emitNewline) {
+  const char *str = mplStr.c_str();
+  size_t len = mplStr.size();
+
+  if (emitAscii) {
+    Emit("\t.ascii\t\"");  // Do not terminate with \0
+  } else {
+    Emit("\t.string\t\"");
   }
+
   // don't expand special character in a writeout to .s,
   // convert all \s to \\s in string for storing in .string
-  const string ustr = GlobalTables::GetUStrTable().GetStringFromStrIdx(ct->value);
-  const char *str = ustr.c_str();
-  size_t len = ustr.size();
-  if (isAscii) {
-    Emit("\t.ascii \"");  // Do not terminate with \0
-    if (isFlexibleArray) {
-      arraySize += len;
-    }
-  } else {
-    Emit("\t.string \"");
-    if (isFlexibleArray) {
-      arraySize += len + 1;
-    }
-  }
   for (int i = 0; i < len; i++) {
+    // Referred to GNU AS: 3.6.1.1 Strings
     char buf[5];
     if (isprint(*str)) {
       buf[0] = *str;
+      buf[1] = 0;
       if (*str == '\\' || *str == '\"') {
-        // other escape sequence are handled in the else
-        buf[1] = buf[0];
         buf[0] = '\\';
+        buf[1] = *str;
         buf[2] = 0;
-      } else {
-        buf[1] = 0;
       }
       Emit(buf);
+    } else if (*str == '\b') {
+      Emit("\\b");
     } else if (*str == '\n') {
       Emit("\\n");
+    } else if (*str == '\r') {
+      Emit("\\r");
     } else if (*str == '\t') {
       Emit("\\t");
     } else if (*str == '\0') {
@@ -445,7 +435,33 @@ void Emitter::EmitStrConstant(MIRStrConst *ct, bool isAscii, bool isIndirect) {
     }
     str++;
   }
+
   Emit("\"");
+  if (emitNewline) Emit("\n");
+}
+
+void Emitter::EmitStrConstant(MIRStrConst *ct, bool isAscii, bool isIndirect) {
+  if (isIndirect) {
+    uint32 strId = ct->value.GetIdx();
+    if (stringPtr[strId] == 0) {
+      stringPtr[strId] = ct->value;
+    }
+    Emit("\t.dword\t").Emit(".LSTR__").Emit(std::to_string(strId).c_str());
+    return;
+  }
+
+  const string ustr = GlobalTables::GetUStrTable().GetStringFromStrIdx(ct->value);
+  size_t len = ustr.size();
+  if (isAscii) {
+    if (isFlexibleArray) {
+      arraySize += len;
+    }
+  } else {
+    if (isFlexibleArray) {
+      arraySize += len + 1;
+    }
+  }
+  EmitStr(ustr, isAscii, false);
 }
 
 void Emitter::EmitStr16Constant(MIRStr16Const *ct) {
@@ -714,7 +730,7 @@ void Emitter::EmitScalarConstant(MIRConst *ct, bool newline = true, bool flag32 
     bool isGlobal = stidx.IsGlobal();
     MIRSymbol *symaddrSym = isGlobal ? GlobalTables::GetGsymTable().GetSymbolFromStIdx(stidx.Idx())
                                 : CG::curCgFunc->mirModule.CurFunction()->symTab->GetSymbolFromStIdx(stidx.Idx());
-    if (symaddrSym->storageClass == kScPstatic) {
+    if (isGlobal == false && symaddrSym->storageClass == kScPstatic) {
       Emit("\t.quad\t" + symaddrSym->GetName() + to_string(CG::curPuIdx));
     } else {
       Emit("\t.quad\t" + symaddrSym->GetName());
@@ -1542,6 +1558,8 @@ void Emitter::EmitLiterals(std::vector<std::pair<MIRSymbol *, bool>> &literals,
   ifstream infile;
   infile.open(CGOptions::literalProFile);
   if (infile.fail()) {
+    // no profile available, emit literals as usual
+    cerr << "Cannot open literal profile file " << CGOptions::literalProFile << "\n";
     for (auto literalPair : literals) {
       EmitLiteral(literalPair.first, stridx2type);
     }
@@ -1639,23 +1657,6 @@ void Emitter::MarkVtabOrItabEndFlag(std::vector<MIRSymbol *> &symV, std::vector<
   }
 }
 
-void Emitter::EmitSpecialChar(std::string str, size_t startPos, size_t endPos) {
-  Emit(str.substr(startPos, endPos - startPos));
-  Emit("\\");
-  size_t pos = str.find("\"", endPos + 1);
-  if (pos == string::npos) {
-    for(char& c : str.substr(endPos)) {
-      if (c == '\\') {
-        Emit("\\\\");
-       } else {
-        Emit(std::string(1, c));
-      }
-    }
-  } else {
-    EmitSpecialChar(str, endPos, pos);
-  }
-}
-
 void Emitter::EmitStringPointers() {
   Emit(asminfo_->asm_section).Emit(asminfo_->asm_data).Emit("\n");
   for (auto idx: stringPtr) {
@@ -1666,48 +1667,8 @@ void Emitter::EmitStringPointers() {
     const char *str = GlobalTables::GetUStrTable().GetStringFromStrIdx(idx).c_str();
     Emit("\t.align 3\n");
     Emit(".LSTR__").Emit(strId).Emit(":\n");
-
-    int start = 0;
-    int len = strlen(str);
-    std::string newstr(str);
-    if (len == 0) {
-      Emit("\t.string\t\"\"\n");
-    }
-    for (int i = 0; i < len; i++) {
-      if (str[i] == '\n' || str[i] == '\0' || ((i + 1) == len)) {
-        if ((i + 1) == len) {
-          Emit("\t.string\t\"");
-        } else {
-          Emit("\t.ascii\t\"");
-        }
-        size_t pos;
-        std::string sub;
-        if (str[i] == '\n' || str[i] == '\0') {
-          sub = newstr.substr(start, i - start);
-        } else {
-          sub = newstr.substr(start, i - start + 1);
-        }
-        pos = sub.find("\"");
-        if (pos == string::npos) {
-          //Emit(newstr.substr(start, i - start));
-          for(char& c : sub) {
-            if (c == '\\') {
-              Emit("\\\\");
-            } else {
-              Emit(std::string(1, c));
-            }
-          }
-        } else {
-          EmitSpecialChar(sub, 0, pos);
-        }
-        if (str[i] == '\n') {
-          Emit("\\n\"\n");
-        } else {
-          Emit("\"\n");
-        }
-        start = i+1;
-      }
-    }
+    std::string mplstr(str);
+    EmitStr(mplstr, false, true);
   }
 }
 

@@ -118,6 +118,12 @@ void ArkMemLayout::LayoutStackFrame(int32 &structCopySize, int32 &maxParmStackSi
     seg__args_stkpassed.size += be.type_size_table[ptyIdx];
     // We need it as dictated by the AArch64 ABI $5.4.2 C12
     seg__args_stkpassed.size = RoundUp(seg__args_stkpassed.size, SIZEOFPTR);
+    if (cgfunc->cg->cgopt_.WithDwarf() && !nostackpara) {
+      // for O0
+      // LogInfo::MapleLogger() << "Add DIE for formal parameters" << endl
+      //     << "    and remember them" << endl;
+      cgfunc->AddDIESymbolLocation(sym, symloc);
+    }
   }
 
   // We do need this as LDR/STR with immediate
@@ -168,6 +174,13 @@ void ArkMemLayout::LayoutStackFrame(int32 &structCopySize, int32 &maxParmStackSi
         seg_locals.size += be.type_size_table[tyIdx.GetIdx()];
       }
     }
+
+    if (cgfunc->cg->cgopt_.WithDwarf()) {
+      // for O0
+      // LogInfo::MapleLogger() << "Add DIE for formal parameters" << endl
+      //     << "    and remember them" << endl;
+      cgfunc->AddDIESymbolLocation(sym, symloc);
+    }
   }
 
   // handle ret_ref sym now
@@ -185,6 +198,13 @@ void ArkMemLayout::LayoutStackFrame(int32 &structCopySize, int32 &maxParmStackSi
     seg_reflocals.size = RoundUp(seg_reflocals.size, be.type_align_table[tyIdx.GetIdx()]);
     symloc->offset = seg_reflocals.size;
     seg_reflocals.size += be.type_size_table[tyIdx.GetIdx()];
+
+    if (cgfunc->cg->cgopt_.WithDwarf()) {
+      // for O0
+      // LogInfo::MapleLogger() << "Add DIE for formal parameters" << endl
+      //     << "    and remember them" << endl;
+      cgfunc->AddDIESymbolLocation(sym, symloc);
+    }
   }
 
   ASSERT(0, "ArkMemLayout LayoutStackFrame need to handle new parameter");

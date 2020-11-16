@@ -17,6 +17,7 @@
 #include "aarch64_isa.h"
 #include "aarch64_cg_func.h"
 #include "cg_bb.h"
+#include "dbg.h"
 
 namespace maplebe {
 
@@ -172,6 +173,9 @@ Insn *AArch64InsnVisitor::CloneInsn(Insn *originalInsn) {
       newInsn->opnds[i] = originalInsn->opnds[i];
     }
     return newInsn;
+  } else if (dynamic_cast<mpldbg::DbgInsn *>(originalInsn)) {
+    mpldbg::DbgInsn *tobeCloned = static_cast<mpldbg::DbgInsn *>(originalInsn);
+    return mp->Clone<mpldbg::DbgInsn>(*tobeCloned);
   } else if (dynamic_cast<cfi::CfiInsn *>(originalInsn)) {
     cfi::CfiInsn *tobeCloned = static_cast<cfi::CfiInsn *>(originalInsn);
     return mp->Clone<cfi::CfiInsn>(*tobeCloned);

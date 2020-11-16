@@ -241,7 +241,7 @@ void AArch64MemOperand::Emit(Emitter &emitter, OpndProp *prop) {
     CG_ASSERT(offset, "");
 
     emitter.Emit(", #:lo12:");
-    if (GetSymbol()->storageClass == kScPstatic) {
+    if (GetSymbol()->storageClass == kScPstatic && GetSymbol()->IsLocal()) {
       emitter.Emit(GetSymbolName() + to_string(CG::curPuIdx));
     } else {
       emitter.Emit(GetSymbolName());
@@ -295,7 +295,7 @@ void AArch64MemOperand::dump() {
       LogInfo::MapleLogger() << "offset:";
       AArch64OfstOperand *offopnd = GetOffsetImmediate();
       LogInfo::MapleLogger() << "#:lo12:";
-      if (GetSymbol()->storageClass == kScPstatic) {
+      if (GetSymbol()->storageClass == kScPstatic && GetSymbol()->IsLocal()) {
         LogInfo::MapleLogger() << GetSymbolName() << to_string(CG::curPuIdx);
       } else {
         LogInfo::MapleLogger() << GetSymbolName();

@@ -19,6 +19,7 @@
 #include <cstdlib>
 #include "mpl_logging.h"
 #include "mir_module.h"
+#include "debug_info.h"
 #include "securec.h"
 #include "utils.h"
 
@@ -98,6 +99,7 @@ void MIRLexer::PrepareForFile(const char *filename) {
     lineNum = 1;
   }
 
+  module->dbgInfo->UpdateMsg(lineNum, line.c_str());
   kind = TK_invalid;
 }
 
@@ -547,6 +549,7 @@ TokenKind MIRLexer::LexToken(void) {
       return TK_eof;
     }
     lineNum++;  // a new line readed.
+    module->dbgInfo->UpdateMsg(lineNum, line.c_str());
     // skip spaces
     c = GetCurrentCharWithUpperCheck();
     while (c == ' ' || c == '\t') {

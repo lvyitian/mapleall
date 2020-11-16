@@ -1,0 +1,578 @@
+/*
+ * Copyright (c) [2020] Huawei Technologies Co.,Ltd.All rights reserved.
+ *
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
+ *
+ *   https://opensource.org/licenses/MulanPSL-2.0
+ *
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
+ * FIT FOR A PARTICULAR PURPOSE.
+ * See the MulanPSL - 2.0 for more details.
+ */
+
+// MOP_undef,
+DEFINE_MOP(MOP_undef, {MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,kLtUndef,"","", 0, 0)
+
+// # Definitions
+
+// MOVES
+// MOP_xmovrr
+DEFINE_MOP(MOP_xmovrr, {MOPD_Reg64ID,MOPD_Reg64IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISMOVE,kLtAlu,"mv","0,1", 1, 1)
+// MOP_wmovrr
+DEFINE_MOP(MOP_wmovrr, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISMOVE,kLtAlu,"mv","0,1", 1, 1)
+// MOP_xmovrrr last reg operand is not emitted
+DEFINE_MOP(MOP_xmovrrr, {MOPD_Reg64ID,MOPD_Reg64IS,MOPD_Reg64IS,MOPD_Undef,MOPD_Undef},ISMOVE,kLtAlu,"mv","0,1", 1, 1)
+// MOP_wmovrrr last reg operand is not emitted
+DEFINE_MOP(MOP_wmovrrr, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},ISMOVE,kLtAlu,"mv","0,1", 1, 1)
+// MOP_xmovri64
+DEFINE_MOP(MOP_xmovri64, {MOPD_Reg64ID,MOPD_Imm64,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISMOVE,kLtAlu,"li","0,1", 1, 1)
+
+// MOP_wmov20up
+DEFINE_MOP(MOP_xmov20up, {MOPD_Reg32ID,MOPD_Imm32,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISMOVE,kLtShift,"lui","0,1", 1, 1)
+// MOP_xmov52up
+DEFINE_MOP(MOP_xmov52up, {MOPD_Reg64ID,MOPD_Imm64,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISMOVE,kLtShift,"lui","0,1", 1, 1)
+
+
+// MOP_xvmovsr
+DEFINE_MOP(MOP_xvmovsr, {MOPD_Reg32FD,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISMOVE,kLtR2f,"fmv.s.w","0,1", 1, 1)
+// MOP_xvmovdr
+DEFINE_MOP(MOP_xvmovdr, {MOPD_Reg64FD,MOPD_Reg64IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISMOVE,kLtR2f,"fmv.d.x","0,1", 1, 1)
+// MOP_xvmovrs
+DEFINE_MOP(MOP_xvmovrs, {MOPD_Reg32ID,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISMOVE,kLtF2r,"fmv.w.s","0,1", 1, 1)
+// MOP_xvmovrd
+DEFINE_MOP(MOP_xvmovrd, {MOPD_Reg64ID,MOPD_Reg64FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISMOVE,kLtF2r,"fmv.x.d","0,1", 1, 1)
+// MOP_xvmovs
+DEFINE_MOP(MOP_xvmovs, {MOPD_Reg32FD,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISMOVE,kLtFpalu,"fmv.s","0,1", 1, 1)
+// MOP_xvmovd
+DEFINE_MOP(MOP_xvmovd, {MOPD_Reg64FD,MOPD_Reg64FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISMOVE,kLtFpalu,"fmv.d","0,1", 1, 1)
+// MOP_xvmovss last reg operand is not emitted
+DEFINE_MOP(MOP_xvmovss, {MOPD_Reg32FD,MOPD_Reg32FS,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef},ISMOVE,kLtFpalu,"fmv.s","0,1", 1, 1)
+// MOP_xvmovdd last reg operand is not emitted
+DEFINE_MOP(MOP_xvmovdd, {MOPD_Reg64FD,MOPD_Reg64FS,MOPD_Reg64FS,MOPD_Undef,MOPD_Undef},ISMOVE,kLtFpalu,"fmv.d","0,1", 1, 1)
+
+// Vector SIMD mov
+// MOP_vmovrr
+DEFINE_MOP(MOP_vmovrr, {MOPD_Reg128FD,MOPD_Reg128FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISMOVE,kLtFpalu,"err","0,1", 1, 1)
+// Vector SIMD dup
+DEFINE_MOP(MOP_vdupi32, {MOPD_Reg128FD,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISMOVE,kLtFpalu,"err","0,1", 1, 1)
+DEFINE_MOP(MOP_vdupi64, {MOPD_Reg128FD,MOPD_Reg64IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISMOVE,kLtFpalu,"err","0,1", 1, 1)
+DEFINE_MOP(MOP_vdupf32, {MOPD_Reg128FD,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISMOVE,kLtFpalu,"err","0,1", 1, 1)
+DEFINE_MOP(MOP_vdupf64, {MOPD_Reg128FD,MOPD_Reg64FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISMOVE,kLtFpalu,"err","0,1", 1, 1)
+
+// MOP_adrp // riscv64 load label address high
+DEFINE_MOP(MOP_adrp, {MOPD_Reg64ID,MOPD_Literal,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOADADDR,kLtShift,"lui","0,1", 1, 1)
+// MOP_laddr // riscv64 load label address
+DEFINE_MOP(MOP_laddr, {MOPD_Reg64ID,MOPD_Literal,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOADADDR,kLtShift,"la","0,1", 1, 1)
+// MOP_xadr (Java)
+DEFINE_MOP(MOP_xadri64, {MOPD_Reg64ID,MOPD_Imm64,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOADADDR,kLtShift,"err","0,1", 1, 1)
+// MOP_adrpl12 // riscv64 add label address low
+DEFINE_MOP(MOP_adrpl12, {MOPD_Reg64ID,MOPD_Reg64IS,MOPD_Literal_L12,MOPD_Undef,MOPD_Undef},0,kLtAlu,"addi","0,1,2", 1, 2)
+
+// Vector SIMD add
+// MOP_vaddf32rrr	Arithmetic: add
+DEFINE_MOP(MOP_vaddf32rrr, {MOPD_Reg128FD, MOPD_Reg128FS, MOPD_Reg128FS,MOPD_Undef,MOPD_Undef},0,kLtAlu,"err","0,1,2", 1, 2)
+// MOP_vaddf64rrr	Arithmetic: add
+DEFINE_MOP(MOP_vaddf64rrr, {MOPD_Reg128FD, MOPD_Reg128FS, MOPD_Reg128FS,MOPD_Undef,MOPD_Undef},0,kLtAlu,"err","0,1,2", 1, 2)
+// MOP_vadd32rrr	Arithmetic: add
+DEFINE_MOP(MOP_vadd32rrr, {MOPD_Reg128ID,MOPD_Reg128IS,MOPD_Reg128IS,MOPD_Undef,MOPD_Undef},0,kLtAlu,"err","0,1,2", 1, 2)
+// MOP_vadd64rrr	Arithmetic: add
+DEFINE_MOP(MOP_vadd64rrr, {MOPD_Reg128LD,MOPD_Reg128LS,MOPD_Reg128LS,MOPD_Undef,MOPD_Undef},0,kLtAlu,"err","0,1,2", 1, 2)
+
+// MOP_xaddrrr	Arithmetic: add
+DEFINE_MOP(MOP_xaddrrr, {MOPD_Reg64ID,MOPD_Reg64IS,MOPD_Reg64IS,MOPD_Undef,MOPD_Undef},0,kLtAlu,"add","0,1,2", 1, 2)
+// MOP_xaddrri12
+DEFINE_MOP(MOP_xaddrri12, {MOPD_Reg64ID,MOPD_Reg64IS,MOPD_Imm12,MOPD_Undef,MOPD_Undef},0,kLtAlu,"addi","0,1,2", 1, 2)
+// MOP_waddrrr
+DEFINE_MOP(MOP_waddrrr, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,kLtAlu,"addw","0,1,2", 1, 2)
+// MOP_waddrri12
+DEFINE_MOP(MOP_waddrri12, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Imm12,MOPD_Undef,MOPD_Undef},0,kLtAlu,"addiw","0,1,2", 1, 2)
+// MOP_dadd
+DEFINE_MOP(MOP_dadd, {MOPD_Reg64FD,MOPD_Reg64FS,MOPD_Reg64FS,MOPD_Undef,MOPD_Undef},0,kLtFpalu,"fadd.d","0,1,2", 1, 2)
+// MOP_sadd
+DEFINE_MOP(MOP_sadd, {MOPD_Reg32FD,MOPD_Reg32FS,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef},0,kLtFpalu,"fadd.s","0,1,2", 1, 2)
+
+// MOP_xsubrrr	Arithmetic: sub
+DEFINE_MOP(MOP_xsubrrr, {MOPD_Reg64ID,MOPD_Reg64IS,MOPD_Reg64IS,MOPD_Undef,MOPD_Undef},0,kLtAlu,"sub","0,1,2", 1, 2)
+// MOP_xsubrri12
+DEFINE_MOP(MOP_xsubrri12, {MOPD_Reg64ID,MOPD_Reg64IS,MOPD_Imm12,MOPD_Undef,MOPD_Undef},0,kLtAlu,"subi","0,1,2", 1, 2)
+// MOP_wsubrrr
+DEFINE_MOP(MOP_wsubrrr, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,kLtAlu,"subw","0,1,2", 1, 2)
+// MOP_wsubrri12
+DEFINE_MOP(MOP_wsubrri12, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Imm12,MOPD_Undef,MOPD_Undef},0,kLtAlu,"subiw","0,1,2", 1, 2)
+// MOP_dsub
+DEFINE_MOP(MOP_dsub, {MOPD_Reg64FD,MOPD_Reg64FS,MOPD_Reg64FS,MOPD_Undef,MOPD_Undef},0,kLtFpalu,"fsub.d","0,1,2", 1, 2)
+// MOP_ssub
+DEFINE_MOP(MOP_ssub, {MOPD_Reg32FD,MOPD_Reg32FS,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef},0,kLtFpalu,"fsub.s","0,1,2", 1, 2)
+
+// Arithmetic: multiply
+// MOP_Tbxmulrrr
+DEFINE_MOP(MOP_xmulrrr, {MOPD_Reg64ID,MOPD_Reg64IS,MOPD_Reg64IS,MOPD_Undef,MOPD_Undef},0,kLtMul,"mul","0,1,2", 1, 2)
+// MOP_Tbxvmuls
+DEFINE_MOP(MOP_xvmuls, {MOPD_Reg32FD,MOPD_Reg32FS,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef},0,kLtFpmul,"fmul.s","0,1,2", 1, 2)
+// MOP_Tbxvmuld
+DEFINE_MOP(MOP_xvmuld, {MOPD_Reg64FD,MOPD_Reg64FS,MOPD_Reg64FS,MOPD_Undef,MOPD_Undef},0,kLtFpmul,"fmul.d","0,1,2", 1, 2)
+
+// Conversions
+// MOP_xsxtw64
+DEFINE_MOP(MOP_xsxtw64, {MOPD_Reg64ID,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISCONVERSION,kLtAluShift,"sext.w","0,1", 1, 1)
+// variable bits sign extension, expanded to MOP_xlslrri6 and MOP_xasrrri6
+DEFINE_MOP(MOP_xsxtv64, {MOPD_Reg64ID,MOPD_Reg32IS,MOPD_Imm6,MOPD_Undef,MOPD_Undef},ISCONVERSION,kLtAluShift,"#vsext.w","0,1,2", 1, 2)
+
+// variable bits zero extension, expanded to MOP_xlslrri6 and MOP_xlsrrri6
+DEFINE_MOP(MOP_xuxtv64, {MOPD_Reg64ID,MOPD_Reg32IS,MOPD_Imm6,MOPD_Undef,MOPD_Undef},ISCONVERSION,kLtAluShift,"#vuxtw","0,1", 1, 1)
+
+// MOP_xvcvtfd
+DEFINE_MOP(MOP_xvcvtfd, {MOPD_Reg32FD,MOPD_Reg64FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISCONVERSION,kLtFpalu,"fcvt.s.d","0,1", 1, 1)
+// MOP_xvcvtdf
+DEFINE_MOP(MOP_xvcvtdf, {MOPD_Reg64FD,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISCONVERSION,kLtFpalu,"fcvt.d.s","0,1", 1, 1)
+
+// MOP_vcvtrf	fcvt.w.s w,s
+DEFINE_MOP(MOP_vcvtrf, {MOPD_Reg32ID,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISCONVERSION,kLtF2rCvt,"fcvt.w.s","0,1", 1, 1)
+// MOP_vcvturf	fcvt.wu.s w,s
+DEFINE_MOP(MOP_vcvturf, {MOPD_Reg32ID,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISCONVERSION,kLtF2rCvt,"fcvt.wu.s","0,1", 1, 1)
+// MOP_xvcvtrf	fcvt.l.s x,s
+DEFINE_MOP(MOP_xvcvtrf, {MOPD_Reg64ID,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISCONVERSION,kLtF2rCvt,"fcvt.l.s","0,1", 1, 1)
+// MOP_xvcvturf	fcvt.lu.s x,s
+DEFINE_MOP(MOP_xvcvturf, {MOPD_Reg64ID,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISCONVERSION,kLtF2rCvt,"fcvt.lu.s","0,1", 1, 1)
+// MOP_vcvtrd	fcvt.w.d w,d
+DEFINE_MOP(MOP_vcvtrd, {MOPD_Reg32ID,MOPD_Reg64FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISCONVERSION,kLtF2rCvt,"fcvt.w.d","0,1", 1, 1)
+// MOP_vcvturd	fcvt.wu.d w,d
+DEFINE_MOP(MOP_vcvturd, {MOPD_Reg32ID,MOPD_Reg64FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISCONVERSION,kLtF2rCvt,"fcvt.wu.d","0,1", 1, 1)
+// MOP_xvcvtrd	fcvt.l.d x,d
+DEFINE_MOP(MOP_xvcvtrd, {MOPD_Reg64ID,MOPD_Reg64FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISCONVERSION,kLtF2rCvt,"fcvt.l.d","0,1", 1, 1)
+// MOP_xvcvturd	fcvt.lu.d x,d
+DEFINE_MOP(MOP_xvcvturd, {MOPD_Reg64ID,MOPD_Reg64FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISCONVERSION,kLtF2rCvt,"fcvt.lu.d","0,1", 1, 1)
+
+// MOP_vcvtfr	fcvt.s.w s,w
+DEFINE_MOP(MOP_vcvtfr, {MOPD_Reg32FD,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISCONVERSION,kLtR2fCvt,"fcvt.s.w","0,1", 1, 1)
+// MOP_vcvtufr	fcvt.s.wu s,w
+DEFINE_MOP(MOP_vcvtufr, {MOPD_Reg32FD,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISCONVERSION,kLtR2fCvt,"fcvt.s.wu","0,1", 1, 1)
+// MOP_xvcvtfr	fcvt.s.l s,x
+DEFINE_MOP(MOP_xvcvtfr, {MOPD_Reg32FD,MOPD_Reg64IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISCONVERSION,kLtR2fCvt,"fcvt.s.l","0,1", 1, 1)
+// MOP_xvcvtufr	fcvt.s.lu s,x
+DEFINE_MOP(MOP_xvcvtufr, {MOPD_Reg32FD,MOPD_Reg64IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISCONVERSION,kLtR2fCvt,"fcvt.s.lu","0,1", 1, 1)
+// MOP_vcvtdr	fcvt.d.w d,w
+DEFINE_MOP(MOP_vcvtdr, {MOPD_Reg64FD,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISCONVERSION,kLtR2fCvt,"fcvt.d.w","0,1", 1, 1)
+// MOP_vcvtudr	fcvt.d.wu d,w
+DEFINE_MOP(MOP_vcvtudr, {MOPD_Reg64FD,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISCONVERSION,kLtR2fCvt,"fcvt.d.wu","0,1", 1, 1)
+// MOP_xvcvtdr	fcvt.d.l d,x
+DEFINE_MOP(MOP_xvcvtdr, {MOPD_Reg64FD,MOPD_Reg64IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISCONVERSION,kLtR2fCvt,"fcvt.d.l","0,1", 1, 1)
+// MOP_xvcvtudr	fcvt.d.lu d,x
+DEFINE_MOP(MOP_xvcvtudr, {MOPD_Reg64FD,MOPD_Reg64IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISCONVERSION,kLtR2fCvt,"fcvt.d.lu","0,1", 1, 1)
+
+// MOP_xandrrr
+DEFINE_MOP(MOP_xandrrr, {MOPD_Reg64ID,MOPD_Reg64IS,MOPD_Reg64IS,MOPD_Undef,MOPD_Undef},0,kLtAlu,"and","0,1,2", 1, 2)
+// MOP_xandrri13
+DEFINE_MOP(MOP_xandrri13, {MOPD_Reg64ID,MOPD_Reg64IS,MOPD_Imm13,MOPD_Undef,MOPD_Undef},0,kLtAlu,"andi","0,1,2", 1, 2)
+
+// MOP_xiorrrr
+DEFINE_MOP(MOP_xiorrrr, {MOPD_Reg64ID,MOPD_Reg64IS,MOPD_Reg64IS,MOPD_Undef,MOPD_Undef},0,kLtAlu,"or","0,1,2", 1, 2)
+// MOP_xiorrri13
+DEFINE_MOP(MOP_xiorrri13, {MOPD_Reg64ID,MOPD_Reg64IS,MOPD_Imm13,MOPD_Undef,MOPD_Undef},0,kLtAlu,"ori","0,1,2", 1, 2)
+
+// MOP_xeorrrr
+DEFINE_MOP(MOP_xeorrrr, {MOPD_Reg64ID,MOPD_Reg64IS,MOPD_Reg64IS,MOPD_Undef,MOPD_Undef},0,kLtAlu,"xor","0,1,2", 1, 2)
+// MOP_xeorrri13
+DEFINE_MOP(MOP_xeorrri13, {MOPD_Reg64ID,MOPD_Reg64IS,MOPD_Imm13,MOPD_Undef,MOPD_Undef},0,kLtAlu,"xori","0,1,2", 1, 2)
+
+// MOP_xnotrr
+DEFINE_MOP(MOP_xnotrr, {MOPD_Reg64ID,MOPD_Reg64IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,kLtAlu,"not","0,1", 1, 1)
+
+// MOP_wfmaxrrr
+DEFINE_MOP(MOP_wfmaxrrr, {MOPD_Reg32FD,MOPD_Reg32FS,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef},0,kLtFpalu,"fmax.s","0,1,2", 1, 2)
+// MOP_xfmaxrrr
+DEFINE_MOP(MOP_xfmaxrrr, {MOPD_Reg64FD,MOPD_Reg64FS,MOPD_Reg64FS,MOPD_Undef,MOPD_Undef},0,kLtFpalu,"fmax.d","0,1,2", 1, 2)
+// MOP_wfminrrr
+DEFINE_MOP(MOP_wfminrrr, {MOPD_Reg32FD,MOPD_Reg32FS,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef},0,kLtFpalu,"fmin.s","0,1,2", 1, 2)
+// MOP_xfminrrr
+DEFINE_MOP(MOP_xfminrrr, {MOPD_Reg64FD,MOPD_Reg64FS,MOPD_Reg64FS,MOPD_Undef,MOPD_Undef},0,kLtFpalu,"fmin.d","0,1,2", 1, 2)
+
+// MOP_wsdivrrr
+DEFINE_MOP(MOP_wsdivrrr, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},CANTHROW,kLtDiv,"divw","0,1,2", 1, 2)
+// MOP_xsdivrrr
+DEFINE_MOP(MOP_xsdivrrr, {MOPD_Reg64ID,MOPD_Reg64IS,MOPD_Reg64IS,MOPD_Undef,MOPD_Undef},CANTHROW,kLtDiv,"div","0,1,2", 1, 2)
+// MOP_wudivrrr
+DEFINE_MOP(MOP_wudivrrr, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},CANTHROW,kLtDiv,"divuw","0,1,2", 1, 2)
+// MOP_xudivrrr
+DEFINE_MOP(MOP_xudivrrr, {MOPD_Reg64ID,MOPD_Reg64IS,MOPD_Reg64IS,MOPD_Undef,MOPD_Undef},CANTHROW,kLtDiv,"divu","0,1,2", 1, 2)
+
+// MOP_wsremrrr
+DEFINE_MOP(MOP_wsremrrr, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},CANTHROW,kLtDiv,"remw","0,1,2", 1, 2)
+// MOP_xsremrrr
+DEFINE_MOP(MOP_xsremrrr, {MOPD_Reg64ID,MOPD_Reg64IS,MOPD_Reg64IS,MOPD_Undef,MOPD_Undef},CANTHROW,kLtDiv,"rem","0,1,2", 1, 2)
+// MOP_wuremrrr
+DEFINE_MOP(MOP_wuremrrr, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},CANTHROW,kLtDiv,"remuw","0,1,2", 1, 2)
+// MOP_xuremrrr
+DEFINE_MOP(MOP_xuremrrr, {MOPD_Reg64ID,MOPD_Reg64IS,MOPD_Reg64IS,MOPD_Undef,MOPD_Undef},CANTHROW,kLtDiv,"remu","0,1,2", 1, 2)
+
+// MOP_xlslrri6,--- Logical Shift Left
+DEFINE_MOP(MOP_xlslrri6, {MOPD_Reg64ID,MOPD_Reg64IS,MOPD_Imm6,MOPD_Undef,MOPD_Undef},0,kLtAluShift,"slli","0,1,2", 1, 2)
+// MOP_wlslrri5
+DEFINE_MOP(MOP_wlslrri5, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Imm8,MOPD_Undef,MOPD_Undef},0,kLtAluShift,"slliw","0,1,2", 1, 2)
+// MOP_xasrrri6,
+DEFINE_MOP(MOP_xasrrri6, {MOPD_Reg64ID,MOPD_Reg64IS,MOPD_Imm6,MOPD_Undef,MOPD_Undef},0,kLtAluShift,"srai","0,1,2", 1, 2)
+// MOP_wasrrri5
+DEFINE_MOP(MOP_wasrrri5, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Imm8,MOPD_Undef,MOPD_Undef},0,kLtAluShift,"sraiw","0,1,2", 1, 2)
+// MOP_xlsrrri6,
+DEFINE_MOP(MOP_xlsrrri6, {MOPD_Reg64ID,MOPD_Reg64IS,MOPD_Imm6,MOPD_Undef,MOPD_Undef},0,kLtAluShift,"srli","0,1,2", 1, 2)
+// MOP_wlsrrri5
+DEFINE_MOP(MOP_wlsrrri5, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Imm8,MOPD_Undef,MOPD_Undef},0,kLtAluShift,"srliw","0,1,2", 1, 2)
+// MOP_xlslrrr,
+DEFINE_MOP(MOP_xlslrrr, {MOPD_Reg64ID,MOPD_Reg64IS,MOPD_Reg64IS,MOPD_Undef,MOPD_Undef},0,kLtAluShiftReg,"sll","0,1,2", 1, 2)
+// MOP_wlslrrr
+DEFINE_MOP(MOP_wlslrrr, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,kLtAluShiftReg,"sllw","0,1,2", 1, 2)
+// MOP_xasrrrr,
+DEFINE_MOP(MOP_xasrrrr, {MOPD_Reg64ID,MOPD_Reg64IS,MOPD_Reg64IS,MOPD_Undef,MOPD_Undef},0,kLtAluShiftReg,"sra","0,1,2", 1, 2)
+// MOP_wasrrrr
+DEFINE_MOP(MOP_wasrrrr, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,kLtAluShiftReg,"sraw","0,1,2", 1, 2)
+// MOP_xlsrrrr,
+DEFINE_MOP(MOP_xlsrrrr, {MOPD_Reg64ID,MOPD_Reg64IS,MOPD_Reg64IS,MOPD_Undef,MOPD_Undef},0,kLtAluShiftReg,"srl","0,1,2", 1, 2)
+// MOP_wlsrrrr
+DEFINE_MOP(MOP_wlsrrrr, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},0,kLtAluShiftReg,"srlw","0,1,2", 1, 2)
+
+// MOP_xslt
+DEFINE_MOP(MOP_xslt, {MOPD_Reg64ID,MOPD_Reg64IS,MOPD_Reg64IS,MOPD_Undef,MOPD_Undef},0,kLtAlu,"slt","0,1,2", 1, 2)
+// MOP_xsltu -- 1 if rs1 < rs2 else 0
+DEFINE_MOP(MOP_xsltu, {MOPD_Reg64ID,MOPD_Reg64IS,MOPD_Reg64IS,MOPD_Undef,MOPD_Undef},0,kLtAlu,"sltu","0,1,2", 1, 2)
+// MOP_xslti
+DEFINE_MOP(MOP_xslti, {MOPD_Reg64ID,MOPD_Reg64IS,MOPD_Imm12,MOPD_Undef,MOPD_Undef},0,kLtAlu,"slti","0,1,2", 1, 2)
+// MOP_xsltiu
+DEFINE_MOP(MOP_xsltiu, {MOPD_Reg64ID,MOPD_Reg64IS,MOPD_Imm12,MOPD_Undef,MOPD_Undef},0,kLtAlu,"sltiu","0,1,2", 1, 2)
+// MOP_xsgt
+DEFINE_MOP(MOP_xsgt, {MOPD_Reg64ID,MOPD_Reg64IS,MOPD_Reg64IS,MOPD_Undef,MOPD_Undef},0,kLtAlu,"sgt","0,1,2", 1, 2)
+// MOP_xsgtu
+DEFINE_MOP(MOP_xsgtu, {MOPD_Reg64ID,MOPD_Reg64IS,MOPD_Reg64IS,MOPD_Undef,MOPD_Undef},0,kLtAlu,"sgtu","0,1,2", 1, 2)
+// MOP_xseqz
+DEFINE_MOP(MOP_xseqz, {MOPD_Reg64ID,MOPD_Reg64IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,kLtAlu,"seqz","0,1", 1, 1)
+// MOP_xsnez
+DEFINE_MOP(MOP_xsnez, {MOPD_Reg64ID,MOPD_Reg64IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,kLtAlu,"snez","0,1", 1, 1)
+
+// MOP_sabsrr
+DEFINE_MOP(MOP_sabsrr, {MOPD_Reg32FD,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,kLtFpalu,"fabs.s","0,1", 1, 1)
+// MOP_dabsrr
+DEFINE_MOP(MOP_dabsrr, {MOPD_Reg64FD,MOPD_Reg64FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,kLtFpalu,"fabs.d","0,1", 1, 1)
+
+// neg i32
+DEFINE_MOP(MOP_winegrr, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,kLtAlu,"negw","0,1", 1, 1)
+// neg i64
+DEFINE_MOP(MOP_xinegrr, {MOPD_Reg64ID,MOPD_Reg64IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,kLtAlu,"neg","0,1", 1, 1)
+// neg f32
+DEFINE_MOP(MOP_wfnegrr, {MOPD_Reg32FD,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,kLtFpalu,"fneg.s","0,1", 1, 1)
+// neg f64
+DEFINE_MOP(MOP_xfnegrr, {MOPD_Reg64FD,MOPD_Reg64FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,kLtFpalu,"fneg.d","0,1", 1, 1)
+
+// MOP_sdivrrr
+DEFINE_MOP(MOP_sdivrrr, {MOPD_Reg32FD,MOPD_Reg32FS,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef},CANTHROW,kLtAdvsimdDivS,"fdiv.s","0,1,2", 1, 2)
+// MOP_ddivrrr
+DEFINE_MOP(MOP_ddivrrr, {MOPD_Reg64FD,MOPD_Reg64FS,MOPD_Reg64FS,MOPD_Undef,MOPD_Undef},CANTHROW,kLtAdvsimdDivD,"fdiv.d","0,1,2", 1, 2)
+
+// branches/calls
+// MOP_xbl -- branch with link (call); this is a special definition
+DEFINE_MOP(MOP_xbl,  {MOPD_FuncName,MOPD_LISTS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISCALL|CANTHROW,kLtBranch,"call","0", 0, 2)
+// MOP_xblr -- branch with link (call) to register; this is a special definition
+DEFINE_MOP(MOP_xblr, {MOPD_Reg64IS,MOPD_LISTS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISCALL|CANTHROW,kLtBranch,"jalr","0", 0, 2)
+
+// LOADS
+// MOP_wldrsb --- Load Register Signed Byte
+DEFINE_MOP(MOP_wldrsb, {MOPD_Reg32ID,MOPD_Mem8S,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD|CANTHROW,kLtLoad1,"lb","0,1", 1, 1)
+// MOP_wldrb --- Load Register Unsigned Byte
+DEFINE_MOP(MOP_wldrb, {MOPD_Reg32ID,MOPD_Mem8S,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD|CANTHROW,kLtLoad1,"lbu","0,1", 1, 1)
+// MOP_wldrsh  --- Load Register Signed Halfword
+DEFINE_MOP(MOP_wldrsh, {MOPD_Reg32ID,MOPD_Mem16S,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD|CANTHROW,kLtLoad1,"lh","0,1", 1, 1)
+// MOP_wldrh  --- Load Register Unsigned Halfword
+DEFINE_MOP(MOP_wldrh, {MOPD_Reg32ID, MOPD_Mem16S, MOPD_Undef, MOPD_Undef,MOPD_Undef},ISLOAD|CANTHROW,kLtLoad1,"lhu","0,1", 1, 1)
+// MOP_wldrsw  --- Load Register Signed word
+DEFINE_MOP(MOP_wldrsw, {MOPD_Reg32ID,MOPD_Mem32S,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD|CANTHROW,kLtLoad1,"lw","0,1", 1, 1)
+// MOP_wldr  --- Load Register Unsigned word
+DEFINE_MOP(MOP_wldr, {MOPD_Reg32ID,MOPD_Mem32S,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD|CANTHROW,kLtLoad1,"lwu","0,1", 1, 1)
+// MOP_xldr
+DEFINE_MOP(MOP_xldr, {MOPD_Reg64ID,MOPD_Mem64S,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD|CANTHROW,kLtLoad2,"ld","0,1", 1, 1)
+
+DEFINE_MOP(MOP_sldr, {MOPD_Reg32FD,MOPD_Mem32S,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD|CANTHROW,kLtFLoadMany,"flw","0,1", 1, 1)
+// MOP_dldr
+DEFINE_MOP(MOP_dldr, {MOPD_Reg64FD,MOPD_Mem64S,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD|CANTHROW,kLtFLoadMany,"fld","0,1", 1, 1)
+// MOP_vldr
+DEFINE_MOP(MOP_vldr, {MOPD_Reg128FD,MOPD_Mem128S,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD|CANTHROW,kLtFLoadMany,"err","0,1", 1, 1)
+
+// Load exclusive with/without acquire semantics
+DEFINE_MOP(MOP_wldxr,  {MOPD_Reg32ID,MOPD_Mem32S,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD|ISATOMIC|CANTHROW,kLtUndef,"err","0,1", 1, 1)
+DEFINE_MOP(MOP_xldxr,  {MOPD_Reg64ID,MOPD_Mem64S,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD|ISATOMIC|CANTHROW,kLtUndef,"err","0,1", 1, 1)
+
+DEFINE_MOP(MOP_wldaxr, {MOPD_Reg32ID,MOPD_Mem32S,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD|ISATOMIC|HASACQUIRE|CANTHROW,kLtUndef,"err","0,1", 1, 1)
+DEFINE_MOP(MOP_xldaxr, {MOPD_Reg64ID,MOPD_Mem64S,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISLOAD|ISATOMIC|HASACQUIRE|CANTHROW,kLtUndef,"err","0,1", 1, 1)
+
+DEFINE_MOP(MOP_wldaxp, {MOPD_Reg32ID,MOPD_Reg32ID,MOPD_Mem32S,MOPD_Undef,MOPD_Undef},ISLOAD|ISLOADPAIR|ISATOMIC|HASACQUIRE|CANTHROW,kLtUndef,"err","0,1,2", 2, 1)
+DEFINE_MOP(MOP_xldaxp, {MOPD_Reg64ID,MOPD_Reg64ID,MOPD_Mem64S,MOPD_Undef,MOPD_Undef},ISLOAD|ISLOADPAIR|ISATOMIC|HASACQUIRE|CANTHROW,kLtUndef,"err","0,1,2", 2, 1)
+
+// MOP_vsqrts
+DEFINE_MOP(MOP_vsqrts, {MOPD_Reg32FD,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},CANTHROW,kLtAdvsimdDivS,"fsqrt.s","0,1", 1, 1)
+// MOP_vsqrtd
+DEFINE_MOP(MOP_vsqrtd, {MOPD_Reg64FD,MOPD_Reg64FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},CANTHROW,kLtAdvsimdDivD,"fsqrt.d","0,1", 1, 1)
+
+
+// # Non Definitions
+// # As far as register allocation is concerned, the instructions below are non-definitions.
+
+// MOP_beq
+DEFINE_MOP(MOP_beq, {MOPD_Reg64IS,MOPD_Reg64IS,MOPD_Label,MOPD_Undef,MOPD_Undef},ISBRANCH,kLtBranch,"beq","0,1,2", 0, 3)
+// MOP_bne
+DEFINE_MOP(MOP_bne, {MOPD_Reg64IS,MOPD_Reg64IS,MOPD_Label,MOPD_Undef,MOPD_Undef},ISBRANCH,kLtBranch,"bne","0,1,2", 0, 3)
+// MOP_blt
+DEFINE_MOP(MOP_blt, {MOPD_Reg64IS,MOPD_Reg64IS,MOPD_Label,MOPD_Undef,MOPD_Undef},ISBRANCH,kLtBranch,"blt","0,1,2", 0, 3)
+// MOP_ble
+DEFINE_MOP(MOP_ble, {MOPD_Reg64IS,MOPD_Reg64IS,MOPD_Label,MOPD_Undef,MOPD_Undef},ISBRANCH,kLtBranch,"ble","0,1,2", 0, 3)
+// MOP_bgt
+DEFINE_MOP(MOP_bgt, {MOPD_Reg64IS,MOPD_Reg64IS,MOPD_Label,MOPD_Undef,MOPD_Undef},ISBRANCH,kLtBranch,"bgt","0,1,2", 0, 3)
+// MOP_bge
+DEFINE_MOP(MOP_bge, {MOPD_Reg64IS,MOPD_Reg64IS,MOPD_Label,MOPD_Undef,MOPD_Undef},ISBRANCH,kLtBranch,"bge","0,1,2", 0, 3)
+
+// compare against zero
+DEFINE_MOP(MOP_beqz, {MOPD_Reg64IS,MOPD_Label,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISBRANCH,kLtBranch,"beqz","0,1", 0, 2)
+DEFINE_MOP(MOP_bnez, {MOPD_Reg64IS,MOPD_Label,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISBRANCH,kLtBranch,"bnez","0,1", 0, 2)
+DEFINE_MOP(MOP_bltz, {MOPD_Reg64IS,MOPD_Label,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISBRANCH,kLtBranch,"bltz","0,1", 0, 2)
+DEFINE_MOP(MOP_blez, {MOPD_Reg64IS,MOPD_Label,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISBRANCH,kLtBranch,"blez","0,1", 0, 2)
+DEFINE_MOP(MOP_bgtz, {MOPD_Reg64IS,MOPD_Label,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISBRANCH,kLtBranch,"bgtz","0,1", 0, 2)
+DEFINE_MOP(MOP_bgez, {MOPD_Reg64IS,MOPD_Label,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISBRANCH,kLtBranch,"bgez","0,1", 0, 2)
+
+// MOP_blo equal to MOP_blt for unsigned comparison
+DEFINE_MOP(MOP_blo, {MOPD_Reg64IS,MOPD_Reg64IS,MOPD_Label,MOPD_Undef,MOPD_Undef},ISBRANCH,kLtBranch,"bltu","0,1,2", 0, 3)
+// MOP_bls equal to MOP_ble for unsigned comparison
+DEFINE_MOP(MOP_bls, {MOPD_Reg64IS,MOPD_Reg64IS,MOPD_Label,MOPD_Undef,MOPD_Undef},ISBRANCH,kLtBranch,"bleu","0,1,2", 0, 3)
+// MOP_bhs equal to MOP_bge for unsigned comparison
+DEFINE_MOP(MOP_bhs, {MOPD_Reg64IS,MOPD_Reg64IS,MOPD_Label,MOPD_Undef,MOPD_Undef},ISBRANCH,kLtBranch,"bgeu","0,1,2", 0, 3)
+
+// MOP_bhi equal to MOP_bgt for float comparison
+DEFINE_MOP(MOP_bhi, {MOPD_Reg64IS,MOPD_Reg64IS,MOPD_Label,MOPD_Undef,MOPD_Undef},ISBRANCH,kLtBranch,"bgtu","0,1,2", 0, 3)
+// MOP_bpl equal to MOP_bge for float comparison
+DEFINE_MOP(MOP_bpl, {MOPD_Label,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISBRANCH,kLtBranch,"bpl","0", 0, 1)
+
+// MOP_xret
+DEFINE_MOP(MOP_xret, {MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},CANTHROW,kLtBranch,"ret","", 0, 0)
+
+// Floating-Point COMPARES signaling versions
+
+// MOP_scmperi
+DEFINE_MOP(MOP_scmperi, {MOPD_Reg32FS,MOPD_FPZeroImm8,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,kLtFpalu,"err","0,1", 0, 2)
+// MOP_scmperr
+DEFINE_MOP(MOP_scmperr, {MOPD_Reg32FS,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,kLtFpalu,"err","0,1", 0, 2)
+
+// MOP_scmp*rr for eq, gt, lt, ge, le
+DEFINE_MOP(MOP_scmpeqrr, {MOPD_Reg64ID,MOPD_Reg32FS,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef},0,kLtFpalu,"feq.s","0,1,2", 1, 2)
+DEFINE_MOP(MOP_scmpgtrr, {MOPD_Reg64ID,MOPD_Reg32FS,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef},0,kLtFpalu,"fgt.s","0,1,2", 1, 2)
+DEFINE_MOP(MOP_scmpltrr, {MOPD_Reg64ID,MOPD_Reg32FS,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef},0,kLtFpalu,"flt.s","0,1,2", 1, 2)
+DEFINE_MOP(MOP_scmpgerr, {MOPD_Reg64ID,MOPD_Reg32FS,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef},0,kLtFpalu,"fge.s","0,1,2", 1, 2)
+DEFINE_MOP(MOP_scmplerr, {MOPD_Reg64ID,MOPD_Reg32FS,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef},0,kLtFpalu,"fle.s","0,1,2", 1, 2)
+
+// MOP_dcmperi -- Riscv64 cmp has no dest operand
+DEFINE_MOP(MOP_dcmperi, {MOPD_Reg64FS,MOPD_FPZeroImm8,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,kLtFpalu,"err","0,1", 0, 2)
+// MOP_dcmperr
+DEFINE_MOP(MOP_dcmperr, {MOPD_Reg64FS,MOPD_Reg64FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,kLtFpalu,"err","0,1", 0, 2)
+
+// MOP_dcmp*rr for eq, gt, lt, ge, le
+DEFINE_MOP(MOP_dcmpeqrr, {MOPD_Reg64ID,MOPD_Reg64FS,MOPD_Reg64FS,MOPD_Undef,MOPD_Undef},0,kLtFpalu,"feq.d","0,1,2", 1, 2)
+DEFINE_MOP(MOP_dcmpgtrr, {MOPD_Reg64ID,MOPD_Reg64FS,MOPD_Reg64FS,MOPD_Undef,MOPD_Undef},0,kLtFpalu,"fgt.d","0,1,2", 1, 2)
+DEFINE_MOP(MOP_dcmpltrr, {MOPD_Reg64ID,MOPD_Reg64FS,MOPD_Reg64FS,MOPD_Undef,MOPD_Undef},0,kLtFpalu,"flt.d","0,1,2", 1, 2)
+DEFINE_MOP(MOP_dcmpgerr, {MOPD_Reg64ID,MOPD_Reg64FS,MOPD_Reg64FS,MOPD_Undef,MOPD_Undef},0,kLtFpalu,"fge.d","0,1,2", 1, 2)
+DEFINE_MOP(MOP_dcmplerr, {MOPD_Reg64ID,MOPD_Reg64FS,MOPD_Reg64FS,MOPD_Undef,MOPD_Undef},0,kLtFpalu,"fle.d","0,1,2", 1, 2)
+
+// Floating-Point COMPARES non-signaling (quiet) versions
+
+// MOP_scmpqri -- Riscv64 cmp has no dest operand
+DEFINE_MOP(MOP_scmpqri, {MOPD_Reg32FS,MOPD_FPZeroImm8,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,kLtFpalu,"err","0,1", 0, 2)
+// MOP_scmpqrr
+DEFINE_MOP(MOP_scmpqrr, {MOPD_Reg32FS,MOPD_Reg32FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,kLtFpalu,"err","0,1", 0, 2)
+
+// MOP_dcmpqri
+DEFINE_MOP(MOP_dcmpqri, {MOPD_Reg64FS,MOPD_FPZeroImm8,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,kLtFpalu,"err","0,1", 0, 2)
+// MOP_dcmpqrr
+DEFINE_MOP(MOP_dcmpqrr, {MOPD_Reg64FS,MOPD_Reg64FS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,kLtFpalu,"err","0,1", 0, 2)
+
+// Integer COMPARES
+// MOP_wcmpri
+DEFINE_MOP(MOP_wcmpri, {MOPD_Reg32IS,MOPD_Imm12,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,kLtAlu,"err","0,1", 0, 2)
+// MOP_wcmprr
+DEFINE_MOP(MOP_wcmprr, {MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,kLtAlu,"err","0,1", 0, 2)
+// MOP_xcmpri
+DEFINE_MOP(MOP_xcmpri, {MOPD_Reg64IS,MOPD_Imm12,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,kLtAlu,"err","0,1", 0, 2)
+// MOP_xcmprr
+DEFINE_MOP(MOP_xcmprr, {MOPD_Reg64IS,MOPD_Reg64IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,kLtAlu,"err","0,1", 0, 2)
+
+// Riscv64 branches
+// MOP_xbr -- branch to register
+DEFINE_MOP(MOP_xbr, {MOPD_Reg64IS,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISBRANCH,kLtBranch,"jr","0", 0, 1)
+// MOP_Tbbuncond
+DEFINE_MOP(MOP_xuncond, {MOPD_Label,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISBRANCH,kLtBranch,"j","0", 0, 1)
+
+// RISCV64 STORES
+// MOP_wstrb -- Store Register Byte
+DEFINE_MOP(MOP_wstrb, {MOPD_Reg32IS,MOPD_Mem8D,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE|CANTHROW,kLtStore1,"sb","0,1", 1, 1)
+// MOP_wstrh -- Store Register Halfword
+DEFINE_MOP(MOP_wstrh, {MOPD_Reg32IS,MOPD_Mem16D,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE|CANTHROW,kLtStore1,"sh","0,1", 1, 1)
+// MOP_wstr -- Store Register Word
+DEFINE_MOP(MOP_wstr, {MOPD_Reg32IS,MOPD_Mem32D,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE|CANTHROW,kLtStore1,"sw","0,1", 1, 1)
+// MOP_xstr -- Store Register Double word
+DEFINE_MOP(MOP_xstr, {MOPD_Reg64IS,MOPD_Mem64D,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE|CANTHROW,kLtStore2,"sd","0,1", 1, 1)
+
+// MOP_sstr -- Store Register SIMD/FP Float
+DEFINE_MOP(MOP_sstr, {MOPD_Reg32FS,MOPD_Mem32D,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE|CANTHROW,kLtStore2,"fsw","0,1", 1, 1)
+// MOP_dstr -- Store Register SIMD/FP Double
+DEFINE_MOP(MOP_dstr, {MOPD_Reg64FS,MOPD_Mem64D,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE|CANTHROW,kLtStore3plus,"fsd","0,1", 1, 1)
+
+// MOP_vstr -- Store Register SIMD
+DEFINE_MOP(MOP_vstr, {MOPD_Reg128FS,MOPD_Mem128D,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE|CANTHROW,kLtStore2,"err","0,1", 1, 1)
+
+
+// Store with Release semantics
+// MOP_wstlr -- Store-Release Register Word
+DEFINE_MOP(MOP_wstlr, {MOPD_Reg32IS,MOPD_Mem32D,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE|HASRELEASE|CANTHROW,kLtUndef,"err","0,1", 1, 1)
+// MOP_xstlr -- Store-Release Register Double word
+DEFINE_MOP(MOP_xstlr, {MOPD_Reg64IS,MOPD_Mem64D,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE|HASRELEASE|CANTHROW,kLtUndef,"err","0,1", 1, 1)
+
+// Store with LORelease semantics
+// MOP_wstllr -- Store-LORelease Register Word
+DEFINE_MOP(MOP_wstllr, {MOPD_Reg32IS,MOPD_Mem32D,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE|HASLORELEASE|CANTHROW,kLtUndef,"err","0,1", 1, 1)
+// MOP_xstllr -- Store-LORelease Register Double word
+DEFINE_MOP(MOP_xstllr, {MOPD_Reg64IS,MOPD_Mem64D,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE|HASLORELEASE|CANTHROW,kLtUndef,"err","0,1", 1, 1)
+
+// Store exclusive with/without release semantics
+DEFINE_MOP(MOP_wstxr,  {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Mem32D,MOPD_Undef,MOPD_Undef},ISSTORE|ISATOMIC|CANTHROW,kLtUndef,"err","0,1,2", 1, 2)
+DEFINE_MOP(MOP_xstxr,  {MOPD_Reg32ID,MOPD_Reg64IS,MOPD_Mem64D,MOPD_Undef,MOPD_Undef},ISSTORE|ISATOMIC|CANTHROW,kLtUndef,"err","0,1,2", 1, 2)
+
+DEFINE_MOP(MOP_wstlxr, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Mem32D,MOPD_Undef,MOPD_Undef},ISSTORE|ISATOMIC|HASRELEASE|CANTHROW,kLtUndef,"err","0,1,2", 1, 2)
+DEFINE_MOP(MOP_xstlxr, {MOPD_Reg32ID,MOPD_Reg64IS,MOPD_Mem64D,MOPD_Undef,MOPD_Undef},ISSTORE|ISATOMIC|HASRELEASE|CANTHROW,kLtUndef,"err","0,1,2", 1, 2)
+
+DEFINE_MOP(MOP_wstlxp, {MOPD_Reg32ID,MOPD_Reg32IS,MOPD_Reg32IS,MOPD_Mem64D,MOPD_Undef},ISSTORE|ISSTOREPAIR|ISATOMIC|HASRELEASE|CANTHROW,kLtUndef,"err","0,1,2,3", 1, 3)
+DEFINE_MOP(MOP_xstlxp, {MOPD_Reg32ID,MOPD_Reg64IS,MOPD_Reg64IS,MOPD_Mem64D,MOPD_Undef},ISSTORE|ISSTOREPAIR|ISATOMIC|HASRELEASE|CANTHROW,kLtUndef,"err","0,1,2,3", 1, 3)
+
+// Atomic add without release
+// MOP_wstadd
+DEFINE_MOP(MOP_wstadd, {MOPD_Reg32IS,MOPD_Mem32D,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE|CANTHROW,kLtUndef,"amoadd.w","0,1", 1, 1)
+// MOP_xstadd
+DEFINE_MOP(MOP_xstadd, {MOPD_Reg64IS,MOPD_Mem64D,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE|CANTHROW,kLtUndef,"amoadd.d","0,1", 1, 1)
+
+// Atomic add with release
+// MOP_wstaddlb
+DEFINE_MOP(MOP_wstaddl, {MOPD_Reg32IS,MOPD_Mem32D,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE|HASRELEASE|CANTHROW,kLtUndef,"amoadd.w","0,1", 1, 1)
+// MOP_xstaddl
+DEFINE_MOP(MOP_xstaddl, {MOPD_Reg64IS,MOPD_Mem64D,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE|HASRELEASE|CANTHROW,kLtUndef,"amoadd.d","0,1", 1, 1)
+
+// Atomic bit clear
+// MOP_wstclr
+DEFINE_MOP(MOP_wstclr, {MOPD_Reg32ID,MOPD_Mem32D,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},ISSTORE|CANTHROW,kLtUndef,"amoand.w","0,1,2", 1, 2)
+// MOP_xstclr
+DEFINE_MOP(MOP_xstclr, {MOPD_Reg64ID,MOPD_Mem64D,MOPD_Reg64IS,MOPD_Undef,MOPD_Undef},ISSTORE|CANTHROW,kLtUndef,"amoand.d","0,1,2", 1, 2)
+
+// Atomic clr with release
+// MOP_wstclrl
+DEFINE_MOP(MOP_wstclrl, {MOPD_Reg32ID,MOPD_Mem32D,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},ISSTORE|HASRELEASE|CANTHROW,kLtUndef,"amoand.w","0,1,2", 1, 2)
+// MOP_xstclrl
+DEFINE_MOP(MOP_xstclrl, {MOPD_Reg64ID,MOPD_Mem64D,MOPD_Reg64IS,MOPD_Undef,MOPD_Undef},ISSTORE|HASRELEASE|CANTHROW,kLtUndef,"amoand.d","0,1,2", 1, 2)
+
+// Atomic XOR
+// MOP_wsteor
+DEFINE_MOP(MOP_wsteor, {MOPD_Reg32ID,MOPD_Mem32D,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef},ISSTORE|CANTHROW,kLtUndef,"amoxor.w","0,1,2", 1, 2)
+// MOP_xsteor
+DEFINE_MOP(MOP_xsteor, {MOPD_Reg64ID,MOPD_Mem64D,MOPD_Reg64IS,MOPD_Undef,MOPD_Undef},ISSTORE|CANTHROW,kLtUndef,"amoxor.d","0,1,2", 1, 2)
+
+// Atomic eor with release
+// MOP_wsteorl
+DEFINE_MOP(MOP_wsteorl, {MOPD_Reg32IS,MOPD_Mem32D,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE|HASRELEASE|CANTHROW,kLtUndef,"steorl","0,1", 1, 1)
+// MOP_xsteorl
+DEFINE_MOP(MOP_xsteorl, {MOPD_Reg64IS,MOPD_Mem64D,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISSTORE|HASRELEASE|CANTHROW,kLtUndef,"steorl","0,1", 1, 1)
+
+// Memory barriers
+// MOP_dmb_ishld
+DEFINE_MOP(MOP_dmb_ishld, {MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef}, HASACQUIRE|ISDMB,kLtBranch, "err", "", 0, 0)
+// MOP_dmb_ishst
+DEFINE_MOP(MOP_dmb_ishst, {MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef}, HASRELEASE|ISDMB,kLtBranch, "err", "", 0, 0)
+// MOP_dmb_ish
+DEFINE_MOP(MOP_dmb_ish,   {MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef}, HASACQUIRE|HASRELEASE|ISDMB,kLtBranch, "err", "", 0, 0)
+
+// MOP_clinit
+// will be emit to four instructions in a row:
+// adrp  xd, :got:__classinfo__Ljava_2Futil_2Fconcurrent_2Fatomic_2FAtomicInteger_3B
+//  ldr xd, [xd,#:got_lo12:__classinfo__Ljava_2Futil_2Fconcurrent_2Fatomic_2FAtomicInteger_3B]
+//  ldr xd, [xd,#112]
+//   ldr wzr, [xd]
+DEFINE_MOP(MOP_clinit, {MOPD_Reg64ID,MOPD_Literal,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISATOMIC|CANTHROW,kLtLoad1,"intrinsic_clinit","0,1", 1, 1)
+
+// will be emit to two instructions in a row:
+//  adrp    xd, _PTR__cinf_Ljava_2Flang_2FSystem_3B
+//  ldr     xd, [xd, #:lo12:_PTR__cinf_Ljava_2Flang_2FSystem_3B]
+//MOP_adrp_ldr
+DEFINE_MOP(MOP_adrp_ldr, {MOPD_Reg64ID, MOPD_Literal,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISATOMIC|CANTHROW,kLtLoad1,"intrinsic_adrpldr","0,1", 1, 1)
+
+// will be emit to two instructions in a row:
+//  adrp    xd, label
+//  add     xd, xd, #:lo12:label
+//MOP_adrp_label
+DEFINE_MOP(MOP_adrp_label, {MOPD_Reg64ID,MOPD_Imm64,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,kLtAlu,"intrinsic_adrplabel","0,1", 1, 1)
+
+//  ldr x17, [xs,#112]
+//   ldr wzr, [x17]
+DEFINE_MOP(MOP_clinit_tail, {MOPD_Reg64IS,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISATOMIC|CANTHROW,kLtLoad1,"intrinsic_clinit_tail","0", 0, 1)
+
+// MOP_tail_call_opt_xbl -- branch without link (call); this is a special definition
+DEFINE_MOP(MOP_tail_call_opt_xbl,  {MOPD_FuncName,MOPD_LISTS,MOPD_Undef,MOPD_Undef,MOPD_Undef},CANTHROW,kLtBranch,"tail","0", 0, 2)
+// MOP_tail_call_opt_xblr -- branch without link (call) to register; this is a special definition
+DEFINE_MOP(MOP_tail_call_opt_xblr, {MOPD_Reg64IS,MOPD_LISTS,MOPD_Undef,MOPD_Undef,MOPD_Undef},CANTHROW,kLtBranch,"br","0", 0, 2)
+
+
+// All pseudo instructons need to be inserted after this point and before MOP_pseudo_last
+
+DEFINE_MOP(MOP_pseudo_first, {MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,kLtUndef,"#MOP_pseudo_first","", 0, 0)
+
+// MOP_pseudo_param_def_x,
+DEFINE_MOP(MOP_pseudo_param_def_x, {MOPD_Reg64ID,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,kLtUndef,"#MOP_pseudo_param_def","0", 1, 0)
+
+// MOP_pseudo_param_def_w,
+DEFINE_MOP(MOP_pseudo_param_def_w, {MOPD_Reg32ID,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,kLtUndef,"#MOP_pseudo_param_def","0", 1, 0)
+
+// MOP_pseudo_param_def_d,
+DEFINE_MOP(MOP_pseudo_param_def_d, {MOPD_Reg64FD,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,kLtUndef,"#MOP_pseudo_param_def","0", 1, 0)
+
+// MOP_pseudo_param_def_s,
+DEFINE_MOP(MOP_pseudo_param_def_s, {MOPD_Reg32FD,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,kLtUndef,"#MOP_pseudo_param_def","0", 1, 0)
+
+// MOP_pseudo_param_store_x,
+DEFINE_MOP(MOP_pseudo_param_store_x, {MOPD_Mem64D,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,kLtUndef,"#MOP_pseudo_param_store_x","0", 1, 0)
+
+// MOP_pseudo_param_store_w,
+DEFINE_MOP(MOP_pseudo_param_store_w, {MOPD_Mem32D,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,kLtUndef,"#MOP_pseudo_param_store_w","0", 1, 0)
+
+// MOP_pseudo_ref_init_x,
+DEFINE_MOP(MOP_pseudo_ref_init_x, {MOPD_Mem64D,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,kLtUndef,"#MOP_pseudo_ref_init_x","0", 1, 0)
+
+// MOP_pseudo_ret_int,
+DEFINE_MOP(MOP_pseudo_ret_int, {MOPD_Reg64IS,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,kLtUndef,"#MOP_pseudo_ret_int","", 0, 1)
+
+// MOP_pseudo_ret_float,
+DEFINE_MOP(MOP_pseudo_ret_float, {MOPD_Reg64FS,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,kLtUndef,"#MOP_pseudo_ret_float","", 0, 1)
+
+// When exception occurs, R0 and R1 may be defined by runtime code.
+// MOP_pseudo_eh_def_x,
+DEFINE_MOP(MOP_pseudo_eh_def_x, {MOPD_Reg64ID,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,kLtUndef,"#MOP_pseudo_eh_def_x","0", 1, 0)
+
+DEFINE_MOP(MOP_pseudo_last, {MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,kLtUndef,"#MOP_pseudo_last","", 0, 0)
+
+
+// for comments
+// MOP_comment
+DEFINE_MOP(MOP_comment, {MOPD_STRING,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,kLtUndef,"#","0", 0, 0)
+//MOP_nop
+DEFINE_MOP(MOP_nop, {MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,kLtAlu,"nop","", 0, 0)
+
+
+// A pseudo instruction that used for seperating dependence graph.
+// MOP_pseudo_dependence_seperator,
+DEFINE_MOP(MOP_pseudo_dependence_seperator, {MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,kLtUndef,"//MOP_pseudo_dependence_seperator","0", 0, 0)
+
+
+// A pseudo instruction that used for replacing MOP_clinit_tail after clinit merge in scheduling.
+// MOP_pseudo_none,
+DEFINE_MOP(MOP_pseudo_none, {MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},0,kLtUndef,"//MOP_pseudo_none","0", 0, 0)
+
+// end of Riscv64 instructions

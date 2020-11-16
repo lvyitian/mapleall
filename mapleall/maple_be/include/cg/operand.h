@@ -254,13 +254,8 @@ class RegOperand : public Operand {
     const char *c[kRegTyLast] = { "[U]", "[I]", "[F]", "[CC]", "[X87]", "[Vra]" };
     CG_ASSERT(type_ < kRegTyLast, "");
     regno_t r = is_virtual ? reg_no_ : (reg_no_ - 1);
-    if (CGOptions::doSimplePrint) {
-      LogInfo::MapleLogger() << (is_virtual ? "vreg:" : " reg:") << p[type_] << r << c[type_] << "["
+    LogInfo::MapleLogger() << (is_virtual ? "vreg:" : " reg:") << p[type_] << r << c[type_] << "["
                 << static_cast<uint32>(validBitsNum) << "]";
-    } else {
-      LogInfo::MapleLogger() << (is_virtual ? "vreg:" : " reg:") << p[type_] << r << " class: " << c[type_] << " validBitNum: ["
-                << static_cast<uint32>(validBitsNum) << "]";
-    }
   }
 
   virtual bool Less(Operand *right) const override {

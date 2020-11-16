@@ -17,6 +17,7 @@
 #define MAPLEBE_INCLUDE_CG_DBG_H
 
 #include "insn.h"
+#include "debug_info.h"
 #include "mempool_allocator.h"
 
 #define DWARF_VERSION 4

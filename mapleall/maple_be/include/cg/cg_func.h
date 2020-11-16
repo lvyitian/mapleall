@@ -38,6 +38,7 @@
 /// MapleIR headers.
 #include "mir_parser.h"
 #include "mir_function.h"
+#include "debug_info.h"
 
 /// Maple MP header
 #include "mempool_allocator.h"
@@ -174,6 +175,10 @@ class CGFunc {
   uint32_t frequency;
 
  protected:
+  // debugging info
+  DebugInfo *dbginfo;
+  MapleVector<DBGExprLoc *> dbg_callframe_locations;
+  int64 dbg_callframe_offset;
   ReachingDefinition *rd;
   SuperBBBuilder *sbb;
 
@@ -245,8 +250,12 @@ class CGFunc {
 
   virtual void GenerateCleanupCodeForExtEpilog(BB *) = 0;
 
-  virtual Operand *GetOrCreateRflag() = 0;
-  virtual Operand *GetRflag() = 0;
+  virtual Operand *GetOrCreateRflag() {
+    return nullptr;
+  }
+  virtual Operand *GetRflag() {
+    return nullptr;
+  }
   virtual LabelOperand *GetOrCreateLabelOperand(LabelIdx labidx) = 0;
 
   virtual RegAllocator *NewRegAllocator(CGFunc *cgfunc, MemPool *mp, MapleAllocator *mallocator) = 0;
@@ -329,6 +338,9 @@ class CGFunc {
     return INT_MAX;
   }
   virtual void InsertJumpPad(Insn *) {
+    return;
+  }
+  virtual void ConvertJumpToRegJump(Insn *) {
     return;
   }
   // handle rc reset
@@ -624,7 +636,7 @@ class CGFunc {
       max_reg_count += 80;
       v_reg_table.resize(max_reg_count);
     }
-#if TARGAARCH64 || TARGX86_64
+#if TARGAARCH64 || TARGX86_64 || TARGRISCV64
     if (siz < 4) {
       siz = 4;
     }
@@ -926,6 +938,15 @@ class CGFunc {
   bool IsAfterRegAlloc() {
     return isAfterRegAlloc;
   }
+
+  // Debugging support
+  void SetDebugInfo(DebugInfo *di) {
+    dbginfo = di;
+  }
+
+  void AddDIESymbolLocation(const MIRSymbol *sym, SymbolAlloc *loc);
+
+  virtual void DBGFixCallFrameLocationOffsets(){};
 
   void TestSuperBBBuilder(MemPool *sbbMp);
   virtual RegType GetRegTyFromPrimTy(PrimType primType) {

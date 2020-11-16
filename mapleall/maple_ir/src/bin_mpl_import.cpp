@@ -23,6 +23,7 @@
 #include "name_mangler.h"
 #include "opcode_info.h"
 #include "mir_pragma.h"
+#include "debug_info.h"
 #include "mir_builder.h"
 
 using namespace std;
@@ -641,6 +642,9 @@ TyIdx BinaryMplImport::ImportType() {
     case kBinKindTypeStruct: {
       MIRTypeKind kind = (MIRTypeKind)ReadNum();
       MIRStructType *type = new MIRStructType(kind, strIdx);
+      if (mod.srcLang == kSrcLangCPlusPlus) {
+        type->isCPlusPlus = true;
+      }
       type->nameIsLocal = nameIsLocal;
       MIRType *origType = InsertInTypeTables(type);
       typ_tab.push_back(origType);

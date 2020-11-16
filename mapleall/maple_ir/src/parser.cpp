@@ -22,6 +22,7 @@
 #include "name_mangler.h"
 #include "opcode_info.h"
 #include "mir_pragma.h"
+#include "debug_info.h"
 #include "bin_mplt.h"
 #include "option.h"
 #include "clone.h"
@@ -142,6 +143,8 @@ void MIRParser::Error(const char *str) {
   message.append(": ");
   message.append(lexer.GetTokenString());
   message.append("\n");
+
+  mod.dbgInfo->SetErrPos(lexer.GetLineNum(), lexer.GetCurIdx());
 }
 
 const std::string &MIRParser::GetError() {
@@ -844,6 +847,9 @@ bool MIRParser::ParseStructType(TyIdx &styIdx) {
     return false;
   }
   MIRStructType structType(tkind);
+  if (mod.srcLang == kSrcLangCPlusPlus) {
+    structType.isCPlusPlus = true;
+  }
   if (!ParseFields(structType)) {
     return false;
   }
@@ -1488,6 +1494,8 @@ bool MIRParser::ParseTypeDef() {
   TyIdx prevTyidx;
   MIRStructType *prevStype = nullptr;
   TyIdx tyIdx(0);
+  // dbginfo class/interface init
+  DBGDie *die = nullptr;
   if (tk == TK_gname) {
     if (isLocal) {
       Error("A local type must use local type name ");
@@ -1587,6 +1595,7 @@ bool MIRParser::ParseTypeDef() {
         }
       }
     }
+    // dbginfo class/interface build
     // setup eh root type
     MIRType *ehtype = GlobalTables::GetTypeTable().GetTypeFromTyIdx(tyIdx);
     if (mod.throwableTyidx == 0 && (ehtype->typeKind == kTypeClass || ehtype->typeKind == kTypeClassIncomplete)) {
@@ -1596,6 +1605,7 @@ bool MIRParser::ParseTypeDef() {
       }
     }
   }
+  // dbginfo struct/union build
   return true;
 }
 
@@ -1698,6 +1708,7 @@ bool MIRParser::ParseDeclareReg(MIRSymbol *st, MIRFunction *curfunc) {
     mod.CurFunction()->funcAttrs.SetAttr(FUNCATTR_generic);
   }
 
+  // add dbginfo
   return true;
 }
 
@@ -3048,6 +3059,7 @@ void MIRParser::EmitError(const std::string &fileName) {
   if (!strlen(GetError().c_str())) {
     return;
   }
+  mod.dbgInfo->compilemsg_->EmitMsg();
   ERR(kLncErr, "%s \n%s", fileName.c_str(), GetError().c_str());
 }
 

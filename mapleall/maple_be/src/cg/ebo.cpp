@@ -899,6 +899,10 @@ bool Ebo::BuildOperandInfo(BB *bb) {
   OpndInfo **origInfo = ebomp->NewArray<OpndInfo *>(maxOpnds);
 
   while (insn && insn != bb->lastinsn->next) {
+    if (!insn->IsMachineInstruction()) {
+      insn = insn->next;
+      continue;
+    }
     Insn *prev = insn->prev;
     int32_t opndnum = insn->GetOpndNum();
     int32_t resnum = insn->GetResultNum();
@@ -1042,7 +1046,7 @@ bool Ebo::BuildOperandInfo(BB *bb) {
           }
         }
         // forward prop for registers.
-        if (!opnd->IsConstant() &&
+        if (!opnd->IsConstant() && !insn->IsPseudoInstruction() &&
             (!before_regalloc || (HasAssignedReg(old) == HasAssignedReg(opndReplace)) || opnd->IsConstReg() ||
              !insn->IsMove()) &&
             opndinfo != nullptr && (!before_regalloc || opndinfo->bb == bb || !GRAHomeable(opndReplace)) &&
@@ -1130,9 +1134,7 @@ bool Ebo::BuildOperandInfo(BB *bb) {
       }
     } else if (!insnReplaced && !insn->HasSideEffects() && !insn->AccessRegBank()) {
       if (opndsConstant && (opndnum > 1)) {
-        if (IsBranchCmpSpecial(insn)) {
-          insnReplaced = ResoveCondBranch(insn, opnds);
-        } else if (insn->GetResultNum() >= 1) {
+        if (insn->GetResultNum() >= 1) {
           insnReplaced = DoConstantFold(insn, opnds, opndInfo);
         }
       } else if (opndnum >= 1) {
@@ -1326,24 +1328,7 @@ void Ebo::RemoveUnusedInsns(BB *bb, bool normal) {
       if (insn->IsEffectiveCopy()) {
         int32_t idx = insn->CopyOperands();
         OpndInfo *opinfo = insninfo->orig_opnd[idx];
-        InsnInfo *previnfo = insninfo->prev;
-        if (previnfo && previnfo->insn && opinfo && opinfo->opnd->IsRegister() && IsVecReg(opinfo->opnd)) {
-          Insn *prev = previnfo->insn;
-          if (prev->IsEffectiveCopy() && previnfo->orig_opnd[prev->CopyOperands()] == opinfo) {
-            OpndInfo *resinfo = previnfo->result[0];
-            InsnInfo *nextinfo = insninfo->next;
-            CG_ASSERT(insn->GetResult(0) != nullptr, "insn->GetResult(0) is null in Ebo::RemoveUnusedInsns");
-            if (nextinfo && nextinfo->insn && nextinfo->orig_opnd[0] == resinfo && resinfo->refcount == 1 &&
-                IsOfSameClass(resinfo->opnd, insn->GetResult(0)) && IsCmp(nextinfo->insn) &&
-                !LiveOutOfBB(resinfo->opnd, opinfo->bb)) {
-              nextinfo->insn->SetOpnd(0, insn->GetResult(0));
-              nextinfo->orig_opnd[0] = insninfo->result[0];
-              resinfo->refcount--;
-              insninfo->result[0]->refcount++;
-            }
-          }
-        }
-        previnfo = LocateInsnInfo(opinfo);
+        InsnInfo *previnfo = LocateInsnInfo(opinfo);
         if (opinfo != nullptr && previnfo && opinfo->insn && opinfo->opnd->IsRegister() && !IsVecReg(opndinfo->opnd)) {
           Insn *prev = opinfo->insn;
           RegOperand *reg = static_cast<RegOperand *>(opinfo->opnd);
@@ -1429,7 +1414,7 @@ void Ebo::RemoveUnusedInsns(BB *bb, bool normal) {
                       if (meminfo && meminfo->GetBaseInfo() == opinfo) {
                         pattern4 = true;
                         meminfo->SetBaseInfo(resinfo);
-                        resinfo->refcount++;
+                        IncRef(resinfo);
                       }
                     }
                   }
@@ -1445,7 +1430,7 @@ void Ebo::RemoveUnusedInsns(BB *bb, bool normal) {
                   if (pattern2) {
                     next->SetOperand(1, res1);
                     nextinfo->orig_opnd[0] = resinfo;
-                    resinfo->refcount++;
+                    IncRef(resinfo);
                   } else if (pattern4) {
                     CG_ASSERT(next->GetOpnd(0) != nullptr, "next->GetOpnd(0) is null in Ebo::RemoveUnusedInsns");
                     MemOperand *memopnd = static_cast<MemOperand *>(next->GetOpnd(0)->Clone(cgfunc->memPool));
@@ -1475,7 +1460,7 @@ void Ebo::RemoveUnusedInsns(BB *bb, bool normal) {
           }
           // propagate use count for this opnd to it's input operand.
           if (opndinfo->same != nullptr) {
-            opndinfo->same->refcount += opndinfo->refcount;
+            IncRef(opndinfo->same, opndinfo->refcount);
           }
 
           // remove the copy causes the previous def to reach the end of the block.
@@ -1554,7 +1539,7 @@ insn_is_needed:
               } else {
                 /* Couldn't find the insninfo entry.  Make sure that the operand has
                   a use count so that the defining insn will not be deleted. */
-                nextinfo->refcount += opndinfo->refcount;
+                IncRef(nextinfo, opndinfo->refcount);
               }
             }
             nextinfo = nextinfo->same;
@@ -1576,7 +1561,7 @@ insn_is_needed:
               } else {
                 /* Couldn't find the insninfo entry.  Make sure that the operand has
                  a use count so that the defining insn will not be deleted. */
-              nextinfo->refcount += opndinfo->refcount;
+                IncRef(nextinfo, opndinfo->refcount);
               }
             }
             nextinfo = nextinfo->same;

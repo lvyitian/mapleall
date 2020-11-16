@@ -183,9 +183,13 @@ void BECommon::ComputeTypeSizesAligns(MIRType *ty, uint8 align) {
       struct_fieldcount_table[structty->tyIdx.GetIdx()] = numFieldElems;
 
       if (numFieldElems == 0) {
-        // This is for C.  For C++, size is 1.
-        type_size_table[i.GetIdx()] = 0;
-        type_align_table[i.GetIdx()] = 8;
+        if (structty->isCPlusPlus) {
+          type_size_table[i.GetIdx()] = 1; // empty struct in C++ has size 1
+          type_align_table[i.GetIdx()] = 1;
+        } else {
+          type_size_table[i.GetIdx()] = 0;
+          type_align_table[i.GetIdx()] = 8;
+        }
         break;
       }
 
@@ -264,6 +268,9 @@ void BECommon::ComputeTypeSizesAligns(MIRType *ty, uint8 align) {
             (type_size_table[fieldtyidx.GetIdx()] == 0)) {
           type_has_flexible_array[i.GetIdx()] = true;
         }
+      }
+      if (allocedSize == 0 && structty->isCPlusPlus) {
+        allocedSize = 1;        // empty struct in C++ has size 1
       }
       if (align) {
         type_size_table[i.GetIdx()] = RoundUp(allocedSize, align);
@@ -710,7 +717,7 @@ BaseNode *BECommon::GetAddressOfNode(BaseNode *node) {
       MIRType *pointedTy = GlobalTables::GetTypeTable().typeTable.at(
         static_cast<MIRPtrType *>(GlobalTables::GetTypeTable().typeTable.at(inode->tyIdx.GetIdx()))->pointedTyIdx.GetIdx());
       std::pair<int32, int32> bytebitoffset = GetFieldOffset(static_cast<MIRStructType *>(pointedTy), inode->fieldID);
-#if TARGAARCH64
+#if TARGAARCH64 || TARGRISCV64
       ASSERT(GetAddressPrimType() == PTY_a64, "incorrect address type");
 #endif
       return mirModule.mirBuilder->CreateExprBinary(

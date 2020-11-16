@@ -78,13 +78,23 @@ class InsnVisitor {
   virtual bool IsCompareInsn(Insn *insn) = 0;
   virtual bool IsCompareAndBranchInsn(Insn *insn) = 0;
   virtual bool ModifyInsnOpnds(Insn *insn, Operand *src, Operand *tar) = 0;
-  virtual bool SyncRegs(Insn *lastMemAccessInsn, Insn *csel) = 0;
+  virtual bool SyncRegs(Insn *lastMemAccessInsn, Insn *csel) {
+    return false;
+  }
   virtual Insn *CreateCondSelectionInsn(Insn *branchInsn, MOperator originalMop, Operand *ret, Operand *srcIf,
-                                        Operand *srcElse) = 0;
+                                        Operand *srcElse) {
+    return nullptr;
+  }
   virtual Insn *CreateCmpInsn(Insn *condbr) = 0;
-  virtual Insn *BuildCondSet(Insn *branch, RegOperand *reg, bool inverse) = 0;
-  virtual Insn *BuildCondSel(Insn *branch, MOperator mop, RegOperand *dst, RegOperand *src1, RegOperand *src2) = 0;
-  virtual bool CanDoIco(Insn *insn) = 0;
+  virtual Insn *BuildCondSet(Insn *branch, RegOperand *reg, bool inverse) {
+    return nullptr;
+  }
+  virtual Insn *BuildCondSel(Insn *branch, MOperator mop, RegOperand *dst, RegOperand *src1, RegOperand *src2) {
+    return nullptr;
+  }
+  virtual bool CanDoIco(Insn *insn) {
+    return false;
+  }
 };  // class InsnVisitor;
 
 class CGCFG {
@@ -173,7 +183,6 @@ class CGCFG {
   Insn *FindLastCmpInsn(BB *bb);
   Insn *FindLastDefInsn(BB *bb);
 
-  bool SyncRegs(Insn *lastMemAccessInsn, Insn *csel);
   Insn *BuildConditionSelectionInsn(BB *testBB, BB *ifBB, BB *elseBB);
   Insn *BuildCondSelForMove(BB *testBB, BB *ifBB, BB *elseBB);
   Insn *BuildCmpInsn(Insn *condbr);

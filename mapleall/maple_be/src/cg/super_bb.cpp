@@ -593,6 +593,7 @@ void SuperBBBuilder::SplitProcess() {
           if (insn->next) {
             oldBB = onlyBB;
             onlyBB = CreateNewFallThroughBB(onlyBB);
+            oldBB->SetKind(BB::kBBCall);
             haveSetFirst = false;
           }
         }
@@ -703,11 +704,14 @@ BB *SuperBBBuilder::CreateNewFallThroughBB(BB *prevBB) {
       CG_ASSERT(itPrev!=nextBB->preds.end(),"Error: SplitProcess nextBB pred not found");
       nextBB->preds.erase(itPrev);
       nextBB->preds.push_back(newBB);
+#if BUGFIX_REMOVED
       nextBB->SetKind(prevBB->GetKind());
       prevBB->SetKind(BB::kBBFallthru);
+#endif
     }
     prevBB->succs.clear();
   }
+  newBB->SetKind(prevBB->GetKind());
 
   newBB->preds.push_back(prevBB);
   prevBB->succs.push_back(newBB);

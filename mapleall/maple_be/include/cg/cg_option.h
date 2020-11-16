@@ -85,7 +85,7 @@ class CGOptions {
       function at each function entry.
    */
   static const option_flag_t kDefaultOptions = option_flag_t(
-#if TARGAARCH64
+#if TARGAARCH64 || TARGRISCV64
     kDoCg | kUseFp | kGenPie | kDoColorRegAlloc
 #else
     kDoCg | kUseFp
@@ -161,6 +161,7 @@ class CGOptions {
   static bool useRange;
   static bool inRange;
   static bool genEH;
+  static bool doPatchLongBranch;
   static bool doZeroExtend;
   static bool doConstFold;
   static bool doLiveAnalysisEh;
@@ -169,11 +170,13 @@ class CGOptions {
   static bool doIco;
   static bool doStoreLoadOpt;
   static bool doGlobalOpt;
+  static bool doMultiPassColorRA;
   static bool doPreLsraOpt;
   static bool doPostLsraOpt;
   static bool doLocalRefSpill;
   static bool doLvarPathOpt;
   static bool doCalleeToSpill;
+  static bool doCallerCrossCall;
   static bool doStructFpInInt;
   static bool dumpOLog;
   static bool doPrePeephole;
@@ -191,7 +194,6 @@ class CGOptions {
   static bool replaceasm;
   static bool printLowerIR;
   static bool printFunction;
-  static bool doSimplePrint;
   static unsigned int maplelinkerSuffix;
   std::string class_list_file;
   std::string ehexclusivefile;

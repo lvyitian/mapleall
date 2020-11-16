@@ -31,10 +31,14 @@ RC_TESTING := OFF
 USE_MALLOC := 
 COV_CHECK := 0
 
-ifeq ($(TARGET_PROCESSOR), arm64)
+ifeq ($(TARGET_PROCESSOR), aarch64)
   TARGET=aarch64
 else
-  TARGET=ark
+  ifeq ($(TARGET_PROCESSOR), riscv64)
+    TARGET=riscv64
+  else
+    TARGET=ark
+  endif
 endif
 
 ifeq ($(TARGET_SCOPE), release)
@@ -65,7 +69,7 @@ default: mapleall
 
 .PHONY: mapleall
 mapleall:
-	$(call build_gn, ${GN_OPTIONS}, irbuild maple)
+	$(call build_gn, ${GN_OPTIONS}, irbuild maple mplcg)
 
 .PHONY: install
 install: mapleall

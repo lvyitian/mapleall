@@ -18,6 +18,9 @@
 #if TARGAARCH64
 #include "aarch64/aarch64_insn.h"
 #include "aarch64/aarch64_operand.h"
+#elif TARGRISCV64
+#include "riscv64/riscv64_insn.h"
+#include "riscv64/riscv64_operand.h"
 #endif
 #include "cg_option.h"
 #include "securec.h"
@@ -37,8 +40,6 @@ void CGCFG::BuildCFG() {
     BB::BBKind k = curbb->kind;
     switch (k) {
       case BB::kBBIntrinsic:
-        // An intrinsic BB append a MOP_wcbnz instruction at the end, check
-        // AArch64CGFunc::SelectIntrinCall(IntrinsiccallNode *intrinsiccallnode) for details
         if (!curbb->lastinsn->IsBranch()) {
           break;
         }
@@ -911,10 +912,6 @@ Insn *CGCFG::FindLastCondBrInsn(BB *bb) {
   return nullptr;
 }
 
-bool CGCFG::SyncRegs(Insn *lastMemAccessInsn, Insn *csel) {
-  return insnVisitor->SyncRegs(lastMemAccessInsn, csel);
-}
-
 /**
  * Find out if the data is manipulated between memory or register.
  * Return 0 for empty bb, 1 for register, 2 for memory, 3 for neither.
@@ -959,7 +956,7 @@ RegOperand *CGCFG::CheckSrcForDef(BB *bb, Insn *insn) {
 #if !TARGARK
     // "movk" only modify some bits of the source register, the other bits will not changed.
     // Can not do optimization on these cases.
-    if (insn->mop_ == MOP_wmovkri16 || insn->mop_ == MOP_xmovkri16) {
+    if (insn->IsPartDef()) {
       return nullptr;
     }
 #endif
@@ -1069,7 +1066,7 @@ bool CGCFG::CheckCondMoveBB(BB *bb, map<Operand *, Operand *> &destSrcMap, vecto
 }
 
 bool CGCFG::IsSetInsn(Insn *insn, Operand *&dest, Operand *&src) {
-#if TARGAARCH64
+#if TARGAARCH64 || TARGRISCV64
   MOperator mopcode = insn->mop_;
   if (mopcode >= MOP_xmovrr && mopcode <= MOP_xvmovd) {
     dest = insn->GetOperand(0);

@@ -256,6 +256,8 @@ class CG {
   // Object map generation helper
   std::vector<int64_t> GetReferenceOffsets64(BECommon &beCommon, MIRStructType *structty);
 
+  void AddLabelDieToLabelIdxMapping(DBGDie *, LabelIdx);
+
 };  // class CG
 
 }  // namespace maplebe

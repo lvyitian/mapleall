@@ -39,8 +39,21 @@ if [ ! -f ./gn/gn ]; then
   echo Downloaded gn.
 fi
 
-if [ ! -f ./aarch64/bin/whirl2mpl ]; then
+if [ ! -f ./open64_prebuilt/README.md ]; then
   git clone https://gitee.com/open64ark/open64_prebuilt.git
-  tar zxf open64_prebuilt/x86/open64ark-aarch64.tar.gz
+fi
+if [ ! -f ./open64_prebuilt/x86/riscv64/bin/clangfe ]; then
+  cd ./open64_prebuilt/x86
+  git pull
+  tar zxf open64ark-aarch64.tar.gz
+  tar zxf open64ark-riscv.tar.gz
+  mv riscv riscv64
+  cd ../..
   echo Downloaded open64_prebuilt.
 fi
+
+if [ ! -f ./dwarf/include/dwarf2.h ]; then
+  git clone https://gitee.com/hu-_-wen/dwarf_files.git dwarf
+  echo Downloaded dwarf header files.
+fi
+

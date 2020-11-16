@@ -41,6 +41,12 @@ if(TARGET == "aarch64"){
     ]
 }
 
+if(TARGET == "riscv64"){
+    cflags_cc += [
+        "-DTARGRISCV64",
+    ]
+}
+
 if(TARGET == "ark"){
     cflags_cc += [
         "-DTARGARK",
@@ -73,10 +79,12 @@ include_directories = [
     "${MAPLEALL_ROOT}/maple_be/include/cg",
     "${MAPLEALL_ROOT}/maple_be/include/cg/aarch64",
     "${MAPLEALL_ROOT}/maple_be/include/cg/ark",
+    "${MAPLEALL_ROOT}/maple_be/include/cg/riscv64",
     "${MAPLEALL_ROOT}/maple_be/include/ad",
     "${MAPLEALL_ROOT}/maple_be/include/ad/cortex_a55",
     "${MAPLEALL_ROOT}/maple_be/include/be/aarch64",
     "${MAPLEALL_ROOT}/maple_be/include/be/ark",
+    "${MAPLEALL_ROOT}/maple_be/include/be/riscv64",
     "${MAPLEALL_ROOT}/maple_be/include/be/mmpl",
     "${MAPLEALL_ROOT}/maple_be/include/be/nonmmpl",
     "${MAPLEALL_ROOT}/maple_be/include/be",
@@ -87,6 +95,7 @@ include_directories = [
     "${MAPLEALL_ROOT}/maple_ipa/include",
     "${MAPLEALL_ROOT}/maple_phase/include",
     "${HUAWEI_SECURE_C_ROOT}/include",
+    "${DWARF_ROOT}/include",
     "${MAPLE_RE_ROOT}/include",
     "${MAPLEALL_ROOT}/maple_driver/include",
 ]
@@ -127,6 +136,22 @@ source_set("libmplad"){
     }
 }
 
+source_set("libbeaarch64"){
+    sources = [
+        "src/be/aarch64/aarch64_rt_support.cpp",
+    ]
+
+    include_dirs = include_directories
+}
+
+source_set("libberiscv64"){
+    sources = [
+        "src/be/riscv64/riscv64_rt_support.cpp",
+    ]
+
+    include_dirs = include_directories
+}
+
 source_set("libmmpllowerer"){
     sources = [
         "src/be/mmpl/mmpl_lowerer.cpp",
@@ -160,6 +185,7 @@ static_library("libmplbe"){
 
         deps += [
             ":libcglowerer",
+            ":libbeaarch64",
         ]
     }else{
         deps += [
@@ -170,21 +196,6 @@ static_library("libmplbe"){
     include_dirs = include_directories
 
     output_dir = "${root_out_dir}/lib/${HOST_ARCH}"
-}
-
-action("aarch64isa.headers"){
-    script = "src/cg/script/gen_mopfor_gn.py"
-    input = "src/cg/aarch64/aarch64_md.def"
-    output = "${target_out_dir}/aarch64_isa.def"
-    output1 = "${MAPLEALL_ROOT}/maple_be/include/cg/aarch64/aarch64_isa.def"
-    outputs = [
-        output,
-    ]
-
-    args = [
-        rebase_path(input, root_build_dir),
-        rebase_path(output1, root_build_dir),
-    ]
 }
 
 source_set("libcgaarch64"){
@@ -225,6 +236,40 @@ source_set("libcgaarch64"){
     }
 }
 
+source_set("libcgriscv64"){
+    sources = [
+        "src/cg/riscv64/riscv64_abi.cpp",
+        "src/cg/riscv64/riscv64_cg_func.cpp",
+        "src/cg/riscv64/riscv64_load_store.cpp",
+        "src/cg/riscv64/riscv64_lvar.cpp",
+        "src/cg/riscv64/riscv64_operand.cpp",
+        "src/cg/riscv64/riscv64_ra_opt.cpp",
+        "src/cg/riscv64/riscv64_color_ra.cpp",
+        "src/cg/riscv64/riscv64_reg_alloc.cpp",
+        "src/cg/riscv64/riscv64_cg.cpp",
+        "src/cg/riscv64/riscv64_emit.cpp",
+        "src/cg/riscv64/riscv64_insn.cpp",
+        "src/cg/riscv64/riscv64_insn_slct.cpp",
+        "src/cg/riscv64/riscv64_vec_insn_slct.cpp",
+        "src/cg/riscv64/riscv64_intrinsics.cpp",
+        "src/cg/riscv64/riscv64_mem_layout.cpp",
+        "src/cg/riscv64/riscv64_peep.cpp",
+        "src/cg/riscv64/riscv64_ebo.cpp",
+        "src/cg/riscv64/riscv64_reaching_definition.cpp",
+        "src/cg/riscv64/riscv64_store_load_opt.cpp",
+        "src/cg/riscv64/riscv64_global_opt.cpp",
+        "src/cg/riscv64/riscv64_optimize_common.cpp",
+        "src/cg/riscv64/riscv64_live_analysis.cpp",
+        "src/cg/riscv64/riscv64_schedule.cpp",
+        "src/cg/riscv64/riscv64_dep_analysis.cpp",
+    ]
+
+    include_dirs = include_directories
+
+    # TODO: replace this
+    cflags_cc += [ "-DMPLAD_CORTEX_A55", ]
+}
+
 source_set("libcgark"){
     sources = [
         "src/cg/ark/ark_abi.cpp",
@@ -241,21 +286,6 @@ source_set("libcgark"){
             "-DMPLAD_CORTEX_A55",
         ]
     }
-}
-
-action("armisa.headers"){
-    script = "src/cg/script/gen_mopfor_gn.py"
-    input = "src/cg/arm/arm_md.def"
-    output = "${target_out_dir}/arm_isa.def"
-    output1 = "${MAPLEALL_ROOT}/maple_be/include/cg/arm/arm_isa.def"
-    outputs = [
-        output,
-    ]
-
-    args = [
-        rebase_path(input, root_build_dir),
-        rebase_path(output1, root_build_dir),
-    ]
 }
 
 if(TARGET == "arm"){
@@ -278,20 +308,6 @@ if(TARGET == "arm"){
    }
 }
 
-action("x86isa.headers"){
-    script = "src/cg/script/gen_mopfor_gn.py"
-    input = "src/cg/x86/x86_md.def"
-    output = "${target_out_dir}/x86_isa.def"
-    output1 = "${MAPLEALL_ROOT}/maple_be/include/cg/x86/x86_isa.def"
-    outputs = [
-        output,
-    ]
-
-    args = [
-        rebase_path(input, root_build_dir),
-        rebase_path(output1, root_build_dir),
-    ]
-}
 if(TARGET == "X86"){
     source_set("libcgx86"){
         sources = [
@@ -343,6 +359,7 @@ static_library("libcg"){
        "src/cg/emit.cpp",
        "src/cg/cg_option.cpp",
        "src/cg/cg_phase_manager.cpp",
+       "src/cg/emit_dbg.cpp",
        "src/cg/mem_layout.cpp",
        "src/cg/special_func.cpp",
     ]
@@ -356,6 +373,13 @@ static_library("libcg"){
         ]
     }
 
+    if(TARGET == "riscv64"){
+        deps = [
+            ":libcgcpu",
+            ":libcgriscv64",
+        ]
+    }
+
     if(TARGET == "ark"){
         deps = [
             ":libcgark",
@@ -366,7 +390,6 @@ static_library("libcg"){
         deps = [
             ":libcgcpu",
             ":libcgarm",
-            ":armisa.headers",
         ]
     }
 
@@ -374,7 +397,6 @@ static_library("libcg"){
         deps = [
             ":libcgcpu",
             ":libcgx86",
-            ":x86_headers",
         ]
     }
 }

@@ -353,9 +353,6 @@ bool ReachingDefinition::GenerateOut(BB *bb, set<DataAnalysisInfo, DataAnalysisI
 
     // out[BB] = out[BB] union gen[BB]
     for (auto m : bb->gen) {
-      if (m.first.GetOperand()->IsConditionCode() || m.first.GetOperand() == cgfunc->GetRflag()) {
-        continue;
-      }
       set<DataInsnInfo, DataInsnInfoCmp> tmpset;
       tmpset.insert(m.second);
       bb->out.insert(pair<DataAnalysisInfo, set<DataInsnInfo, DataInsnInfoCmp>>(m.first, tmpset));
@@ -393,9 +390,6 @@ bool ReachingDefinition::GenerateIn(BB *bb, set<DataAnalysisInfo, DataAnalysisIn
   for (auto prevBB : bb->preds) {
     for (auto outElem : prevBB->out) {
       Operand *elemFirst = outElem.first.GetOperand();
-      if (elemFirst->IsConditionCode() || elemFirst == cgfunc->GetRflag()) {
-        continue;
-      }
       map<DataAnalysisInfo, set<DataInsnInfo, DataInsnInfoCmp>, DataAnalysisInfoCmp>::iterator itMap;
       itMap = bb->in.find(outElem.first);
       bool mayMultiGgen = CheckMultigenPossibility(bb, prevBB, outElem.first);

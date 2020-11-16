@@ -22,14 +22,14 @@ The directory structure as follows:
 ```
       $MAPLE_ROOT
             README.md    : this file
-            Tutorial.md  : Tutorial & FAQ
             Copyright    : Copyright file
             license      : Mulan license file
             doc          : MapleIR documentation
+                         : tutorial & FAQ
             mapleall     : maple compiler source
             maple_engine : maple engine opcode header file
             bin/ast2mpl  : C frontend: clangAST to MapleIR
-            tools        : ninja, gn and opencc for C frontend
+            tools        : ninja, gn and clangfe for C frontend
                          : downloaded by setup_tools.sh
             Makefile     : makefile
             build        : environment set up and build files
@@ -39,26 +39,32 @@ The directory structure as follows:
 ```
 
 ### Set up tools
-1. cd $MAPLE_ROOT
-2. cd tools
-3. ./setup_tools.sh
+1. `cd $MAPLE_ROOT`
+2. `cd tools`
+3. `./setup_tools.sh`
 
 ### Build compiler
-1. cd $MAPLE_ROOT
-2. choose {**TARGET**, **VERSION**} combo from four flavors {**arm**/**engine**(or **ark**), **release**/**debug**}
-   where **arm** for arm64 target .s and **engine** (or **ark**) for maple engine target .s
-3. source envsetup.sh **TARGET** **VERSION**
-4. make
-5. make install
+1. `cd $MAPLE_ROOT`
+2. choose {**TARGET**, **VERSION**} combo from {**arm**/**engine**(or **ark**)/**riscv**, **release**/**debug**}
+   where **arm** for aarch64 target .s, **engine** (or **ark**) for maple engine target .s and riscv for riscv64 target .s
+3. `source envsetup.sh` **TARGET** **VERSION**
+   * for example:
+   * `source envsetup.sh arm release`
+   * `source envsetup.sh engine release`
+   * `source envsetup.sh ark release`
+   * `source envsetup.sh riscv release`
+4. `make`
+5. `make install`
 
 ### Output
 maple excutables are in $MAPLE_ROOT/bin directory
 
 ### Usage
 refer to examples/ for C language examples
-1. cd examples/C
-2. ./maple_with_ast2mpl.sh
-3. ./maple_with_whirl2mpl.sh
+1. `cd examples/C`
+2. `./maple_aarch64_with_ast2mpl.sh`
+3. `./maple_aarch64_with_whirl2mpl.sh`
+3. `./maple_riscv64_with_whirl2mpl.sh`
 
 
 refer to maple_engine git repository for java2asm.sh and asm2so.sh scripts
@@ -66,7 +72,9 @@ refer to maple_engine git repository for java2asm.sh and asm2so.sh scripts
 2. asm2so.sh  : .s -> .so
 
 ### Tutorial
-Please find step by step instructions to build Maple and run examples in the [Tutorial.md](Tutorial.md). 
+Please find step by step instructions to build Maple and run examples in the [tutorial.md](./doc/tutorial.md).
+
+If we want to build Maple for RISC-V, please follow the [instructions](./doc/setup_riscv_qemu_env.md) to prepare QEMU cross-compilation and execution environment.
 
 ### Possible issues
 You might need to install required packages like:
@@ -76,4 +84,4 @@ You might need to install required packages like:
         sudo apt-get install libssl-dev
 ```
 
-Please refer to the [FAQ](Tutorial.md#faq-and-errors) page for anwswers to more questions and issues.
+Please refer to the [FAQ](./doc/tutorial.md#faq-and-errors) page for anwswers to more questions and issues.

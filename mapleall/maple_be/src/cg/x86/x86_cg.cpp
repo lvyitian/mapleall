@@ -22,9 +22,11 @@
 namespace maplebe {
 
 #include "x86_opnd.def"
+#define DEFINE_MOP(op,a2,a3,a4,a5,a6,a7,a8,a9) {op,a2,a3,a4,a5,a6,a7,a8,a9},
 const X86MD X86CG::thex86machine[MOP_last] = {
 #include "x86_md.def"
 };
+#undef DEFINE_MOP
 
 void X86Insn::CheckOpnd(Operand *opnd, OpndProp *prop) {
   X86OpndProp *mopd = static_cast<X86OpndProp *>(prop);

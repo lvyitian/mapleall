@@ -216,6 +216,10 @@ void AArch64MemLayout::LayoutStackFrame(int32 &structCopySize, int32 &maxParmSta
       // We need it as dictated by the AArch64 ABI $5.4.2 C12
       seg__args_stkpassed.size = RoundUp(seg__args_stkpassed.size, SIZEOFPTR);
     }
+    if (cgfunc->cg->cgopt_.WithDwarf() && !nostackpara) {
+      // for O0
+      cgfunc->AddDIESymbolLocation(sym, symloc);
+    }
   }
 
   // We do need this as LDR/STR with immediate
@@ -275,6 +279,11 @@ void AArch64MemLayout::LayoutStackFrame(int32 &structCopySize, int32 &maxParmSta
         seg_locals.size += be.type_size_table[tyIdx.GetIdx()];
       }
     }
+
+    if (cgfunc->cg->cgopt_.WithDwarf()) {
+      // for O0
+      cgfunc->AddDIESymbolLocation(sym, symloc);
+    }
   }
 
   // handle ret_ref sym now
@@ -292,6 +301,11 @@ void AArch64MemLayout::LayoutStackFrame(int32 &structCopySize, int32 &maxParmSta
     seg_reflocals.size = RoundUp(seg_reflocals.size, be.type_align_table[tyIdx.GetIdx()]);
     symloc->offset = seg_reflocals.size;
     seg_reflocals.size += be.type_size_table[tyIdx.GetIdx()];
+
+    if (cgfunc->cg->cgopt_.WithDwarf()) {
+      // for O0
+      cgfunc->AddDIESymbolLocation(sym, symloc);
+    }
   }
 
   seg__args_to_stkpass.size = FindLargestActualArea(structCopySize);

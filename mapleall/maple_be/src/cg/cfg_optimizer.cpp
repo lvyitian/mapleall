@@ -19,6 +19,9 @@
 #if TARGAARCH64
 #include "aarch64_insn.h"
 #include "aarch64_operand.h"
+#elif TARGRISCV64
+#include "riscv64_insn.h"
+#include "riscv64_operand.h"
 #endif
 #include "cg_assert.h"
 #include <iostream>
@@ -67,7 +70,7 @@ bool ChainingPattern::NoInsnBetween(BB *from, BB *to) {
 
 // return true if insns in bb1 and bb2 are the same except the last goto insn.
 bool ChainingPattern::DoSameThing(BB *bb1, Insn *last1, BB *bb2, Insn *last2) {
-#if TARGAARCH64
+#if TARGAARCH64 || TARGRISCV64
   Insn *insn1 = bb1->firstinsn;
   Insn *insn2 = bb2->firstinsn;
   while (insn1 && insn1 != last1->next && insn2 && insn2 != last2->next) {
@@ -84,6 +87,8 @@ bool ChainingPattern::DoSameThing(BB *bb1, Insn *last1, BB *bb2, Insn *last2) {
     }
 #if TARGAARCH64
     for (int i = 0; i < AArch64Insn::kMaxOperandNum; i++) {
+#elif TARGRISCV64
+    for (int i = 0; i < Riscv64Insn::kMaxOperandNum; i++) {
 #endif
       Operand *op1 = insn1->GetOperand(i);
       Operand *op2 = insn2->GetOperand(i);
@@ -110,7 +115,7 @@ bool ChainingPattern::DoSameThing(BB *bb1, Insn *last1, BB *bb2, Insn *last2) {
 // 2. unnecessary jumps elimination
 // 3. Remove duplicates Basic block.
 bool ChainingPattern::Optimize(BB *&curbb) {
-#if TARGAARCH64
+#if TARGAARCH64 || TARGRISCV64
   if (curbb->GetKind() == BB::kBBFallthru) {
     /*BB2 can be merged into BB1, if
      *   1. BB1's kind is fallthrough;

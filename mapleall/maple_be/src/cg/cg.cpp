@@ -442,4 +442,9 @@ vector<int64_t> CG::GetReferenceOffsets64(BECommon &beCommon, MIRStructType *str
   return result;
 }
 
+void CG::AddLabelDieToLabelIdxMapping(DBGDie *lbldie, LabelIdx lblidx) {
+  CG_ASSERT(emitter_, "");
+  emitter_->AddLabelDieToLabelIdxMapping(lbldie, lblidx);
+}
+
 }  // namespace maplebe

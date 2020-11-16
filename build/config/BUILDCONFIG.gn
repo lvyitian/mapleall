@@ -65,6 +65,7 @@ GN_RUNTIME_OUTPUT_DIRECTORY = "${GN_INSTALL_PREFIX}/out/${MAPLE_BUILD_TYPE}/bin"
 MAPLEALL_ROOT = "${MAPLE_ROOT}/mapleall"
 MAPLE_RE_ROOT = "${MAPLE_ROOT}/maple_engine"
 HUAWEI_SECURE_C_ROOT = "${MAPLE_ROOT}/huawei_secure_c"
+DWARF_ROOT = "${MAPLE_ROOT}/tools/dwarf"
 
 # Toolchain setup
 if (USE_CLANG == 1) {

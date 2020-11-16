@@ -989,7 +989,7 @@ regno_t O1RegAllocator::DoRegisterSpill(RegOperand *regopnd, Insn *insn, bool is
 //= Linear Scan RA
 //==================
 
-#define LSRA_DEBUG
+#undef LSRA_DEBUG
 
 #ifdef LSRA_DEBUG
 #define LSRA_DUMP CGDEBUGFUNC(cgfunc_)
@@ -4443,25 +4443,29 @@ bool LSRALinearScanRegAllocator::AllocateRegisters() {
 }
 
 AnalysisResult *CgDoRegAlloc::Run(CGFunc *cgfunc, CgFuncResultMgr *m) {
-  MemPool *phaseMp = mempoolctrler.NewMemPool("CG phase-wise pool");
-  MapleAllocator phaseAllocator(phaseMp);
-  // It doesn't need live range information when -O1, because the register will not live out of bb.
-  if (g->optim_level >= 2) {
-    if (CGOptions::doLiveAnalysisEh) {
-      LiveAnalysis *live = static_cast<LiveAnalysis *>(m->GetAnalysisResult(CgFuncPhase_LIVEEH, cgfunc));
-    } else {
-      LiveAnalysis *live = static_cast<LiveAnalysis *>(m->GetAnalysisResult(CgFuncPhase_LIVE, cgfunc));
+  bool success = false;
+  while (success == false) {
+    MemPool *phaseMp = mempoolctrler.NewMemPool("CG phase-wise pool");
+    MapleAllocator phaseAllocator(phaseMp);
+    // It doesn't need live range information when -O1, because the register will not live out of bb.
+    if (g->optim_level >= 2) {
+      if (CGOptions::doLiveAnalysisEh) {
+        LiveAnalysis *live = static_cast<LiveAnalysis *>(m->GetAnalysisResult(CgFuncPhase_LIVEEH, cgfunc));
+      } else {
+        LiveAnalysis *live = static_cast<LiveAnalysis *>(m->GetAnalysisResult(CgFuncPhase_LIVE, cgfunc));
+      }
     }
+    RegAllocator *regallocator = cgfunc->NewRegAllocator(cgfunc, phaseMp, &phaseAllocator);
+    CHECK_FATAL(regallocator != nullptr, "regallocator is null in CgDoRegAlloc::Run");
+    m->GetAnalysisResult(CgFuncPhase_LOOP, cgfunc);
+    cgfunc->SetIsAfterRegAlloc();
+    success = regallocator->AllocateRegisters();
+    // the live range info may changed, so invalid the info.
+    m->InvalidAnalysisResult(CgFuncPhase_LIVEEH, cgfunc);
+    m->InvalidAnalysisResult(CgFuncPhase_LIVE, cgfunc);
+    m->InvalidAnalysisResult(CgFuncPhase_LOOP, cgfunc);
+    mempoolctrler.DeleteMemPool(phaseMp);
   }
-  RegAllocator *regallocator = cgfunc->NewRegAllocator(cgfunc, phaseMp, &phaseAllocator);
-  CHECK_FATAL(regallocator != nullptr, "regallocator is null in CgDoRegAlloc::Run");
-  m->GetAnalysisResult(CgFuncPhase_LOOP, cgfunc);
-  cgfunc->SetIsAfterRegAlloc();
-  regallocator->AllocateRegisters();
-  // the live range info may changed, so invalid the info.
-  m->InvalidAnalysisResult(CgFuncPhase_LIVE, cgfunc);
-  m->InvalidAnalysisResult(CgFuncPhase_LOOP, cgfunc);
-  mempoolctrler.DeleteMemPool(phaseMp);
 
   return nullptr;
 }

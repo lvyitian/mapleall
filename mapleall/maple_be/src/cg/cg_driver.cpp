@@ -22,6 +22,8 @@
 #include "arm_cg.h"
 #elif TARGAARCH64
 #include "aarch64_cg.h"
+#elif TARGRISCV64
+#include "riscv64_cg.h"
 #elif TARGARK
 #include "ark_mir_emit.h"
 #include "ark_cg.h"
@@ -129,6 +131,9 @@ int main(int argc, char **argv) {
 #elif TARGAARCH64
     AArch64CG thecg(themodule, cgoption, cgoption.run_cg_flag, output.c_str(), ehExclusiveFunctionName,
                     CGOptions::cyclePatternMap);
+#elif TARGRISCV64
+    Riscv64CG thecg(themodule, cgoption, cgoption.run_cg_flag, output.c_str(), ehExclusiveFunctionName,
+                    CGOptions::cyclePatternMap);
 #elif TARGARK
     ArkCG thecg(themodule, cgoption, cgoption.run_cg_flag, output.c_str(), ehExclusiveFunctionName,
                     CGOptions::cyclePatternMap);
@@ -197,6 +202,9 @@ int main(int argc, char **argv) {
       themodule->profile.DeCompress(CGOptions::classMetaProFile, javaName);
 #endif
 
+      if (cgoption.WithDwarf()) {
+        thecg.emitter_->EmitDIHeader();
+      }
       // 3. generate phase pipeline based on function.
       unsigned long rangeNum = 0;
       if (!CGOptions::quiet) {
@@ -242,6 +250,9 @@ int main(int argc, char **argv) {
         MapleAllocator funcscopeAllocator(funcMp);
         // 4, Create CGFunc
         CGFunc *cgfunc = thecg.CreateCGFunc(themodule, mirFunc, becommon, funcMp, &funcscopeAllocator);
+        if (cgoption.WithDwarf()) {
+          cgfunc->SetDebugInfo(themodule->dbgInfo);
+        }
         CG::curCgFunc = cgfunc;
         CG::curPuIdx = cgfunc->mirModule.CurFunction()->puIdx;
         // 5. Run the cg optimizations phases.
@@ -261,7 +272,11 @@ int main(int argc, char **argv) {
         CGOptions::inRange = false;
       }
 
-#if TARGAARCH64
+      if (cgoption.WithDwarf()) {
+        thecg.emitter_->EmitDIFooter();
+      }
+
+#if TARGAARCH64 || TARGRISCV64
       // Emit duplicated asm func to delete plt call
       if (!cgoption.duplicateAsmFile.empty()) {
         if (JAVALANG) {
@@ -302,6 +317,17 @@ int main(int argc, char **argv) {
       } else if (themodule->srcLang == kSrcLangCPlusPlus) {
         thecg.emitter_->EmitGxxPersonalityV0();
         thecg.emitter_->EmitInitArraySection();
+      }
+      // 10. emit debug infomation.
+      if (cgoption.WithDwarf()) {
+        thecg.emitter_->SetupDBGInfo(themodule->dbgInfo);
+        thecg.emitter_->EmitDIHeaderFileInfo();
+        thecg.emitter_->EmitDIDebugInfoSection(themodule->dbgInfo);
+        thecg.emitter_->EmitDIDebugAbbrevSection(themodule->dbgInfo);
+        thecg.emitter_->EmitDIDebugARangesSection();
+        thecg.emitter_->EmitDIDebugRangesSection();
+        thecg.emitter_->EmitDIDebugLineSection();
+        thecg.emitter_->EmitDIDebugStrSection();
       }
       thecg.emitter_->CloseOutput();
     } else {

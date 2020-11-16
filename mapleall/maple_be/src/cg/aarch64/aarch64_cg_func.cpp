@@ -3597,7 +3597,7 @@ AArch64RegOperand *AArch64CGFunc::CreateCallStructParamCopyToStack(uint32 numMem
         ldmopnd = GetOrCreateMemOpnd(AArch64MemOperand::kAddrModeBOi, 64, vreg, nullptr,
                     GetOrCreateOfstOpnd(j * SIZEOFPTR + fromOffset, 32), static_cast<MIRSymbol *>(nullptr));
       } else {
-        ldmopnd = GetOrCreateMemOpnd(sym, (j * SIZEOFPTR), dataSizeBits);
+        ldmopnd = GetOrCreateMemOpnd(sym, (j * SIZEOFPTR) + fromOffset, dataSizeBits);
       }
     } else {
       ldmopnd = GetOrCreateMemOpnd(AArch64MemOperand::kAddrModeBOi, 64, addropnd, nullptr,
@@ -5071,6 +5071,17 @@ void AArch64CGFunc::InsertJumpPad(Insn *insn) {
   //
   fallthruBB->preds.remove(bb);
   fallthruBB->preds.push_back(brBB);
+}
+
+void AArch64CGFunc::DBGFixCallFrameLocationOffsets() {
+  for (DBGExprLoc *el : dbg_callframe_locations) {
+    if (el->simploc_->dwop_ == DW_OP_fbreg) {
+      SymbolAlloc *symloc = static_cast<SymbolAlloc *>(el->symloc_);
+      int64_t offset = GetBaseOffset(symloc) - dbg_callframe_offset;
+
+      el->SetFboffset(offset);
+    }
+  }
 }
 
 void AArch64CGFunc::OffsetAdjustmentForFPLR() {

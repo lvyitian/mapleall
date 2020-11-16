@@ -18,20 +18,3 @@ group("mapleall") {
         "${MAPLEALL_ROOT}:mapleall"
     ]
 }
-
-group("aarch64isa_headers"){
-    exec_script("${MAPLEALL_ROOT}/maple_be/src/cg/script/gen_mopfor_gn.py", [
-        rebase_path("${MAPLEALL_ROOT}/maple_be/src/cg/aarch64/aarch64_md.def", root_build_dir),
-        rebase_path("${MAPLEALL_ROOT}/maple_be/include/cg/aarch64/aarch64_isa.def", root_build_dir),
-    ])
-}
-
-if (X86_ARK==1) {
-  group("x86isa_headers"){
-    exec_script("${MAPLEALL_ROOT}/maple_be/src/cg/script/gen_mopfor_gn.py", [
-        rebase_path("${MAPLEALL_ROOT}/maple_be/src/cg/x86/x86_md.def", root_build_dir),
-        rebase_path("${MAPLEALL_ROOT}/maple_be/include/cg/x86/x86_isa.def", root_build_dir),
-    ])
-  }
-}
-

@@ -104,13 +104,10 @@ void AArch64CGFunc::SelectCVaStart(IntrinsiccallNode *intrnnode) {
   Insn *insn;
   AArch64MemLayout *memlayout = static_cast<AArch64MemLayout *>(this->memlayout);
   int32 grAreaSize = memlayout->GetSizeOfGRSavearea();
-  bool isSym = sym && (argexpr->op == OP_addrof);
 
-  // if first argument of va_start is not a symbol, load its value
-  if (!isSym) {
-    Operand *opnd = HandleExpr(intrnnode, argexpr);
-    opnd0 = LoadIntoRegister(opnd, PTY_a64);
-  }
+  // va_list is a passed struct with an address, load its address
+  Operand *opnd = HandleExpr(intrnnode, argexpr);
+  opnd0 = LoadIntoRegister(opnd, PTY_a64);
 
   // FPLR only pushed in regalloc() after intrin function
   if (UseFP() || UsedStpSubPairForCallFrameAllocation()) {
@@ -144,24 +141,16 @@ void AArch64CGFunc::SelectCVaStart(IntrinsiccallNode *intrnnode) {
   } else {
     SelectAdd(vreg, stkOpnd, offsOpnd, PTY_a64);
   }
-  if (!isSym) {
-    AArch64OfstOperand *offopnd = GetOrCreateOfstOpnd(0, 64);
-    strOpnd = GetOrCreateMemOpnd(AArch64MemOperand::kAddrModeBOi, 64, opnd0, nullptr,
-              offopnd, static_cast<MIRSymbol *>(nullptr));
-  } else {
-    strOpnd = GetOrCreateMemOpnd(sym, 0, 64);
-  }
+  AArch64OfstOperand *offopnd = GetOrCreateOfstOpnd(0, 64);
+  strOpnd = GetOrCreateMemOpnd(AArch64MemOperand::kAddrModeBOi, 64, opnd0, nullptr,
+                               offopnd, static_cast<MIRSymbol *>(nullptr));
   insn = cg->BuildInstruction<AArch64Insn>(MOP_xstr, vreg, strOpnd);
   curbb->AppendInsn(insn);
 
   // __gr_top   ; it's the same as __stack before the 1st va_arg
-  if (!isSym) {
-    AArch64OfstOperand *offopnd = GetOrCreateOfstOpnd(8, 64);
-    strOpnd = GetOrCreateMemOpnd(AArch64MemOperand::kAddrModeBOi, 64, opnd0, nullptr,
-              offopnd, static_cast<MIRSymbol *>(nullptr));
-  } else {
-    strOpnd = GetOrCreateMemOpnd(sym, 8, 64);
-  }
+  offopnd = GetOrCreateOfstOpnd(8, 64);
+  strOpnd = GetOrCreateMemOpnd(AArch64MemOperand::kAddrModeBOi, 64, opnd0, nullptr,
+                               offopnd, static_cast<MIRSymbol *>(nullptr));
   SelectAdd(vreg, stkOpnd, offsOpnd, PTY_a64);
   insn = cg->BuildInstruction<AArch64Insn>(MOP_xstr, vreg, strOpnd);
   curbb->AppendInsn(insn);
@@ -170,13 +159,9 @@ void AArch64CGFunc::SelectCVaStart(IntrinsiccallNode *intrnnode) {
   offsOpnd2 = CreateImmOperand(RoundUp(grAreaSize, SIZEOFPTR*2), 64, false);
   SelectSub(vreg, offsOpnd, offsOpnd2, PTY_a64);  // if 1st opnd is register => sub
   SelectAdd(vreg, stkOpnd, vreg, PTY_a64);
-  if (!isSym) {
-    AArch64OfstOperand *offopnd = GetOrCreateOfstOpnd(16, 64);
-    strOpnd = GetOrCreateMemOpnd(AArch64MemOperand::kAddrModeBOi, 64, opnd0, nullptr,
-              offopnd, static_cast<MIRSymbol *>(nullptr));
-  } else {
-    strOpnd = GetOrCreateMemOpnd(sym, 16, 64);
-  }
+  offopnd = GetOrCreateOfstOpnd(16, 64);
+  strOpnd = GetOrCreateMemOpnd(AArch64MemOperand::kAddrModeBOi, 64, opnd0, nullptr,
+                               offopnd, static_cast<MIRSymbol *>(nullptr));
   insn = cg->BuildInstruction<AArch64Insn>(MOP_xstr, vreg, strOpnd);
   curbb->AppendInsn(insn);
 
@@ -185,13 +170,9 @@ void AArch64CGFunc::SelectCVaStart(IntrinsiccallNode *intrnnode) {
   offsOpnd = CreateImmOperand(offs, 32, false);
   tmpreg = CreateRegisterOperandOfType(PTY_i32);
   SelectCopyImm(tmpreg, offsOpnd, PTY_i32);
-  if (!isSym) {
-    AArch64OfstOperand *offopnd = GetOrCreateOfstOpnd(3*SIZEOFPTR, 32);
-    strOpnd = GetOrCreateMemOpnd(AArch64MemOperand::kAddrModeBOi, 32, opnd0, nullptr,
-              offopnd, static_cast<MIRSymbol *>(nullptr));
-  } else {
-    strOpnd = GetOrCreateMemOpnd(sym, (3 * SIZEOFPTR), 32);
-  }
+  offopnd = GetOrCreateOfstOpnd(3*SIZEOFPTR, 32);
+  strOpnd = GetOrCreateMemOpnd(AArch64MemOperand::kAddrModeBOi, 32, opnd0, nullptr,
+                               offopnd, static_cast<MIRSymbol *>(nullptr));
   insn = cg->BuildInstruction<AArch64Insn>(MOP_wstr, tmpreg, strOpnd);
   curbb->AppendInsn(insn);
 
@@ -200,13 +181,9 @@ void AArch64CGFunc::SelectCVaStart(IntrinsiccallNode *intrnnode) {
   offsOpnd = CreateImmOperand(offs, 32, false);
   tmpreg = CreateRegisterOperandOfType(PTY_i32);
   SelectCopyImm(tmpreg, offsOpnd, PTY_i32);
-  if (!isSym) {
-    AArch64OfstOperand *offopnd = GetOrCreateOfstOpnd(3*SIZEOFPTR+sizeof(int32), 32);
-    strOpnd = GetOrCreateMemOpnd(AArch64MemOperand::kAddrModeBOi, 32, opnd0, nullptr,
-              offopnd, static_cast<MIRSymbol *>(nullptr));
-  } else {
-    strOpnd = GetOrCreateMemOpnd(sym, (3*SIZEOFPTR+sizeof(int32)), 32);
-  }
+  offopnd = GetOrCreateOfstOpnd(3*SIZEOFPTR+sizeof(int32), 32);
+  strOpnd = GetOrCreateMemOpnd(AArch64MemOperand::kAddrModeBOi, 32, opnd0, nullptr,
+                               offopnd, static_cast<MIRSymbol *>(nullptr));
   insn = cg->BuildInstruction<AArch64Insn>(MOP_wstr, tmpreg, strOpnd);
   curbb->AppendInsn(insn);
   return;
