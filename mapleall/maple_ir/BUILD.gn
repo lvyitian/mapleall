@@ -28,16 +28,18 @@ include_directories = [
     "${MAPLEALL_ROOT}/maple_util/include",
     "${MAPLEALL_ROOT}/mempool/include",
     "${HUAWEI_SECURE_C_ROOT}/include",
-    "${MAPLEALL_ROOT}/maplevm/include",
     "${MAPLEALL_ROOT}/maple_ipa/include",
     "${MAPLEALL_ROOT}/maple_me/include",
     "${MAPLEALL_ROOT}/maple_phase/include",
     "${MAPLEALL_ROOT}/maple_driver/include",
+    "${DWARF_ROOT}/include",
 ]
 
 static_library("libmplir"){
     sources = [
        "src/constant_fold.cpp",
+       "src/debug_info.cpp",
+       "src/debug_info_util.cpp",
        "src/global_tables.cpp",
        "src/intrinsics.cpp",
        "src/lexer.cpp",
@@ -108,6 +110,21 @@ executable("cmpl2mmpl"){
     sources = [
         "src/cmpl.cpp",
         "src/cmpl_to_mmpl.cpp"
+    ]
+
+    include_dirs = include_directories
+
+    deps = [
+        ":libmplir",
+        "${MAPLEALL_ROOT}/mempool:libmempool",
+        "${MAPLEALL_ROOT}/maple_util:libmplutil",
+        "${HUAWEI_SECURE_C_ROOT}:libHWSecureC",
+    ]
+}
+
+executable("mpldbg"){
+    sources = [
+        "src/mpl_dbg.cpp"
     ]
 
     include_dirs = include_directories

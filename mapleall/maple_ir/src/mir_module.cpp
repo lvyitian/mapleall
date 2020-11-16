@@ -19,6 +19,7 @@
 #include "mir_function.h"
 #include "mir_builder.h"
 #include "intrinsics.h"
+#include "debug_info.h"
 #include "bin_mplt.h"
 #define DEBUG_SYMBOL 1
 
@@ -71,10 +72,12 @@ MIRModule::MIRModule(const char *fn)
   globalWordsRefCounted = nullptr;
   mainFuncID = 0;
   numFuncs = 0;
+  withDbgInfo = false;
   withProfileInfo = false;
   GlobalTables::GetGsymTable().module = this;
   typeNameTab = memPool->New<MIRTypeNameTable>(&memPoolAllocator);
   mirBuilder = memPool->New<MIRBuilder>(this);
+  dbgInfo = memPool->New<DebugInfo>(this);
   IntrinDesc::InitMIRModule(this);
   binMplt = nullptr;
   useFuncCodeMpTmp = false;
@@ -678,6 +681,9 @@ void MIRModule::OutputAsciiMpl(const char *phaseName, const char *suffix,
     std::streambuf *backup = LogInfo::MapleLogger().rdbuf();
     LogInfo::MapleLogger().rdbuf(mplfile.rdbuf());  // change LogInfo::MapleLogger()'s buffer to that of file
     Dump(emitStructureType, dumpFuncSet);
+    if (withDbgInfo) {
+      dbgInfo->Dump(0);
+    }
     LogInfo::MapleLogger().rdbuf(backup);  // restore LogInfo::MapleLogger()'s buffer
     mplfile.close();
   } else {

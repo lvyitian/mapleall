@@ -14,6 +14,7 @@
  */
 
 #include "cg_bb.h"
+#include "dbg.h"
 #include <iostream>
 
 namespace maplebe {

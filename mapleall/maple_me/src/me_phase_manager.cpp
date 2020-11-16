@@ -164,7 +164,7 @@ void MeFuncPhaseManager::AddPhases(const std::unordered_set<std::string> &skipPh
       addPhase("may2dassign");
       addPhase("condbasednpc");
     }
-    if (o2) {
+    if (o2 && JAVALANG) {
       addPhase("cfgopt");
     }
     if (o2) {

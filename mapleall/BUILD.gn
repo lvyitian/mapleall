@@ -96,6 +96,7 @@ group("mapleall"){
         "${MAPLEALL_ROOT}/maple_ir:irbuild",
         "${MAPLEALL_ROOT}/maple_ir:mmpl2cmpl",
         "${MAPLEALL_ROOT}/maple_ir:cmpl2mmpl",
+        "${MAPLEALL_ROOT}/maple_ir:mpldbg",
         "${MAPLEALL_ROOT}/maple_ir:mplverf",
         "${MAPLEALL_ROOT}/maple_me:mplme",
         "${MAPLEALL_ROOT}/mempool:MemPool",

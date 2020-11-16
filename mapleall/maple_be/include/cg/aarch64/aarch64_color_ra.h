@@ -37,9 +37,6 @@ namespace maplebe {
 #define PROPAGATE_REG
 
 // for robust test
-#undef USE_VEC
-#undef COPY_VEC
-#undef CONFLICT_CHECK
 #undef CONSISTENT_MEMOPND
 #undef RANDOM_PRIORITY
 
@@ -254,9 +251,6 @@ class LiveRange {
   uint64 *bmember;     // Same as smember, but use bit array
                        // bit vector of array for each vreg's lr
                        // bit_vector[bb->id] = 1 if vreg is live in bb
-#ifdef USE_VEC
-  MapleSet<BB *, SortedBBCmpFunc> smember;  // set of BB in live range
-#endif                                      // USE_VEC
   MapleVector<bool> pregveto;               // pregs cannot be assigned   -- SplitLr may clear forbidden
   MapleVector<bool> forbidden;              // pregs cannot be assigned
   uint32 numBconflicts;                     // number of bits set in bconflict
@@ -264,9 +258,6 @@ class LiveRange {
   uint32 numForbidden;
   uint64 *bconflict;                        // vreg interference from graph neighbors (bit)
   uint64 *oldConflict;
-#ifdef USE_VEC
-  MapleSet<regno_t> sconflict;         // vreg interference from graph neighbors (set)
-#endif                                 // USE_VEC
   MapleSet<regno_t> prefs;             // pregs that prefer
   MapleMap<uint32, LiveUnit *> luMap;  // info for each bb
   LiveRange *splitLr;                  // The 1st part of the split
@@ -292,9 +283,6 @@ class LiveRange {
         priority(0.0),
         numBmembers(0),
         bmember(nullptr),
-#ifdef USE_VEC
-        smember(mallocator->Adapter()),
-#endif  // USE_VEC
         pregveto(mallocator->Adapter()),
         forbidden(mallocator->Adapter()),
         numBconflicts(0),
@@ -302,9 +290,6 @@ class LiveRange {
         numForbidden(0),
         bconflict(nullptr),
         oldConflict(nullptr),
-#ifdef USE_VEC
-        sconflict(mallocator->Adapter()),
-#endif  // USE_VEC
         prefs(mallocator->Adapter()),
         luMap(mallocator->Adapter()),
         splitLr(nullptr),
@@ -663,7 +648,20 @@ class GraphColorRegAllocator : public RegAllocator {
         regBuckets(0),
         spillMemopnd0(nullptr),
         spillMemopnd1(nullptr),
-        spillMemopnd2(nullptr) {
+        spillMemopnd2(nullptr),
+#ifdef USE_LRA
+        doLRA(true),
+#else
+        doLRA(false);,
+#endif // USE_LRA
+#ifdef OPTIMIZE_FOR_PROLOG
+        doOptProlog(true),
+#else
+        doOptProlog(false),
+#endif // OPTIMIZE_FOR_PROLOG
+        hasSpill(false) {
+    intSpillFillRegs[0] = intSpillFillRegs[1] = intSpillFillRegs[2] = 0;
+    fpSpillFillRegs[0] = fpSpillFillRegs[1] = fpSpillFillRegs[2] = 0;
     numVregs = cgfunc_->GetMaxVReg();
     lrVec.resize(numVregs);
     localRegVec.resize(cgfunc_->NumBBs());
@@ -740,10 +738,15 @@ class GraphColorRegAllocator : public RegAllocator {
   MemOperand *spillMemopnd1;
   MemOperand *spillMemopnd2;
 
+  regno_t intSpillFillRegs[3];
+  regno_t fpSpillFillRegs[3];
+
+  bool doLRA;
+  bool doOptProlog;
+  bool hasSpill;
+
   void PrintLiveUnitMap(const LiveRange *lr) const;
   void PrintLiveRangeConflicts(const LiveRange *lr) const;
-  void CheckLiveRangeConflicts(const LiveRange *lr) const;
-  void PrintLiveBbSet(const LiveRange *li, const string str) const;
   void PrintLiveBbBit(const LiveRange *li) const;
   void PrintLiveRange(const LiveRange *li, const string str) const;
   void PrintLiveRanges() const;
@@ -785,11 +788,8 @@ class GraphColorRegAllocator : public RegAllocator {
   void ComputeLiveOut(BB *bb);
   void ComputeLiveRanges();
   MemOperand *CreateSpillMem(uint32 spillIdx);
-  void CopyInterference();
   void CheckInterference(LiveRange *lr1, LiveRange *lr2);
   void BuildInterferenceGraphSeparateIntFp(std::vector<LiveRange *> &intLrVec, std::vector<LiveRange *> &fpLrVec);
-  void BuildInterferenceGraphCopyVec();
-  void BuildInterferenceGraphErrorCheck();
   void BuildInterferenceGraph();
   void SetBbInfoGlobalAssigned(uint32 bbid, regno_t regno);
   bool HaveAvailableColor(LiveRange *lr, uint32 num);
@@ -830,6 +830,9 @@ class GraphColorRegAllocator : public RegAllocator {
   void MarkCalleeSaveRegs();
   void MarkUsedRegs(Operand *opnd, uint64 &usedRegMask);
   uint64 FinalizeRegisterPreprocess(FinalizeRegisterInfo *fInfo, Insn *insn);
+  void GenerateSpillFillRegs(Insn *insn);
+  RegOperand *CreateSpillFillCode(RegOperand *opnd, Insn *insn, uint32 spillCnt, bool isdef = false);
+  void SpillLiveRangeForSpills();
   void FinalizeRegisters();
 
   MapleVector<LiveRange *>::iterator GetHighPriorityLr(MapleVector<LiveRange *> &lrSet);
@@ -843,7 +846,6 @@ class GraphColorRegAllocator : public RegAllocator {
   bool UseIsUncovered(BB *bb, BB *startBb);
   void FindUseForSplit(LiveRange *lr, SplitBbInfo &bbInfo, bool &remove, set<CgfuncLoops *> &candidateInLoop,
                        set<CgfuncLoops *> &defInLoop);
-  void SplitCopyVecMember(LiveRange *lr);
   void FindBbSharedInSplit(LiveRange *lr, set<CgfuncLoops *> &candidateInLoop, set<CgfuncLoops *> &defInLoop);
   void ComputeBbForNewSplit(LiveRange *newLr, LiveRange *oldLr);
   void ClearLrBbFlags(set<BB *, SortedBBCmpFunc> &member);

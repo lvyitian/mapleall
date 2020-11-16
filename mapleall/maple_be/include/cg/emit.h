@@ -25,6 +25,7 @@
 /// Maple IR headers
 #include "mir_module.h"
 #include "mir_const.h"
+#include "debug_info.h"
 
 #include "mempool_allocator.h"
 
@@ -38,6 +39,12 @@
 #if TARGARK
 class MirGenerator;
 #endif
+
+namespace maple {
+
+class DebugInfo;
+
+}
 
 namespace maplebe {
 
@@ -78,6 +85,7 @@ class Emitter {
 
  private:
   MOperator curr_mop;
+  MapleMap<DBGDie *, LabelIdx> labdie2labidx_table;
 
   vector<UStrIdx> stringPtr;
 
@@ -86,7 +94,8 @@ class Emitter {
       : cg_(cg),
         arraySize(0),
         isFlexibleArray(false),
-        curr_mop(UINT_MAX) {
+        curr_mop(UINT_MAX),
+        labdie2labidx_table(std::less<DBGDie *>(), cg->mirModule->memPoolAllocator.Adapter()) {
     out.open(asmFileName.c_str(), std::ios::trunc);
     MIRModule &mirModule = *cg_->mirModule;
     asminfo_ = mirModule.memPool->New<Asminfo>(0, mirModule.memPool);
@@ -108,6 +117,7 @@ class Emitter {
     curr_mop = mop;
   }
 
+
   void EmitAsmLabel(Asmlabel al);
   void EmitAsmLabel(const MIRSymbol *st, Asmlabel al);
   void EmitFileInfo(const std::string &fileName);
@@ -119,6 +129,7 @@ class Emitter {
   uint32 EmitPadForNextField(MIRConst *ct, uint32 byteUsed, uint32 align);
   void EmitAggConst(MIRConst *ct, bool newline, bool flag32);
   void EmitScalarConstant(MIRConst *ct, bool newline, bool flag32, bool isIndirect);
+  void EmitStr(const std::string& mplStr, bool emitAscii = false, bool emitNewline = false);
   void EmitStrConstant(MIRStrConst *ct, bool isAscci = false, bool isIndirect = false);
   void EmitStr16Constant(MIRStr16Const *ct);
   void EmitConstantTable(MIRSymbol *st, MIRConst *ct, const std::map<GStrIdx, MIRType *> &stridx2type);
@@ -128,7 +139,6 @@ class Emitter {
   void EmitLiterals(std::vector<std::pair<MIRSymbol *, bool>> &literals,
                     const std::map<GStrIdx, MIRType *> &stridx2type);
   void EmitFuncLayoutInfo(const MIRSymbol *layout);
-  void EmitSpecialChar(std::string str, size_t startPos, size_t endPos);
   void EmitStringPointers();
   void EmitGlobalVars(std::vector<std::pair<MIRSymbol *, bool>> &globalvars);
   void EmitGlobalVar(MIRSymbol *globalvar);
@@ -201,7 +211,31 @@ class Emitter {
   void EmitDecUnsigned(uint64 num);
   void EmitHexUnsigned(uint64 num);
 
+  // debug info
+  void FillInClassByteSize(DBGDie *die, DBGDieAttr *byteSizeAttr, DBGAbbrevEntry *diae);
+  void SetupDBGInfo(DebugInfo *);
+  void ApplyInPrefixOrder(DBGDie *die, const std::function<void(DBGDie *)> &func);
+
+  void AddLabelDieToLabelIdxMapping(DBGDie *, LabelIdx);
+  LabelIdx GetLabelIdxForLabelDie(DBGDie *);
+  void EmitDIHeader();
   void EmitCFISectionNames(const char *const names[]);
+  void EmitDIFooter();
+  void EmitDIHeaderFileInfo();
+  void EmitDIDebugInfoSection(DebugInfo *);
+  void EmitDIDebugAbbrevSection(DebugInfo *);
+  void EmitDIDebugARangesSection();
+  void EmitDIDebugRangesSection();
+  void EmitDIDebugLineSection();
+  void EmitDIDebugStrSection();
+
+  void EmitDIFormSpecification(const DBGDieAttr *attr) {
+    EmitDIFormSpecification(attr->dwform_);
+  }
+
+  void EmitDIFormSpecification(unsigned int dwform);
+
+  void EmitDIAttrValue(DBGDie *die, DBGDieAttr *attr, dw_at attrName, dw_tag tagName, DebugInfo *di);
 
   // GC header for primordial objects
   void EmitGCHeader();

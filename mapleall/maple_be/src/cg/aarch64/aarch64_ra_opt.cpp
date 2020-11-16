@@ -122,6 +122,9 @@ bool RaX0Opt::PropagateX0Optimize(const BB *bb, const Insn *insn, X0OptInfo &opt
         break;
       }
     }
+    if (redefined) {
+      break;
+    }
 
     // Look for move where src is the register equivalent to x0.
     if (ninsn->GetMachineOpcode() != MOP_xmovrr && ninsn->GetMachineOpcode() != MOP_wmovrr) {
@@ -131,9 +134,6 @@ bool RaX0Opt::PropagateX0Optimize(const BB *bb, const Insn *insn, X0OptInfo &opt
     Operand *src = ninsn->GetOperand(1);
     RegOperand *srcreg = static_cast<RegOperand *>(src);
     if (srcreg->GetRegisterNumber() != optVal.GetReplaceReg()) {
-      if (redefined) {
-        break;
-      }
       continue;
     }
 

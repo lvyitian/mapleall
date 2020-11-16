@@ -25,7 +25,6 @@ include_directories = [
     "${MAPLEALL_ROOT}/maple_ir/include",
     "${MAPLEALL_ROOT}/maple_util/include",
     "${MAPLEALL_ROOT}/maple_ipa/include",
-    "${MAPLEALL_ROOT}/mapleradar/include",
     "${MAPLEALL_ROOT}/maple_driver/include",
     "${HUAWEI_SECURE_C_ROOT}/include",
 ]

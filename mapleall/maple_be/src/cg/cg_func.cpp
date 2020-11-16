@@ -17,13 +17,18 @@
 #include "cg.h"
 #if TARGAARCH64
 #include "aarch64/aarch64_cg.h"
+#elif TARGRISCV64
+#include "riscv64/riscv64_cg.h"
 #endif
 #include "insn.h"
 #include "reg_alloc.h"
 #if TARGAARCH64
 #include "aarch64_insn.h"
+#elif TARGRISCV64
+#include "riscv64_insn.h"
 #endif
 #include "mir_builder.h"
+#include "debug_info.h"
 #include "name_mangler.h"
 #include "cg_cfg.h"
 #include "cg_assert.h"
@@ -89,6 +94,9 @@ CGFunc::CGFunc(MIRModule *mod, CG *c, MIRFunction *f, BECommon *bec, MemPool *mp
     hasTakenLabel(false),
     hasAlloca(false),
     frequency(0),
+    dbginfo(nullptr),
+    dbg_callframe_locations(mallocator->Adapter()),
+    dbg_callframe_offset(0),
     rd(nullptr),
     sbb(nullptr) {
   mirModule.SetCurFunction(func);
@@ -155,6 +163,12 @@ void CGFunc::CreateStartEndLabel() {
   end_label = mirbuilder->CreateStmtLabel(endLblidx);
   func->body->InsertLast(end_label);
   CG_ASSERT(func->body->GetLast() == end_label, "");
+  if (cg->cgopt_.WithDwarf()) {
+    DebugInfo *di = mirModule.dbgInfo;
+    DBGDie *fdie = di->GetDie(func);
+    fdie->SetAttr(DW_AT_low_pc, startLblidx);
+    fdie->SetAttr(DW_AT_high_pc, endLblidx);
+  }
 }
 
 void CGFunc::HandleLabel(LabelNode *stmt) {
@@ -165,6 +179,32 @@ void CGFunc::HandleLabel(LabelNode *stmt) {
   CG_ASSERT(newbb, "");
   lab2bbmap[newbb->labidx] = newbb;
   curbb = newbb;
+
+  if (cg->cgopt_.WithDwarf()) {
+    if (lbnode->labelIdx < first_cggen_labelidx) {
+      DebugInfo *di = mirModule.dbgInfo;
+      GStrIdx gStrIdx = func->GetLabelStringIndex(lbnode->labelIdx);
+      DBGDie *lbldie = di->GetLocalDie(func, gStrIdx);
+      if (lbldie) {
+        for (auto a : lbldie->attrvec_)
+          if (a->dwattr_ == DW_AT_name) {
+            CG_ASSERT(a->val_.id == gStrIdx.GetIdx(), "");
+          }
+        cg->AddLabelDieToLabelIdxMapping(lbldie, lbnode->labelIdx);
+      }
+#if DEBUG
+      else if (!CGOptions::quiet) {
+        LogInfo::MapleLogger() << "Warning: label idx = " << lbnode->labelIdx
+             << " seems added before CodeGen starts but after parsing is done" << endl;
+      }
+#endif
+    }
+#if DEBUG
+    else if (!CGOptions::quiet) {
+      LogInfo::MapleLogger() << "label idx = " << lbnode->labelIdx << " ; CG Gen, skip it" << endl;
+    }
+#endif
+  }
 }
 
 void CGFunc::HandleGoto(GotoNode *stmt) {
@@ -191,6 +231,8 @@ void CGFunc::HandleIgoto(UnaryStmtNode *stmt) {
   curbb->SetKind(BB::kBBIgoto);
 #if TARGAARCH64
   curbb->AppendInsn(cg->BuildInstruction<AArch64Insn>(MOP_xbr, targetOpnd));
+#elif TARGRISCV64
+  curbb->AppendInsn(cg->BuildInstruction<Riscv64Insn>(MOP_xbr, targetOpnd));
 #endif
   curbb = StartNewBB(stmt);
 #endif
@@ -228,7 +270,7 @@ void CGFunc::HandleCondbr(CondGotoNode *stmt) {
       zeroopnd = CreateImmOperand(primType, 0);
     } else {
       CG_ASSERT((PTY_f32 == primType || PTY_f64 == primType), "we don't support half-precision FP operands yet");
-#if TARGAARCH64
+#if TARGAARCH64 || TARGRISCV64
       zeroopnd = CreateFPImmZero(primType);
 #else
       zeroopnd = CreateZeroOperand(primType);
@@ -286,6 +328,8 @@ void CGFunc::HandleCondbr(CondGotoNode *stmt) {
       LabelOperand *targetopnd = GetOrCreateLabelOperand(labelIdx);
 #if TARGAARCH64
       curbb->AppendInsn(cg->BuildInstruction<AArch64Insn>(MOP_blo, rflag, targetopnd));
+#elif TARGRISCV64
+      curbb->AppendInsn(cg->BuildInstruction<Riscv64Insn>(MOP_blo, rflag, targetopnd));
 #endif
       curbb = StartNewBB(stmt);
       return;
@@ -774,7 +818,11 @@ Insn *CGFunc::InsertCFIDefCfaOffset(int &cfiOffset /*in-out*/, Insn *insertAfter
   cfiOffset = AddtoOffsetFromCFA(cfiOffset);
   Insn *cfiInsn = cg->BuildInstruction<cfi::CfiInsn>(cfi::OP_CFI_def_cfa_offset, CreateCfiImmOperand(cfiOffset, 64));
   Insn *newIpoint = curbb->InsertInsnAfter(insertAfter, cfiInsn);
-  CG_ASSERT(0, "InsertCFIDefCfaOffset() should be called only once?");
+  if (dbg_callframe_offset == 0) {
+    dbg_callframe_offset = cfiOffset;
+  } else {
+    CG_ASSERT(0, "InsertCFIDefCfaOffset() should be called only once?");
+  }
   return newIpoint;
 }
 #endif
@@ -924,7 +972,7 @@ void CGFunc::DetermineReturnTypeofCall() {
     if (nextInsn == nullptr) {
       continue;
     }
-#if TARGAARCH64
+#if TARGAARCH64 || TARGRISCV64
     if ((nextInsn->IsMove() && nextInsn->opnds[1]->IsRegister()) || nextInsn->IsStore() ||
         (nextInsn->IsCall() && nextInsn->opnds[0]->IsRegister())) {
       RegOperand *srcOpnd = static_cast<RegOperand *>(nextInsn->GetOpnd(0));
@@ -947,7 +995,7 @@ void CGFunc::PatchLongBranch() {
   BB *next;
   for (BB *bb = firstbb; bb; bb = next) {
     next = bb->next;
-    if (bb->GetKind() != BB::kBBIf) {
+    if (bb->GetKind() != BB::kBBIf && bb->GetKind() != BB::kBBGoto) {
       continue;
     }
     Insn * insn = bb->lastinsn;
@@ -959,7 +1007,11 @@ void CGFunc::PatchLongBranch() {
     if ((tbb->internal_flag1 - bb->internal_flag1) < MaxCondBranchDistance()) {
       continue;
     }
-    InsertJumpPad(insn);
+    if (bb->GetKind() == BB::kBBIf) {
+      InsertJumpPad(insn);
+    } else {
+      ConvertJumpToRegJump(insn);
+    }
   }
 }
 
@@ -991,10 +1043,35 @@ void CGFunc::HandleFunction(void) {
   bool isJavaCatchCall = false;
   Insn *tempinsn = nullptr;
 
-  cout << "===============================================\n";
   for (; stmt; stmt = stmt->GetNext()) {
     needSplit = false;
-    stmt->Dump(func->module,0);
+    // insert Insn for .loc before cg for the stmt
+    //stmt->Dump(func->module,0);
+    if (cg->cgopt_.WithLoc() && stmt->op != OP_label && stmt->op != OP_comment) {
+      // if original src file location info is availiable for this stmt,
+      // use it and skip mpl file location info for this stmt
+      uint32 newsrcloc = cg->cgopt_.WithSrc() ? stmt->srcPosition.Linenum() : 0;
+      if (newsrcloc != 0 && newsrcloc != lastsrcloc) {
+        // .loc for original src file
+        uint32 fileid = stmt->srcPosition.Filenum();
+        Operand *o0 = CreateDbgImmOperand(fileid);
+        Operand *o1 = CreateDbgImmOperand(newsrcloc);
+        Insn *loc = cg->BuildInstruction<mpldbg::DbgInsn>(mpldbg::OP_DBG_loc, o0, o1);
+        curbb->AppendInsn(loc);
+        lastsrcloc = newsrcloc;
+      } else {
+        // .loc for mpl file
+        uint32 newmplloc = cg->cgopt_.WithMpl() ? stmt->srcPosition.MplLinenum() : 0;
+        if (newmplloc != 0 && newmplloc != lastmplloc) {
+          uint32 fileid = 1;
+          Operand *o0 = CreateDbgImmOperand(fileid);
+          Operand *o1 = CreateDbgImmOperand(newmplloc);
+          Insn *loc = cg->BuildInstruction<mpldbg::DbgInsn>(mpldbg::OP_DBG_loc, o0, o1);
+          curbb->AppendInsn(loc);
+          lastmplloc = newmplloc;
+        }
+      }
+    }
     isVolLoad = false;
     opcode = stmt->op;
     StmtNode *next = stmt->GetRealNext();
@@ -1238,7 +1315,9 @@ void CGFunc::HandleFunction(void) {
   DetermineReturnTypeofCall();
   theCFG->MarkLabelTakenBB();
   theCFG->UnreachCodeAnalysis();
-  PatchLongBranch();
+  if (CGOptions::doPatchLongBranch) {
+    PatchLongBranch();
+  }
 }
 
 void CGFunc::DumpCFG(void) {
@@ -1378,6 +1457,9 @@ AnalysisResult *CgDoOffAdjFPLR::Run(CGFunc *cgfunc, CgFuncResultMgr *m) {
 }
 
 AnalysisResult *CgFixCFLocOsft::Run(CGFunc *cgfunc, CgFuncResultMgr *m) {
+  if (cgfunc->cg->cgopt_.WithDwarf()) {
+    cgfunc->DBGFixCallFrameLocationOffsets();
+  }
   return nullptr;
 }
 

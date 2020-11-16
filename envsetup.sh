@@ -15,7 +15,7 @@
 
 function print_usage {
   echo " "
-  echo "usage: source envsetup.sh arm/engine release/debug"
+  echo "usage: source envsetup.sh arm/engine/riscv release/debug"
   echo " "
 }
 
@@ -32,7 +32,7 @@ unset TARGET_ARCH
 export TARGET_ARCH=64
 
 if [ $1 = "arm" ]; then
-  PLATFORM=arm64
+  PLATFORM=aarch64
   USEOJ=0
 elif [ $1 = "engine" ]; then
   PLATFORM=ark
@@ -43,6 +43,9 @@ elif [ $1 = "ark" ]; then
 elif [ $1 = "ark2" ]; then
   PLATFORM=ark
   USEOJ=2
+elif [ $1 = "riscv" ]; then
+  PLATFORM=riscv64
+  USEOJ=0
 else
   print_usage
   return

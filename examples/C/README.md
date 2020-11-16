@@ -26,4 +26,7 @@ Besides maple compiler, included are processes using two C front end tools:
      source code is available at https://gitee.com/open64ark/open64ark
 
 #### 使用说明
-  run either maple_with_ast2mpl.sh or maple_with_whirl2mpl.sh for details
+  run the following scripts for details
+
+  maple_aarch64_with_ast2mpl.sh 
+  maple_aarch64_with_whirl2mpl.sh

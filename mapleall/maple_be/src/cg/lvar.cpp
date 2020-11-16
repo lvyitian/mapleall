@@ -25,10 +25,8 @@ void OptLocalRef::Run() {
 }
 
 AnalysisResult *CgDoOptLocalRef::Run(CGFunc *cgfunc, CgFuncResultMgr *m) {
-  if (CGOptions::doLvarPathOpt == false) {
-    return nullptr;
-  }
-  if (g->optim_level < 2) {
+  if (cgfunc->func->module->IsCModule() || (CGOptions::doLvarPathOpt == false) ||
+      (g->optim_level < 2)) {
     return nullptr;
   }
   MemPool *refmp = mempoolctrler.NewMemPool("optlocalref");

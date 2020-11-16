@@ -98,10 +98,6 @@ class AArch64CGFunc : public CGFunc {
   MapleVector<AArch64reg_t> callee_saved_regs;
   MapleVector<AArch64reg_t> formal_reg_list_;  // store the parameters register used by this function
   MapleSet<AArch64MemOperand *> gen_memopnds_requiring_offset_adjustment_;
-  MapleList<std::string> intrinsic_func_name;  // For RA to mark special function name, which function may not change
-                                               // some caller-saved registers.
-  MapleList<uint64> intrinsic_caller_mask;     // upper 32 bits fp, lower 32 bits int
-
   unsigned int refCount;  // Ref count number. 0 if function don't have "bl MCC_InitializeLocalStackRef"
   int beginOffset;        // Begin offset based x29.
   Insn *yieldPointInsn;   // The insn of yield point at the entry of the func.
@@ -193,8 +189,6 @@ class AArch64CGFunc : public CGFunc {
       callee_saved_regs(mallocator->Adapter()),
       formal_reg_list_(mallocator->Adapter()),
       gen_memopnds_requiring_offset_adjustment_(mallocator->Adapter()),
-      intrinsic_func_name(mallocator->Adapter()),
-      intrinsic_caller_mask(mallocator->Adapter()),
       refCount(0),
       beginOffset(0),
       yieldPointInsn(nullptr) {
@@ -653,6 +647,8 @@ class AArch64CGFunc : public CGFunc {
   inline bool IsCalleeSavedPaired() {
     return (((num_intreg_to_callee_save + num_fpreg_to_callee_save) & 0x1) == 0);
   }
+
+  void DBGFixCallFrameLocationOffsets() override;
 
   inline bool ShouldSaveFPLR() {
     return (cg->UseFP() || HasCall() || cg->NeedInsertInstrumentationFunction());

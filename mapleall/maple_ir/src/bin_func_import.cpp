@@ -19,6 +19,7 @@
 #include "name_mangler.h"
 #include "opcode_info.h"
 #include "mir_pragma.h"
+#include "debug_info.h"
 #include "mir_builder.h"
 
 #include <sstream>

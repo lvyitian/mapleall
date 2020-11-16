@@ -906,7 +906,7 @@ int MirGenerator::MaxEvalStack(MIRFunction *func) {
                 } else {
                   DreadNode *dread = static_cast<DreadNode *>(node->Opnd(0));
                   MIRSymbol *s = GetCurFunction()->GetLocalOrGlobalSymbol(dread->stIdx);
-                  ASSERT(s->storageClass != kScFormal, "Parameters of calls of MCC_IncRef_NaiveRCFast between CLEANUP_LOCALREFVARS and Return should not be formals");
+                  //ToDo: s could be a formal
                   curFunc.cleanupLocalVarsInc.insert(s);
                 }
               }
@@ -1048,6 +1048,8 @@ void MirGenerator::EmitAsmFormalArgInfo(MIRFunction *func) {
     if (arg->sKind != kStPreg) {
       if(curFunc.cleanupFormalVars.find(arg) != curFunc.cleanupFormalVars.end())
         cleanupFlag = 1;
+      else
+        cleanupFlag = 2;
     }
     os << hex << ", 0x" << cleanupFlag << "\t// ";
 
@@ -1240,8 +1242,8 @@ void MirGenerator::EmitAsmCall(CallNode *fstmt) {
 
     IntrinDesc *intrinDesc = &IntrinDesc::intrintable[intrn];
     MIRType *retTyp = intrinDesc->GetReturnType();
-    if (retTyp->primType != PTY_void && 
-        pType != retTyp->primType && 
+    if (retTyp->primType != PTY_void &&
+        pType != retTyp->primType &&
         IsAddress(pType) != IsAddress(retTyp->primType)) {
       fprintf(stderr, "Warning: Intrinsic Call ID %d return type is %d in IR but %d in def\n", intrn, pType, retTyp->primType);
     }

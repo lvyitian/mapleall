@@ -422,7 +422,7 @@ class StImmOperand : public Operand  // representing for global variables addres
     }
     if (CGOptions::doPIC && (st_->GetStorageClass() == kScGlobal || st_->GetStorageClass() == kScExtern)) {
       emitter.Emit(":got:" + GetName());
-    } else if (st_->storageClass == kScPstatic) {
+    } else if (st_->storageClass == kScPstatic && st_->sKind != kStConst && st_->IsLocal()) {
       emitter.Emit(GetName() + to_string(CG::curPuIdx));
     } else {
       emitter.Emit(GetName());

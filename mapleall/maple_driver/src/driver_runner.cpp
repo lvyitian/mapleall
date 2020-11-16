@@ -30,6 +30,8 @@
 #include "arm/arm_cg.h"
 #elif TARGAARCH64
 #include "aarch64/aarch64_cg.h"
+#elif TARGRISCV64
+#include "riscv64/riscv64_cg.h"
 #elif TARGARK
 #include "ark/ark_mir_emit.h"
 #include "ark/ark_cg.h"
@@ -204,6 +206,10 @@ void DriverRunner::ProcessMpl2mplAndMeAndMplCgPhases(const std::string &interimO
   std::vector<std::string> modprephases;
   std::vector<std::string> mephases;
   std::vector<std::string> modpostphases;
+  if (hasDebugFlag) {
+    std::cout << "set up debug info " << std::endl;
+    theModule->dbgInfo->BuildDebugInfo();
+  }
 #include "phases.def"
   MInline::level = Options::inlineLev;
   MInline::inlineFuncList = MeOption::inlinefunclist;
@@ -246,6 +252,9 @@ void DriverRunner::ProcessMpl2mplAndMeAndMplCgPhases(const std::string &interimO
     ArmCG thecg(*cgOptions, cgOptions->run_cg_flag, outputFile.c_str());
 #elif TARGAARCH64
     AArch64CG thecg(theModule, *cgOptions, cgOptions->run_cg_flag, outputFile.c_str(), ehExclusiveFunctionName,
+                    CGOptions::cyclePatternMap);
+#elif TARGRISCV64
+    Riscv64CG thecg(theModule, *cgOptions, cgOptions->run_cg_flag, outputFile.c_str(), ehExclusiveFunctionName,
                     CGOptions::cyclePatternMap);
 #elif TARGARK
     ArkCG thecg(theModule, *cgOptions, cgOptions->run_cg_flag, outputFile.c_str(), ehExclusiveFunctionName,
@@ -309,6 +318,9 @@ void DriverRunner::ProcessMpl2mplAndMeAndMplCgPhases(const std::string &interimO
       }
 #endif
 
+      if (cgOptions->WithDwarf()) {
+        thecg.emitter_->EmitDIHeader();
+      }
       // 3. generate phase pipeline based on function.
       unsigned long rangeNum = 0;
       if (!CGOptions::quiet) {
@@ -353,6 +365,9 @@ void DriverRunner::ProcessMpl2mplAndMeAndMplCgPhases(const std::string &interimO
         MapleAllocator funcscopeAllocator(funcMp);
         // 4, Create CGFunc
         CGFunc *cgfunc = thecg.CreateCGFunc(theModule, mirFunc, becommon, funcMp, &funcscopeAllocator);
+        if (cgOptions->WithDwarf()) {
+          cgfunc->SetDebugInfo(theModule->dbgInfo);
+        }
         CG::curCgFunc = cgfunc;
         CG::curPuIdx = cgfunc->mirModule.CurFunction()->puIdx;
         // 5. Run the cg optimizations phases.
@@ -371,7 +386,11 @@ void DriverRunner::ProcessMpl2mplAndMeAndMplCgPhases(const std::string &interimO
         CGOptions::inRange = false;
       }
 
-#if TARGAARCH64
+      if (cgOptions->WithDwarf()) {
+        thecg.emitter_->EmitDIFooter();
+      }
+
+#if TARGAARCH64 || TARGRISCV64
       // Emit duplicated asm func to delete plt call
       if (!cgOptions->duplicateAsmFile.empty()) {
         struct stat buffer;
@@ -409,6 +428,17 @@ void DriverRunner::ProcessMpl2mplAndMeAndMplCgPhases(const std::string &interimO
       } else if (theModule->srcLang == kSrcLangCPlusPlus) {
         thecg.emitter_->EmitGxxPersonalityV0();
         thecg.emitter_->EmitInitArraySection();
+      }
+      // 10. emit debug infomation.
+      if (cgOptions->WithDwarf()) {
+        thecg.emitter_->SetupDBGInfo(theModule->dbgInfo);
+        thecg.emitter_->EmitDIHeaderFileInfo();
+        thecg.emitter_->EmitDIDebugInfoSection(theModule->dbgInfo);
+        thecg.emitter_->EmitDIDebugAbbrevSection(theModule->dbgInfo);
+        thecg.emitter_->EmitDIDebugARangesSection();
+        thecg.emitter_->EmitDIDebugRangesSection();
+        thecg.emitter_->EmitDIDebugLineSection();
+        thecg.emitter_->EmitDIDebugStrSection();
       }
       thecg.emitter_->CloseOutput();
     } else {

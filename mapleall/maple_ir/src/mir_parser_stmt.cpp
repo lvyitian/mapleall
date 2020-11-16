@@ -16,6 +16,7 @@
 #include "mir_parser.h"
 #include "mir_function.h"
 #include "opcode_info.h"
+#include "debug_info.h"
 
 using namespace std;
 namespace maple {

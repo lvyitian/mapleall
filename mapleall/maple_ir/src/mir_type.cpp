@@ -967,16 +967,13 @@ static void DumpInterfaces(std::vector<TyIdx> interfaces, int indent) {
 size_t MIRStructType::GetSize() const {
   if (typeKind == kTypeUnion) {
     if (fields.size() == 0) {
-      return 0;
+      return isCPlusPlus ? 1 : 0;
     }
     size_t maxSize = 0;
     for (size_t i = 0; i < fields.size(); ++i) {
       TyidxFieldAttrPair tfap = GetTyidxFieldAttrPair(i);
       MIRType *fieldType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(tfap.first);
       size_t size = RoundUp(fieldType->GetSize(), tfap.second.GetAlign());
-      if (size == 0) {
-        return 0;
-      }
       if (maxSize < size) {
         maxSize = size;
       }
@@ -1016,6 +1013,9 @@ size_t MIRStructType::GetSize() const {
     byteOfst = (bitOfst >> 3) + 1;
   }
   byteOfst = RoundUp(byteOfst, GetAlign());
+  if (byteOfst == 0 && isCPlusPlus) {
+    return 1;  // empty struct in C++ has size 1
+  }
   return byteOfst;
 }
 

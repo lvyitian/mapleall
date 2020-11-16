@@ -111,57 +111,6 @@ void GraphColorRegAllocator::PrintLiveRangeConflicts(const LiveRange *lr) const 
   LogInfo::MapleLogger() << "\n";
 }
 
-void GraphColorRegAllocator::CheckLiveRangeConflicts(const LiveRange *lr) const {
-#ifdef USE_VEC
-  if (lr->sconflict.size() != lr->numBconflicts) {
-    LogInfo::MapleLogger() << "Error: PrintLiveRange inconsistent conflict num\n";
-    CG_ASSERT(0, "Error: PrintLiveRange inconsistent conflict num");
-  }
-  for (uint32 i = 0; i < regBuckets; i++) {
-    uint64 chunk = lr->bconflict[i];
-    for (uint64 bit = 0; bit < (sizeof(uint64) * CHAR_BIT); bit++) {
-      if (chunk & (1LL << bit)) {
-        regno_t newno = i * sizeof(uint64) * CHAR_BIT + bit;
-        if (FIND_NOT_IN(lr->sconflict, newno)) {
-          LogInfo::MapleLogger() << "Error: PrintLiveRange inconsistent conflict member\n";
-          CG_ASSERT(0, "Error: PrintLiveRange inconsistent conflict member");
-        }
-      }
-    }
-  }
-#endif  // USE_VEC
-}
-
-void GraphColorRegAllocator::PrintLiveBbSet(const LiveRange *lr, const string str) const {
-#ifdef USE_VEC
-  if (lr->smember.size() != lr->numBmembers) {
-    LogInfo::MapleLogger() << "Error: PrintLiveBbSet inconsistent size\n";
-    CG_ASSERT(0, "Error: PrintLiveBbSet inconsistent size");
-  }
-  LogInfo::MapleLogger() << str << "(" << lr->smember.size() << "): ";
-  for (uint32 i = 0; i < cgfunc_->NumBBs(); i++) {
-    if (IS_BIT_ARR_ELEM_SET(lr->bmember, i)) {
-      if (FIND_NOT_IN(lr->smember, bbVec[i])) {
-        LogInfo::MapleLogger() << "Error: PrintLiveBbSet inconsistent member\n";
-        CG_ASSERT(0, "Error: PrintLiveBbSet inconsistent member");
-      }
-      LogInfo::MapleLogger() << i << " ";
-    }
-  }
-  LogInfo::MapleLogger() << "\n";
-  // To match the ordering of bit by using bbid order.
-  set<BB *, SetBBCmpFunc> result;
-  for (auto bb : lr->smember) {
-    result.insert(bb);
-  }
-  LogInfo::MapleLogger() << str << "(" << lr->smember.size() << "): ";
-  for (auto bb : result) {
-    LogInfo::MapleLogger() << bb->id << " ";
-  }
-  LogInfo::MapleLogger() << "\n";
-#endif  // USE_VEC
-}
-
 void GraphColorRegAllocator::PrintLiveBbBit(const LiveRange *lr) const {
   LogInfo::MapleLogger() << "live_bb(" << lr->numBmembers << "): ";
   for (uint32 i = 0; i < cgfunc_->NumBBs(); i++) {
@@ -204,18 +153,7 @@ void GraphColorRegAllocator::PrintLiveRange(const LiveRange *lr, const string st
     LogInfo::MapleLogger() << " split";
   }
   LogInfo::MapleLogger() << "\n";
-#ifdef USE_VEC
-  PrintLiveBbSet(lr, "\tlive_bb");
-#endif  // USE_VEC
   PrintLiveBbBit(lr);
-#ifdef USE_VEC
-  CheckLiveRangeConflicts(lr);
-  LogInfo::MapleLogger() << "\tinterfere(" << lr->sconflict.size() << "): ";
-  for (auto newno : lr->sconflict) {
-    LogInfo::MapleLogger() << newno << ",";
-  }
-  LogInfo::MapleLogger() << "\n";
-#endif  // USE_VEC
   PrintLiveRangeConflicts(lr);
   PrintLiveUnitMap(lr);
   if (lr->splitLr) {
@@ -224,6 +162,7 @@ void GraphColorRegAllocator::PrintLiveRange(const LiveRange *lr, const string st
 }
 
 void GraphColorRegAllocator::PrintLiveRanges() const {
+  cout << "PrintLiveRanges: size = " << lrVec.size() << endl;
   for (uint32_t i = 0; i < lrVec.size(); i++) {
     if (lrVec[i] == nullptr || lrVec[i]->regno == 0) {
       continue;
@@ -280,32 +219,23 @@ void GraphColorRegAllocator::CalculatePriority(LiveRange *lr) {
 #endif  // RANDOM_PRIORITY
   float pri = 0.0;
   uint32 bbNum = 0;
-#ifdef USE_VEC
-  for (auto bb : lr->smember) {
-    auto lu = lr->luMap.find(bb->id);
-#else   // USE_VEC
   FOREACH_BB_ARR_ELEM(lr->bmember, bbid)
-  auto lu = lr->luMap.find(bbid);
-  BB *bb = bbVec[bbid];
-#endif  // USE_VEC
+    auto lu = lr->luMap.find(bbid);
+    BB *bb = bbVec[bbid];
     bbNum++;
     uint32 useCnt = lu->second->defNum + lu->second->useNum;
     uint32 mult;
 #ifdef USE_BB_FREQUENCY
     mult = bb->frequency;
 #else   // USE_BB_FREQUENCY
-  if (bb->loop) {
-    mult = (uint32)pow(kLoopWeight, bb->loop->loopLevel);
-  } else {
-    mult = 1;
-  }
+    if (bb->loop) {
+      mult = (uint32)pow(kLoopWeight, bb->loop->loopLevel);
+    } else {
+      mult = 1;
+    }
 #endif  // USE_BB_FREQUENCY
     pri += useCnt * mult;
-#ifdef USE_VEC
-  }
-#else   // USE_VEC
   END_FOREACH_BB_ARR_ELEM
-#endif  // USE_VEC
   if (bbNum) {
     lr->priority = log(pri) / bbNum;
   } else {
@@ -798,7 +728,7 @@ bool GraphColorRegAllocator::CreateLiveRange(regno_t regno, BB *bb, bool isDef, 
       vregLive.erase(regno);
     }
 #ifdef OPTIMIZE_FOR_PROLOG
-    if (updateCount) {
+    if (doOptProlog && updateCount) {
       if (lr->numDefs == 0) {
         lr->frequency += bb->frequency;
       }
@@ -808,7 +738,7 @@ bool GraphColorRegAllocator::CreateLiveRange(regno_t regno, BB *bb, bool isDef, 
   } else {
     vregLive.insert(regno);
 #ifdef OPTIMIZE_FOR_PROLOG
-    if (updateCount) {
+    if (doOptProlog && updateCount) {
       if (lr->numUses == 0) {
         lr->frequency += bb->frequency;
       }
@@ -821,9 +751,6 @@ bool GraphColorRegAllocator::CreateLiveRange(regno_t regno, BB *bb, bool isDef, 
   }
 
   // only handle it in live_in and def point?
-#ifdef USE_VEC
-  lr->smember.insert(bb);
-#endif  // USE_VEC
   SET_MEMBER_BIT_ARR_ELEM(lr, bb->id);
 
   lrVec[regno] = lr;
@@ -1067,16 +994,6 @@ void GraphColorRegAllocator::ComputeLiveRangesBmemberSize() {
     if (lr == nullptr || lr->regno == 0) {
       continue;
     }
-#if defined(USE_VEC) && defined(CONFLICT_CHECK)
-    if (lr->numBmembers != lr->smember.size()) {
-      LogInfo::MapleLogger() << "Err: bit size member " << lr->regno << endl;
-      PrintLiveRange(lr, "LR-SIZE-DIFF");
-    }
-    if (lr->numBconflicts != lr->sconflict.size()) {
-      LogInfo::MapleLogger() << "Err: bit size conflict " << lr->regno << endl;
-      PrintLiveRange(lr, "LR-SIZE-DIFF");
-    }
-#endif  // USE_VEC && CONFLICT_CHECK
   }
 }
 
@@ -1183,7 +1100,9 @@ void GraphColorRegAllocator::ComputeLiveRanges() {
     LogInfo::MapleLogger() << "After ComputeLiveRanges\n";
     PrintLiveRanges();
 #ifdef USE_LRA
-    PrintLocalRaInfo("After ComputeLiveRanges");
+    if (doLRA) {
+      PrintLocalRaInfo("After ComputeLiveRanges");
+    }
 #endif  // USE_LRA
   }
   return;
@@ -1227,11 +1146,7 @@ bool GraphColorRegAllocator::IsLocalReg(regno_t regno) {
   if (lr->splitLr) {
     return false;
   } else {
-#ifdef USE_VEC
-    return (lr->smember.size() == 1) && (!lr->isNonLocal);
-#else   // USE_VEC
     return (lr->numBmembers == 1) && (!lr->isNonLocal);
-#endif  // USE_VEC
   }
 }
 
@@ -1239,45 +1154,8 @@ bool GraphColorRegAllocator::IsLocalReg(LiveRange *lr) {
   if (lr->splitLr) {
     return false;
   } else {
-#ifdef USE_VEC
-    return (lr->smember.size() == 1) && (!lr->isNonLocal);
-#else   // USE_VEC
     return (lr->numBmembers == 1) && (!lr->isNonLocal);
-#endif  // USE_VEC
   }
-}
-
-void GraphColorRegAllocator::CopyInterference() {
-#if !defined(COPY_VEC) && defined(USE_VEC)
-  set<BB *, SetBBCmpFunc> result;
-  result.clear();
-  for (auto bb : lr1->smember) {
-    if (FIND_IN(lr2->smember, bb)) {
-      result.insert(bb);
-    }
-    if (result.size() > 1) {
-      break;
-    }
-  }
-
-  if (result.size() == 0) {
-    // no interference
-  } else if (result.size() == 1) {
-    auto it = result.begin();
-    auto lu1 = lr1->luMap.find((*it)->id);
-    auto lu2 = lr2->luMap.find((*it)->id);
-    if (lu1 != lr1->luMap.end() && lu2 != lr2->luMap.end() &&
-        !((lu1->second->bgn < lu2->second->bgn && lu1->second->end < lu2->second->bgn) ||
-          (lu2->second->bgn < lu1->second->end && lu2->second->end < lu1->second->bgn))) {
-      lr1->sconflict.insert(lr2->regno);
-      lr2->sconflict.insert(lr1->regno);
-    }
-  } else {
-    // interfere
-    lr1->sconflict.insert(lr2->regno);
-    lr2->sconflict.insert(lr1->regno);
-  }
-#endif  // COPY_VEC && USE_VEC
 }
 
 void GraphColorRegAllocator::CheckInterference(LiveRange *lr1, LiveRange *lr2) {
@@ -1324,9 +1202,6 @@ void GraphColorRegAllocator::CheckInterference(LiveRange *lr1, LiveRange *lr2) {
     SET_CONFLICT_BIT_ARR_ELEM(lr2, lr1->regno);
   }
 
-#if !defined(COPY_VEC) && defined(USE_VEC)
-  void CopyInterference();
-#endif  // COPY_VEC && USE_VEC
   return;
 }
 
@@ -1337,11 +1212,7 @@ void GraphColorRegAllocator::BuildInterferenceGraphSeparateIntFp(std::vector<Liv
       continue;
     }
 #ifdef USE_LRA
-#ifdef USE_VEC
-    if (lrVec[i]->smember.size() == 1)
-#else   // USE_VEC
-    if (lrVec[i]->numBmembers == 1)
-#endif  // USE_VEC
+    if (doLRA && lrVec[i]->numBmembers == 1)
     {
       continue;
     }
@@ -1355,63 +1226,6 @@ void GraphColorRegAllocator::BuildInterferenceGraphSeparateIntFp(std::vector<Liv
       LogInfo::MapleLogger() << "error: Illegal regtype in BuildInterferenceGraph\n";
     }
   }
-}
-
-void GraphColorRegAllocator::BuildInterferenceGraphCopyVec() {
-#ifdef COPY_VEC
-  // Copy bit vector info into std set
-  std::vector<LiveRange *>::iterator it;
-  for (it = intLrVec.begin(); it != intLrVec.end(); it++) {
-    LiveRange *lr = *it;
-    for (uint32 i = 0; i < regBuckets; i++) {
-      uint64 chunk = lr->bconflict[i];
-
-      uint64 size = sizeof(uint64) * CHAR_BIT;
-      for (uint64 bit = 0; bit < size; bit++) {
-        if (chunk & (1LL << bit)) {
-          regno_t regno = i * sizeof(uint64) * CHAR_BIT + bit;
-          lr->sconflict.insert(regno);
-        }
-      }
-    }
-  }
-  for (it = fpLrVec.begin(); it != fpLrVec.end(); it++) {
-    LiveRange *lr = *it;
-    for (uint32 i = 0; i < regBuckets; i++) {
-      uint64 chunk = lr->bconflict[i];
-
-      uint64 size = sizeof(uint64) * CHAR_BIT;
-      for (uint64 bit = 0; bit < size; bit++) {
-        if (chunk & (1LL << bit)) {
-          regno_t regno = i * sizeof(uint64) * CHAR_BIT + bit;
-          lr->sconflict.insert(regno);
-        }
-      }
-    }
-  }
-#endif  // COPY_VEC
-}
-
-void GraphColorRegAllocator::BuildInterferenceGraphErrorCheck() {
-#if defined(USE_VEC) && defined(CONFLICT_CHECK)
-  for (uint32_t i = 0; i < lrVec.size(); i++) {
-    if (lrVec[i] == nullptr) {
-      continue;
-    }
-    for (auto confReg : lrVec[i]->sconflict) {
-      if (IS_BIT_ARR_ELEM_SET(lrVec[i]->bconflict, confReg) == false) {
-        LogInfo::MapleLogger() << "Err: set conflict " << confReg << " in LR reg " << lrVec[i]->regno << "\n";
-        PrintLiveRange(lrVec[i], "LR-SCONFLICT-DIFFER");
-      }
-    }
-    FOREACH_REG_ARR_ELEM(lrVec[i]->bconflict, confReg)
-    if (FIND_NOT_IN(lrVec[i]->sconflict, confReg)) {
-      LogInfo::MapleLogger() << "Err: bit conflict " << confReg << " in LR reg " << lrVec[i]->regno << "\n";
-      PrintLiveRange(lrVec[i], "LR-BCONFLICT-DIFFER");
-    }
-    END_FOREACH_REG_ARR_ELEM
-  }
-#endif  // USE_VEC && CONFLICT_CHECK
 }
 
 //  Based on intersection of LRs.  When two LRs interfere, add to each other's
@@ -1443,14 +1257,6 @@ void GraphColorRegAllocator::BuildInterferenceGraph() {
       }
     }
   }
-
-#ifdef COPY_VEC
-  BuildInterferenceGraphCopyVec();
-#else  // If copying, there is no need to check
-#if defined(USE_VEC) && defined(CONFLICT_CHECK)
-  BuildInterferenceGraphErrorCheck();
-#endif  // USE_VEC && CONFLICT_CHECK
-#endif  // COPY_VEC
 
   if (GCRA_DUMP) {
     LogInfo::MapleLogger() << "After BuildInterferenceGraph\n";
@@ -1488,12 +1294,13 @@ void GraphColorRegAllocator::Separate() {
       continue;
     }
 #ifdef USE_LRA
-    if (IsLocalReg(lr)) {
+    if (doLRA && IsLocalReg(lr)) {
       continue;
     }
 #endif  // USE_LRA
 #ifdef OPTIMIZE_FOR_PROLOG
-    if ((lr->numDefs <= 1 && lr->numUses <= 1 && lr->numCall > 0) &&
+    if (doOptProlog &&
+        (lr->numDefs <= 1 && lr->numUses <= 1 && lr->numCall > 0) &&
         (lr->frequency <= (cgfunc_->firstbb->frequency << 1))) {
       if (lr->regtype == kRegTyInt) {
         intDelayed.push_back(lr);
@@ -1503,11 +1310,7 @@ void GraphColorRegAllocator::Separate() {
       continue;
     }
 #endif  // OPTIMIZE_FOR_PROLOG
-#ifdef USE_VEC
-    if (HaveAvailableColor(lr, lr->sconflict.size() + lr->pregveto.size() + lr->forbidden.size()))
-#else   // USE_VEC
     if (HaveAvailableColor(lr, lr->numBconflicts + lr->numPregveto + lr->numForbidden))
-#endif  // USE_VEC
     {
       unconstrained.push_back(lr);
     } else {
@@ -1545,36 +1348,20 @@ MapleVector<LiveRange *>::iterator GraphColorRegAllocator::GetHighPriorityLr(Map
 }
 
 void GraphColorRegAllocator::UpdateForbiddenForNeighbors(LiveRange *lr) {
-#ifdef USE_VEC
-  for (auto regno : lr->sconflict) {
-#else   // USE_VEC
   FOREACH_REG_ARR_ELEM(lr->bconflict, regno)
-#endif  // USE_VEC
     LiveRange *newLr = lrVec[regno];
     if (newLr->pregveto[lr->assigned] == false) {
       newLr->insertForbidden(lr->assigned);
     }
-#ifdef USE_VEC
-  }
-#else   // USE_VEC
   END_FOREACH_REG_ARR_ELEM
-#endif  // USE_VEC
   return;
 }
 
 void GraphColorRegAllocator::UpdatePregvetoForNeighbors(LiveRange *lr) {
-#ifdef USE_VEC
-  for (auto regno : lr->sconflict) {
-#else   // USE_VEC
   FOREACH_REG_ARR_ELEM(lr->bconflict, regno)
-#endif  // USE_VEC
     LiveRange *newLr = lrVec[regno];
     newLr->insertPregveto(lr->assigned);
-#ifdef USE_VEC
-  }
-#else   // USE_VEC
   END_FOREACH_REG_ARR_ELEM
-#endif  // USE_VEC
   return;
 }
 
@@ -1664,7 +1451,7 @@ bool GraphColorRegAllocator::AssignColorToLr(LiveRange *lr, bool isDelayed) {
       return false;
     }
 #ifdef OPTIMIZE_FOR_PROLOG
-    if (isDelayed) {
+    if (doOptProlog && isDelayed) {
       if (lr->regtype == kRegTyInt) {
         if (!ShouldUseCallee(lr, intCalleeUsed, intDelayed)) {
           return false;
@@ -1688,18 +1475,9 @@ bool GraphColorRegAllocator::AssignColorToLr(LiveRange *lr, bool isDelayed) {
 
     UpdateForbiddenForNeighbors(lr);
 
-#ifdef USE_VEC
-    for (auto bb : lr->smember) {
-      uint32 bbid = bb->id;
-#else   // USE_VEC
     FOREACH_BB_ARR_ELEM(lr->bmember, bbid)
-#endif  // USE_VEC
       SetBbInfoGlobalAssigned(bbid, lr->assigned);
-#ifdef USE_VEC
-    }
-#else   // USE_VEC
     END_FOREACH_BB_ARR_ELEM
-#endif  // USE_VEC
     if (GCRA_DUMP) {
       LogInfo::MapleLogger() << "assigned " << lr->assigned << " to R" << lr->regno << endl;
     }
@@ -1764,43 +1542,18 @@ void GraphColorRegAllocator::PruneLrForSplit(LiveRange *lr, BB *bb, bool remove,
   }
 }
 
-void GraphColorRegAllocator::SplitCopyVecMember(LiveRange *lr) {
-#ifdef USE_VEC
-  lr->smember.clear();  // Use bmember to update smember
-  for (uint32 i = 0; i < bbBuckets; i++) {
-    uint64 chunk = lr->bmember[i];
-    uint64 size = sizeof(uint64) * CHAR_BIT;
-    for (uint64 bit = 0; bit < size; bit++) {
-      if (chunk & (1LL << bit)) {
-        BB *bb = bbVec[i * sizeof(uint64) * CHAR_BIT + bit];
-        lr->smember.insert(bb);
-      }
-    }
-  }
-#endif  // USE_VEC
-}
-
 void GraphColorRegAllocator::FindBbSharedInSplit(LiveRange *lr, set<CgfuncLoops *> &candidateInLoop,
                                                  set<CgfuncLoops *> &defInLoop) {
   // A loop might be split into two.  Need to see over the entire LR if there is a def in the loop.
-#ifdef USE_VEC
-  for (auto bbit = lr->smember.begin(); bbit != lr->smember.end(); bbit++) {
-    BB *bb = *bbit;
-#else   // USE_VEC
   FOREACH_BB_ARR_ELEM(lr->bmember, bbid)
   BB *bb = bbVec[bbid];
-#endif  // USE_VEC
     if (bb->loop && FIND_IN(candidateInLoop, bb->loop)) {
       auto lu = lr->luMap.find(bb->id);
       if (lu != lr->luMap.end() && lu->second->defNum > 0) {
         defInLoop.insert(bb->loop);
       }
     }
-#ifdef USE_VEC
-  }
-#else   // USE_VEC
   END_FOREACH_BB_ARR_ELEM
-#endif  // USE_VEC
 }
 
 // Backward traversal of the top part of the split LR.
@@ -1816,15 +1569,11 @@ void GraphColorRegAllocator::ComputeBbForNewSplit(LiveRange *newLr, LiveRange *o
   set<CgfuncLoops *> candidateInLoop;
   // If a bb has a def and is in a loop, store that info.
   set<CgfuncLoops *> defInLoop;
-#ifdef USE_VEC
-  for (auto bbit = newLr->smember.rbegin(); bbit != newLr->smember.rend(); bbit++)
-#else   // USE_VEC
   set<BB *, SortedBBCmpFunc> smember;
   FOREACH_BB_ARR_ELEM(newLr->bmember, bbid)
   smember.insert(bbVec[bbid]);
   END_FOREACH_BB_ARR_ELEM
   for (auto bbit = smember.rbegin(); bbit != smember.rend(); bbit++)
-#endif  // USE_VEC
   {
     BB *bb = *bbit;
     if (bb->internal_flag1) {
@@ -1844,9 +1593,6 @@ void GraphColorRegAllocator::ComputeBbForNewSplit(LiveRange *newLr, LiveRange *o
     }
   }
   END_FOREACH_BB_ARR_ELEM
-#ifdef USE_VEC
-  SplitCopyVecMember(newLr);
-#endif  // USE_VEC
 }
 
 bool GraphColorRegAllocator::UseIsUncovered(BB *bb, BB *startBb) {
@@ -1961,17 +1707,12 @@ void GraphColorRegAllocator::ComputeBbForOldSplit(LiveRange *newLr, LiveRange *o
   SplitBbInfo bbInfo;
   bool remove = true;
 
-#ifdef USE_VEC
-  ClearLrBbFlags(origLr->smember);
-  for (auto bb : origLr->smember)
-#else   // USE_VEC
   set<BB *, SortedBBCmpFunc> smember;
   FOREACH_BB_ARR_ELEM(origLr->bmember, bbid)
   smember.insert(bbVec[bbid]);
   END_FOREACH_BB_ARR_ELEM
   ClearLrBbFlags(smember);
   for (auto bb : smember)
-#endif  // USE_VEC
   {
     if (bb->internal_flag1) {
       continue;
@@ -1995,9 +1736,6 @@ void GraphColorRegAllocator::ComputeBbForOldSplit(LiveRange *newLr, LiveRange *o
     }
   }
   END_FOREACH_BB_ARR_ELEM
-#ifdef USE_VEC
-  SplitCopyVecMember(origLr);
-#endif  // USE_VEC
 }
 
 // There is at least one available color for this BB from the neighbors
@@ -2011,12 +1749,8 @@ bool GraphColorRegAllocator::LrCanBeColored(LiveRange *lr, BB *bbAdded, set<regn
   RegType type = lr->regtype;
 
   set<regno_t> newConflict;
-#ifdef USE_VEC
-  for (auto regno : lr->sconflict) {
-#else   // USE_VEC
   FOREACH_REG_ARR_ELEM(lr->bconflict, regno)
-#endif  // USE_VEC
-        // check the real conflict in current bb
+    // check the real conflict in current bb
     LiveRange *conflictLr = lrVec[regno];
     // If the bb to be added to the new LR has an actual
     // conflict with another LR, and if that LR has already
@@ -2035,11 +1769,7 @@ bool GraphColorRegAllocator::LrCanBeColored(LiveRange *lr, BB *bbAdded, set<regn
         newConflict.insert(confReg);
       }
     }
-#ifdef USE_VEC
-  }
-#else   // USE_VEC
   END_FOREACH_REG_ARR_ELEM
-#endif  // USE_VEC
 
   uint32 numRegs;
   numRegs = newConflict.size() + lr->numPregveto + conflictRegs.size();
@@ -2070,9 +1800,6 @@ void GraphColorRegAllocator::MoveLrBbInfo(LiveRange *oldLr, LiveRange *newLr, BB
   // initialize bb removal marker
   bb->internal_flag2 = false;
   // Insert BB into new LR
-#ifdef USE_VEC
-  newLr->smember.insert(bb);
-#endif  // USE_VEC
   SET_MEMBER_BIT_ARR_ELEM(newLr, bb->id);
 
   // Move LU from old LR to new LR
@@ -2083,12 +1810,6 @@ void GraphColorRegAllocator::MoveLrBbInfo(LiveRange *oldLr, LiveRange *newLr, BB
   }
 
   // Remove BB from old LR
-#ifdef USE_VEC
-  auto lrIt = FIND(oldLr->smember, bb);
-  if (lrIt != oldLr->smember.end()) {
-    oldLr->smember.erase(lrIt);
-  }
-#endif  // USE_VEC
   UNSET_MEMBER_BIT_ARR_ELEM(oldLr, bb->id);
 }
 
@@ -2106,41 +1827,25 @@ bool GraphColorRegAllocator::ContainsLoop(CgfuncLoops *loop, set<CgfuncLoops *> 
 }
 
 void GraphColorRegAllocator::GetAllLrMemberLoops(LiveRange *lr, set<CgfuncLoops *> &loops) {
-#ifdef USE_VEC
-  for (auto bb : lr->smember) {
-#else   // USE_VEC
   FOREACH_BB_ARR_ELEM(lr->bmember, bbid)
   BB *bb = bbVec[bbid];
-#endif  // USE_VEC
     CgfuncLoops *loop = bb->loop;
     if (loop) {
       loops.insert(loop);
     }
-#ifdef USE_VEC
-  }
-#else   // USE_VEC
   END_FOREACH_BB_ARR_ELEM
-#endif  // USE_VEC
 }
 
 bool GraphColorRegAllocator::SplitLrShouldSplit(LiveRange *lr) {
-#ifdef USE_VEC
-  if (lr->splitLr || lr->smember.size() == 1)
-#else   // USE_VEC
   if (lr->splitLr || lr->numBmembers == 1)
-#endif  // USE_VEC
   {
     return false;
   }
 
   // Need to split within the same hierarchy
   int32 loopId = -1;
-#ifdef USE_VEC
-  for (auto bb : lr->smember) {
-#else   // USE_VEC
   FOREACH_BB_ARR_ELEM(lr->bmember, bbid)
   BB *bb = bbVec[bbid];
-#endif  // USE_VEC
     if (loopId == -1) {
       if (bb->loop) {
         loopId = bb->loop->header->id;
@@ -2152,20 +1857,12 @@ bool GraphColorRegAllocator::SplitLrShouldSplit(LiveRange *lr) {
         return false;
       }
     }
-#ifdef USE_VEC
-  }
-#else   // USE_VEC
   END_FOREACH_BB_ARR_ELEM
-#endif  // USE_VEC
   return true;
 }
 
 bool GraphColorRegAllocator::SplitLrIsProfitable(LiveRange *newLr) {
-#ifdef USE_VEC
-  if (newLr->smember.size() == 0)
-#else   // USE_VEC
   if (newLr->numBmembers == 0)
-#endif  // USE_VEC
   {
     // split fail
     return false;
@@ -2184,14 +1881,6 @@ bool GraphColorRegAllocator::SplitLrIsProfitable(LiveRange *newLr) {
 
 void GraphColorRegAllocator::ResetSplitLr(LiveRange *origLr, LiveRange *newLr) {
   FOREACH_BB_ARR_ELEM(newLr->bmember, bbid) {
-#ifdef USE_VEC
-    BB *bb = bbVec[bbid];
-    auto bbIt = FIND(newLr->smember, bb);
-    if (bbIt != newLr->smember.end()) {
-      newLr->smember.erase(bbIt);
-    }
-    origLr->smember.insert(bb);
-#endif  // USE_VEC
     UNSET_MEMBER_BIT_ARR_ELEM(newLr, bbid);
     SET_MEMBER_BIT_ARR_ELEM(origLr, bbid);
 
@@ -2217,15 +1906,11 @@ bool GraphColorRegAllocator::SplitLrFindCandidateLr(LiveRange *lr, LiveRange *ne
   if (GCRA_DUMP) {
     LogInfo::MapleLogger() << "start split lr for vreg " << lr->regno << endl;
   }
-#ifdef USE_VEC
-  for (auto bb : lr->smember)
-#else   // USE_VEC
   set<BB *, SortedBBCmpFunc> smember;
   FOREACH_BB_ARR_ELEM(lr->bmember, bbid)
   smember.insert(bbVec[bbid]);
   END_FOREACH_BB_ARR_ELEM
   for (auto bb : smember)
-#endif  // USE_VEC
   {
     if (LrCanBeColored(lr, bb, conflictRegs)) {
       MoveLrBbInfo(lr, newLr, bb);
@@ -2258,23 +1943,6 @@ void GraphColorRegAllocator::SplitLrHandleLoops(LiveRange *lr, LiveRange *newLr,
   // no longer in the LR.  Remove those bb.
   ComputeBbForNewSplit(newLr, lr);
   // With new LR, recompute conflict.
-#ifdef USE_VEC
-  for (auto bb : newLr->smember) {
-    for (auto regno : lr->sconflict) {
-      LiveRange *conf_lr = lrVec[regno];
-      if (IS_BIT_ARR_ELEM_SET(conf_lr->bmember, bb->id)) {
-        // New LR getting the interference does not mean the
-        // old LR can remove the interference.
-        // Old LR's interference will be handled at the end of split.
-        newLr->sconflict.insert(regno);
-        SET_CONFLICT_BIT_ARR_ELEM(newLr, regno);
-      } else if (conf_lr->splitLr && FIND_IN(conf_lr->splitLr->smember, bb)) {
-        newLr->sconflict.insert(regno);
-        SET_CONFLICT_BIT_ARR_ELEM(newLr, regno);
-      }
-    }
-  }
-#else   // USE_VEC
   FOREACH_BB_ARR_ELEM(newLr->bmember, bbid)
   FOREACH_REG_ARR_ELEM(lr->bconflict, regno)
   LiveRange *conf_lr = lrVec[regno];
@@ -2288,7 +1956,6 @@ void GraphColorRegAllocator::SplitLrHandleLoops(LiveRange *lr, LiveRange *newLr,
   }
   END_FOREACH_REG_ARR_ELEM
   END_FOREACH_BB_ARR_ELEM
-#endif  // USE_VEC
   // update bb/loop same as for new LR.
   ComputeBbForOldSplit(newLr, lr);
   // Update the conflict interference for the original LR later.
@@ -2296,11 +1963,7 @@ void GraphColorRegAllocator::SplitLrHandleLoops(LiveRange *lr, LiveRange *newLr,
   for (auto loop : newLoops) {
     if (ContainsLoop(loop, origLoops)) {
       for (auto bb : loop->loop_members) {
-#ifdef USE_VEC
-        if (FIND_IN(newLr->smember, bb))
-#else   // USE_VEC
         if (IS_BIT_ARR_ELEM_SET(newLr->bmember, bb->id))
-#endif  // USE_VEC
         {
           LiveUnit *lu = newLr->luMap[bb->id];
           if (lu->useNum != 0) {
@@ -2315,13 +1978,8 @@ void GraphColorRegAllocator::SplitLrHandleLoops(LiveRange *lr, LiveRange *newLr,
 void GraphColorRegAllocator::SplitLrFixNewLrCallsAndRlod(LiveRange *newLr, set<CgfuncLoops *> &origLoops) {
   // If a 2nd split loop is before the bb in 1st split bb.
   newLr->numCall = 0;
-#ifdef USE_VEC
-  for (auto bb : newLr->smember) {
-    uint32 bbid = bb->id;
-#else   // USE_VEC
   FOREACH_BB_ARR_ELEM(newLr->bmember, bbid)
   BB *bb = bbVec[bbid];
-#endif  // USE_VEC
     for (auto loop : origLoops) {
       if (loop->header->level < bb->level) {
         LiveUnit *lu = newLr->luMap[bbid];
@@ -2334,31 +1992,18 @@ void GraphColorRegAllocator::SplitLrFixNewLrCallsAndRlod(LiveRange *newLr, set<C
     if (newLr->numBmembers > 1 && lu->hasCall) {
       newLr->numCall++;
     }
-#ifdef USE_VEC
-  }
-#else   // USE_VEC
   END_FOREACH_BB_ARR_ELEM
-#endif  // USE_VEC
 }
 
 void GraphColorRegAllocator::SplitLrFixOrigLrCalls(LiveRange *lr) {
   lr->numCall = 0;
   if (lr->numBmembers > 1) {
-#ifdef USE_VEC
-    for (auto bb : lr->smember) {
-      uint32 bbid = bb->id;
-#else   // USE_VEC
     FOREACH_BB_ARR_ELEM(lr->bmember, bbid)
-#endif  // USE_VEC
       LiveUnit *lu = lr->luMap[bbid];
       if (lu->hasCall) {
         lr->numCall++;
       }
-#ifdef USE_VEC
-    }
-#else   // USE_VEC
     END_FOREACH_BB_ARR_ELEM
-#endif  // USE_VEC
   }
 }
 
@@ -2367,11 +2012,7 @@ void GraphColorRegAllocator::SplitLrUpdateInterference(LiveRange *lr) {
   // Update the interference info.
   // Also recompute the forbidden info
   lr->forbidden.clear();
-#ifdef USE_VEC
-  for (auto regno : lr->sconflict) {
-#else   // USE_VEC
   FOREACH_REG_ARR_ELEM(lr->bconflict, regno)
-#endif  // USE_VEC
     LiveRange *conf_lr = lrVec[regno];
     if (SET_BB_OVERLAP(lr->bmember, conf_lr->bmember)) {
       // interfere
@@ -2380,16 +2021,9 @@ void GraphColorRegAllocator::SplitLrUpdateInterference(LiveRange *lr) {
       }
     } else {
       // no interference
-#ifdef USE_VEC
-      lr->sconflict.erase(regno);
-#endif  // USE_VEC
       UNSET_CONFLICT_BIT_ARR_ELEM(lr, regno);
     }
-#ifdef USE_VEC
-  }
-#else   // USE_VEC
   END_FOREACH_REG_ARR_ELEM
-#endif  // USE_VEC
 }
 
 void GraphColorRegAllocator::SplitLrUpdateRegInfo(LiveRange *origLr, LiveRange *newLr, set<regno_t> &conflictRegs) {
@@ -2406,17 +2040,6 @@ void GraphColorRegAllocator::SplitLrUpdateRegInfo(LiveRange *origLr, LiveRange *
 }
 
 void GraphColorRegAllocator::SplitLrErrorCheckAndDebug(LiveRange *origLr, LiveRange *newLr) {
-#if defined(USE_VEC) && defined(CONFLICT_CHECK)
-  if (origLr->numBconflicts != origLr->sconflict.size()) {
-    LogInfo::MapleLogger() << "Err: lr bit size conflict " << origLr->regno << endl;
-    PrintLiveRange(origLr, "LR-SIZE-DIFF");
-  }
-  if (newLr->numBconflicts != newLr->sconflict.size()) {
-    LogInfo::MapleLogger() << "Err: newLr bit size conflict " << origLr->regno << endl;
-    PrintLiveRange(origLr, "LR-SIZE-DIFF");
-  }
-#endif  // USE_VEC && CONFLICT_CHECK
-
   if (origLr->numBmembers == 0) {
     CG_ASSERT(origLr->numBconflicts == 0, "Error: member and conflict not match");
   }
@@ -2471,18 +2094,9 @@ LiveRange *GraphColorRegAllocator::SplitLr(LiveRange *lr) {
   newLr->assigned = FindColorForLr(newLr);
 
   // For the new LR, update assignment for local RA
-#ifdef USE_VEC
-  for (auto bb : newLr->smember) {
-    uint32 bbid = bb->id;
-#else   // USE_VEC
   FOREACH_BB_ARR_ELEM(newLr->bmember, bbid)
-#endif  // USE_VEC
     SetBbInfoGlobalAssigned(bbid, newLr->assigned);
-#ifdef USE_VEC
-  }
-#else   // USE_VEC
   END_FOREACH_BB_ARR_ELEM
-#endif  // USE_VEC
 
   UpdatePregvetoForNeighbors(newLr);
 
@@ -2492,18 +2106,20 @@ LiveRange *GraphColorRegAllocator::SplitLr(LiveRange *lr) {
 
 void GraphColorRegAllocator::ColorForOptPrologEpilog() {
 #ifdef OPTIMIZE_FOR_PROLOG
-  for (auto lr : intDelayed) {
-    if (AssignColorToLr(lr, true)) {
-      continue;
-    } else {
-      lr->spilled = true;
+  if (doOptProlog) {
+    for (auto lr : intDelayed) {
+      if (AssignColorToLr(lr, true)) {
+        continue;
+      } else {
+        lr->spilled = true;
+      }
     }
-  }
-  for (auto lr : fpDelayed) {
-    if (AssignColorToLr(lr, true)) {
-      continue;
-    } else {
-      lr->spilled = true;
+    for (auto lr : fpDelayed) {
+      if (AssignColorToLr(lr, true)) {
+        continue;
+      } else {
+        lr->spilled = true;
+      }
     }
   }
 #endif
@@ -2548,6 +2164,7 @@ void GraphColorRegAllocator::SplitAndColor() {
         if (AssignColorToLr(lr) == false) {
 #endif  // COLOR_SPLIT
           lr->spilled = true;
+          hasSpill = true;
 #ifdef COLOR_SPLIT
         }
 #endif  // COLOR_SPLIT
@@ -2579,7 +2196,9 @@ void GraphColorRegAllocator::SplitAndColor() {
   }
 
 #ifdef OPTIMIZE_FOR_PROLOG
-  ColorForOptPrologEpilog();
+  if (doOptProlog) {
+    ColorForOptPrologEpilog();
+  }
 #endif  // OPTIMIZE_FOR_PROLOG
 
   return;
@@ -2753,7 +2372,7 @@ bool GraphColorRegAllocator::LocalRaInitRegSet(LocalRegAllocator *localRa, uint3
     if (regno >= kMaxRegNum) {
       needLocalRa = true;
 #ifdef DO_PRE_LRA
-    } else {
+    } else if (doLRA) {
       if (!doAllocate) {
         // ? no need when have forbidden info
         LocalRaRegSetEraseReg(localRa, regno);
@@ -3185,7 +2804,7 @@ Insn *GraphColorRegAllocator::SpillOperand(Insn *insn, Operand *opnd, bool isDef
     memopnd = GetSpillOrReuseMem(lr, regsize, isOutOfRange, insn, true);
     spillDefInsn = cg->BuildInstruction<AArch64Insn>(a64cgfunc->PickStInsn(regsize, stype), phyopnd, memopnd);
     spillDefInsn->SetSpillOp();
-    std::string comment = " SPILL vreg:" + std::to_string(regno);
+    std::string comment = " SPILL vreg: " + std::to_string(regno);
     spillDefInsn->AddComment(comment);
     if (isOutOfRange || (insn->next && insn->next->GetMachineOpcode() == MOP_clinit_tail)) {
       insn->bb->InsertInsnAfter(insn->next, spillDefInsn);
@@ -3203,7 +2822,7 @@ Insn *GraphColorRegAllocator::SpillOperand(Insn *insn, Operand *opnd, bool isDef
     memopnd = GetSpillOrReuseMem(lr, regsize, isOutOfRange, insn, false);
     spillUseInsn = cg->BuildInstruction<AArch64Insn>(a64cgfunc->PickLdInsn(regsize, stype), phyopnd, memopnd);
     spillUseInsn->SetSpillOp();
-    std::string comment = " RELOAD vreg" + std::to_string(regno);
+    std::string comment = " RELOAD vreg: " + std::to_string(regno);
     spillUseInsn->AddComment(comment);
     insn->bb->InsertInsnBefore(insn, spillUseInsn);
     if (spillDefInsn) {
@@ -3267,11 +2886,7 @@ void GraphColorRegAllocator::CollectCannotUseReg(set<regno_t> &cannotUseReg, Liv
       cannotUseReg.insert(regno);
     }
   }
-#ifdef USE_VEC
-  for (auto regno : lr->sconflict) {
-#else   // USE_VEC
   FOREACH_REG_ARR_ELEM(lr->bconflict, regno)
-#endif  // USE_VEC
     LiveRange *conflictLr = lrVec[regno];
     // conflictLr->assigned might be zero
     // caller save will be inserted so the assigned reg can be released actually
@@ -3281,16 +2896,14 @@ void GraphColorRegAllocator::CollectCannotUseReg(set<regno_t> &cannotUseReg, Liv
       }
       cannotUseReg.insert(conflictLr->assigned);
     }
-#ifdef USE_VEC
-  }
-#else   // USE_VEC
   END_FOREACH_REG_ARR_ELEM
-#endif  // USE_VEC
 #ifdef USE_LRA
-  BbAssignInfo *bbInfo = bbRegInfo[insn->bb->id];
-  if (bbInfo) {
-    for (auto it : bbInfo->regMap) {
-      cannotUseReg.insert(it.second);
+  if (doLRA) {
+    BbAssignInfo *bbInfo = bbRegInfo[insn->bb->id];
+    if (bbInfo) {
+      for (auto it : bbInfo->regMap) {
+        cannotUseReg.insert(it.second);
+      }
     }
   }
 #endif  // USE_LRA
@@ -3456,7 +3069,7 @@ RegOperand *GraphColorRegAllocator::GetReplaceOpnd(Insn *insn, Operand *opnd, ui
   }
 
 #ifdef USE_LRA
-  if (IsLocalReg(vregno)) {
+  if (doLRA && IsLocalReg(vregno)) {
     return GetReplaceOpndForLRA(insn, opnd, spillIdx, usedRegMask, isDef);
   }
 #endif  // USE_LRA
@@ -3568,18 +3181,175 @@ uint64 GraphColorRegAllocator::FinalizeRegisterPreprocess(FinalizeRegisterInfo *
   return usedRegMask;
 }
 
-// Iterate through all instructions and change the vreg to preg.
-void GraphColorRegAllocator::FinalizeRegisters() {
+void GraphColorRegAllocator::GenerateSpillFillRegs(Insn *insn) {
+  static regno_t intregs[3] = { R10, R11, R12 }; // R9 is used for large stack offset temp
+  static regno_t fpregs[3] = { V10, V11, V12 };
+  uint32 intUseCnt = 0;
+  uint32 fpUseCnt = 0;
+  for (int32_t i = 0; i < Insn::kMaxOperandNum; i++) {
+    Operand *opnd = insn->GetOperand(i);
+    if (!opnd) {
+      continue;
+    }
+    if (opnd->IsList()) {
+      // call parameters
+    } else if (opnd->IsMemoryAccessOperand()) {
+      MemOperand *memopnd = static_cast<MemOperand *>(opnd);
+      AArch64RegOperand *base = static_cast<AArch64RegOperand *>(memopnd->GetBaseRegister());
+      if (base != nullptr && base->IsPhysicalRegister()) {
+        regno_t regno = base->GetRegisterNumber();
+        if (regno == intregs[0] || regno == intregs[1] || regno == intregs[2]) {
+          intUseCnt++;
+        }
+      }
+      AArch64RegOperand *offset = static_cast<AArch64RegOperand *>(memopnd->GetIndexRegister());
+      if (offset != nullptr && offset->IsPhysicalRegister()) {
+        regno_t regno = offset->GetRegisterNumber();
+        if (regno == intregs[0] || regno == intregs[1] || regno == intregs[2]) {
+          intUseCnt++;
+        }
+      }
+    } else {
+      RegOperand *ropnd = static_cast<RegOperand *>(opnd);
+      if (ropnd && ropnd->IsVirtualRegister() == false) {
+        regno_t regno = ropnd->GetRegisterNumber();
+        if (regno >= V0) {
+          if (regno == fpregs[0] || regno == fpregs[1] || regno == fpregs[2]) {
+            fpUseCnt++;
+          }
+        } else {
+          if (regno == intregs[0] || regno == intregs[1] || regno == intregs[2]) {
+            intUseCnt++;
+          }
+        }
+      }
+    }
+  }
+  intSpillFillRegs[0] = intregs[0] + intUseCnt;
+  intSpillFillRegs[1] = intregs[1] + intUseCnt;
+  intSpillFillRegs[2] = intregs[2] + intUseCnt;
+  fpSpillFillRegs[0] = fpregs[0] + fpUseCnt;
+  fpSpillFillRegs[1] = fpregs[1] + fpUseCnt;
+  fpSpillFillRegs[2] = fpregs[2] + fpUseCnt;
+}
+
+RegOperand *GraphColorRegAllocator::CreateSpillFillCode(RegOperand *opnd, Insn *insn, uint32 spillCnt, bool isdef) {
+  regno_t vregno = opnd->GetRegisterNumber();
+  LiveRange *lr = lrVec[vregno];
+  if (lr && lr->spilled) {
+    AArch64CGFunc *a64cgfunc = static_cast<AArch64CGFunc *>(cgfunc_);
+    CG *cg = a64cgfunc->cg;
+    uint32 bits = opnd->GetValidBitsNum();
+    if (bits < 32) {
+      bits = 32;
+    }
+    MemOperand *loadmem = a64cgfunc->GetOrCreatSpillMem(vregno);
+    uint8 isOutOfRange;
+    loadmem = a64cgfunc->AdjustMemOperandIfOffsetOutOfRange(loadmem, vregno, isdef, insn, R9, isOutOfRange);
+    PrimType pty = (lr->regtype == kRegTyInt) ? ((bits > 32) ? PTY_i64 : PTY_i32)
+                                              : ((bits > 32) ? PTY_f64 : PTY_f32);
+    regno_t spreg = 0;
+    RegType rtype = lr->regtype;
+    if (spillCnt == 0) {
+      // pregveto will take care of assignment, so pick a caller reg for temp
+      GenerateSpillFillRegs(insn);
+    }
+    CHECK_FATAL(spillCnt < 3, "spill count exceeded");
+    spreg = (rtype == kRegTyInt) ? intSpillFillRegs[spillCnt] : fpSpillFillRegs[spillCnt];
+    RegOperand *regopnd = a64cgfunc->GetOrCreatePhysicalRegisterOperand(static_cast<AArch64reg_t>(spreg), opnd->GetSize(), rtype);
+
+    Insn *memInsn;
+    if (isdef) {
+      memInsn = cg->BuildInstruction<AArch64Insn>(a64cgfunc->PickStInsn(bits, pty), regopnd, loadmem);
+      memInsn->SetSpillOp();
+      std::string comment = " SPILLcolor vreg: " + std::to_string(vregno);
+      memInsn->AddComment(comment);
+      if (isOutOfRange) {
+        insn->bb->InsertInsnAfter(insn->next, memInsn);
+      } else {
+        insn->bb->InsertInsnAfter(insn, memInsn);
+      }
+    } else {
+      memInsn = cg->BuildInstruction<AArch64Insn>(a64cgfunc->PickLdInsn(bits, pty), regopnd, loadmem);
+      memInsn->SetSpillOp();
+      std::string comment = " RELOADcolor vreg: " + std::to_string(vregno);
+      memInsn->AddComment(comment);
+      insn->bb->InsertInsnBefore(insn, memInsn);
+    }
+    return regopnd;
+  }
+  return nullptr;
+}
+
+void GraphColorRegAllocator::SpillLiveRangeForSpills() {
+  AArch64CGFunc *a64cgfunc = static_cast<AArch64CGFunc *>(cgfunc_);
+  CG *cg = a64cgfunc->cg;
   for (uint32_t bbIdx = 0; bbIdx < sortedBBs.size(); bbIdx++) {
     BB *bb = sortedBBs[bbIdx];
     FOR_BB_INSNS(insn, bb) {
-      if (insn->IsImmaterialInsn()) {
+      uint32 spillCnt;
+      if (insn->IsImmaterialInsn() || !insn->IsMachineInstruction() || insn->id == 0) {
         continue;
       }
-      if (!insn->IsMachineInstruction()) {
-        continue;
+      spillCnt = 0;
+      const AArch64MD *md = &AArch64CG::kMd[static_cast<AArch64Insn *>(insn)->mop_];
+      for (int32_t i = 0; i < Insn::kMaxOperandNum; i++) {
+        Operand *opnd = insn->GetOperand(i);
+        if (!opnd) {
+          continue;
+        }
+        if (opnd->IsList()) {
+          // call parameters
+        } else if (opnd->IsMemoryAccessOperand()) {
+          MemOperand *newmemopnd = nullptr;
+          MemOperand *memopnd = static_cast<MemOperand *>(opnd);
+          RegOperand *base = static_cast<RegOperand *>(memopnd->GetBaseRegister());
+          if (base != nullptr && base->IsVirtualRegister()) {
+            RegOperand *replace = CreateSpillFillCode(base, insn, spillCnt);
+            if (replace) {
+              spillCnt++;
+              newmemopnd = static_cast<MemOperand *>(static_cast<MemOperand *>(opnd)->Clone(cgfunc_->memPool));
+              newmemopnd->SetBaseRegister(replace);
+              insn->SetOperand(i, newmemopnd);
+            }
+          }
+          RegOperand *offset = static_cast<RegOperand *>(memopnd->GetIndexRegister());
+          if (offset != nullptr && offset->IsVirtualRegister()) {
+            RegOperand *replace = CreateSpillFillCode(offset, insn, spillCnt);
+            if (replace) {
+              spillCnt++;
+              if (newmemopnd == nullptr) {
+                newmemopnd = static_cast<MemOperand *>(static_cast<MemOperand *>(opnd)->Clone(cgfunc_->memPool));
+              }
+              newmemopnd->SetIndexRegister(replace);
+              insn->SetOperand(i, newmemopnd);
+            }
+          }
+        } else if (opnd->IsRegister()) {
+          bool isdef = static_cast<AArch64OpndProp *>(md->operand_[i])->IsRegDef();
+          RegOperand *replace = CreateSpillFillCode(static_cast<RegOperand *>(opnd), insn, spillCnt, isdef);
+          if (replace) {
+            if (isdef == false) {
+              spillCnt++;
+            }
+            insn->SetOperand(i, replace);
+          }
+        }
       }
-      if (insn->id == 0) {
+    }
+  }
+}
+
+// Iterate through all instructions and change the vreg to preg.
+void GraphColorRegAllocator::FinalizeRegisters() {
+  if (CGOptions::doMultiPassColorRA && hasSpill) {
+    SpillLiveRangeForSpills();
+    return;
+  }
+  for (uint32_t bbIdx = 0; bbIdx < sortedBBs.size(); bbIdx++) {
+    BB *bb = sortedBBs[bbIdx];
+    FOR_BB_INSNS(insn, bb) {
+      if (insn->IsImmaterialInsn() || !insn->IsMachineInstruction() || insn->id == 0) {
         continue;
       }
 
@@ -3656,8 +3426,10 @@ bool GraphColorRegAllocator::AllocateRegisters() {
   CG_ASSERT(cnt <= cgfunc_->GetTotalNumberOfInstructions(), "Incorrect insn count");
 
 #ifdef PROPAGATE_REG
-  RaX0Opt x0Opt;
-  x0Opt.PropagateX0(cgfunc_);
+  if (cgfunc_->IsAfterRegAlloc() == false) {
+    RaX0Opt x0Opt;
+    x0Opt.PropagateX0(cgfunc_);
+  }
   if (GCRA_DUMP) {
     LogInfo::MapleLogger() << "******** CG IR After PreColorRA: *********" << endl;
     cgfunc_->DumpCGIR();
@@ -3665,6 +3437,11 @@ bool GraphColorRegAllocator::AllocateRegisters() {
     DotGenerator::GenerateDot("RAe", cgfunc_, &mirModule, true);
   }
 #endif
+
+  if (CGOptions::doMultiPassColorRA) {
+    doLRA = false;
+    doOptProlog = false;
+  }
 
   cgfunc_->SetIsAfterRegAlloc();
   // EBO propgation extent the live range and might need to be turned off.
@@ -3675,7 +3452,9 @@ bool GraphColorRegAllocator::AllocateRegisters() {
   ComputeLiveRanges();
 
 #ifdef DO_PRE_LRA
-  LocalRegisterAllocator(false);
+  if (doLRA) {
+    LocalRegisterAllocator(false);
+  }
 #endif  // DO_PRE_LRA
 
   BuildInterferenceGraph();
@@ -3685,7 +3464,9 @@ bool GraphColorRegAllocator::AllocateRegisters() {
   SplitAndColor();
 
 #ifdef USE_LRA
-  LocalRegisterAllocator(true);
+  if (doLRA) {
+    LocalRegisterAllocator(true);
+  }
 #endif  // USE_LRA
 
   FinalizeRegisters();
@@ -3696,7 +3477,11 @@ bool GraphColorRegAllocator::AllocateRegisters() {
     cgfunc_->DumpCGIR();
   }
 
-  return true;
+  if (CGOptions::doMultiPassColorRA && hasSpill) {
+    return false;
+  } else {
+    return true;
+  }
 }
 
 }  // namespace maplebe

@@ -666,8 +666,9 @@ class MIRStructType : public MIRType {
   MethodPtrVector iTableMethods;  // the list of all interface functions for this type; For classes, they are
                                    // implementation functions, For interfaces, they are abstact functions.
                                    // Weak indicates the actual definition is in another module.
-  bool isImported;
-  bool isUsed;
+  bool isCPlusPlus : 1;                // empty struct in C++ has size 1 byte
+  bool isImported : 1;
+  bool isUsed : 1;
 
  private:
   bool hasVolatileField;      // for caching computed value
@@ -686,6 +687,7 @@ class MIRStructType : public MIRType {
         methods(),
         vTableMethods(),
         iTableMethods(),
+        isCPlusPlus(false),
         isImported(false),
         isUsed(false),
         hasVolatileField(false),
@@ -700,6 +702,7 @@ class MIRStructType : public MIRType {
         methods(),
         vTableMethods(),
         iTableMethods(),
+        isCPlusPlus(false),
         isImported(false),
         isUsed(false),
         hasVolatileField(false),
@@ -813,6 +816,7 @@ class MIRStructType : public MIRType {
     methods.clear();
     vTableMethods.clear();
     iTableMethods.clear();
+    isCPlusPlus = false;
     isImported = false;
     isUsed = false;
     hasVolatileField = false;

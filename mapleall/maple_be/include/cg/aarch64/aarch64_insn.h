@@ -61,7 +61,7 @@ class AArch64Insn : public Insn {
   }
 
   bool IsImmaterialInsn() override {
-    return (GetMachineOpcode() == MOP_comment);
+    return (dynamic_cast<mpldbg::DbgInsn *>(this) || GetMachineOpcode() == MOP_comment);
   }
 
   bool IsMachineInstruction() override {

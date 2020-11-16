@@ -95,6 +95,11 @@ void AArch64Insn::EmitClinit(CG &cg, Emitter &emitter) {
   OpndProp *prop0 = md->operand_[0];
   StImmOperand *stopnd = static_cast<StImmOperand *>(opnd1);
   CHECK_FATAL(stopnd != nullptr, "stopnd is null in AArch64Insn::EmitClinit");
+  // emit nop for breakpoint
+  if (cg.cgopt_.WithDwarf()) {
+    emitter.Emit("\t").Emit("nop").Emit("\n");
+  }
+
   if (stopnd->GetSymbol()->IsMuidDataUndefTab()) {
     // emit adrp
     emitter.Emit("\t").Emit("adrp").Emit("\t");
@@ -159,6 +164,10 @@ void AArch64Insn::EmitAdrpLdr(CG &cg, Emitter &emitter) {
   OpndProp *prop0 = md->operand_[0];
   StImmOperand *stopnd = static_cast<StImmOperand *>(opnd1);
   CHECK_FATAL(stopnd != nullptr, "stopnd is null in AArch64Insn::EmitAdrpLdr");
+  // emit nop for breakpoint
+  if (cg.cgopt_.WithDwarf()) {
+    emitter.Emit("\t").Emit("nop").Emit("\n");
+  }
 
   // adrp    xd, _PTR__cinf_Ljava_2Futil_2Fconcurrent_2Fatomic_2FAtomicInteger_3B
   emitter.Emit("\t").Emit("adrp").Emit("\t");
@@ -517,6 +526,8 @@ void AArch64CGFunc::Emit() {
     emitter.Emit("\t.hidden\t").Emit(funcSt->GetName()).Emit("\n");
   } else if (funcSt->GetFunction()->GetAttr(FUNCATTR_local)) {
     emitter.Emit("\t.local\t").Emit(funcSt->GetName()).Emit("\n");
+  } else if (funcSt->value.mirFunc && funcSt->value.mirFunc->classTyIdx == 0 && funcSt->value.mirFunc->IsStatic()) {
+    // nothing
   } else {
     emitter.Emit("\t.globl\t").Emit(funcSt->GetName()).Emit("\n");
     emitter.Emit("\t.hidden\t").Emit(funcSt->GetName()).Emit("\n");

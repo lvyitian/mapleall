@@ -183,7 +183,7 @@ class BELowerer {
 
   virtual void LowerFunc(MIRFunction *);
 
-#if TARGARM || TARGAARCH64 || TARGARK
+#if TARGARM || TARGAARCH64 || TARGARK || TARGRISCV64
   BlockNode *LowerReturnStruct(NaryStmtNode *);
 #endif
   virtual BlockNode *LowerReturn(NaryStmtNode *);

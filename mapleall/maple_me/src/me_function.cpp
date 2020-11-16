@@ -157,7 +157,12 @@ BaseNode *CreateDummyReturnValue(MIRBuilder *mirBuilder, MIRType *retty) {
     uint64 constzero = 0;
     return mirBuilder->CreateFloat128Const(&constzero);
   }
-  default: CHECK_FATAL(false, "CreateDummyReturnValue: NYI for non-scalar return type");
+  default: {  // create a dummy local var with the return type
+    static uint32 tempCount = 0;
+    std::string tempstr = string("__DummyRetTemp.").append(to_string(++tempCount));
+    MIRSymbol *st = mirBuilder->CreateLocalDecl(tempstr.c_str(), retty);
+    return mirBuilder->CreateExprDread(retty, 0, st);
+  }
   }
   return nullptr;
 }

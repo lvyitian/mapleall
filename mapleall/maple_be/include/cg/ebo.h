@@ -283,6 +283,10 @@ class Ebo {
     insninfo_table[hashval] = info;
   }
 
+  void IncRef(OpndInfo *info, int32_t cnt) const {
+    info->refcount += cnt;
+  }
+
   void IncRef(OpndInfo *info) const {
     info->refcount++;
   }

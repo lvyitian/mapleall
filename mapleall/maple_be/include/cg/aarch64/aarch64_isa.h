@@ -21,10 +21,12 @@
 #include "operand.h"
 #include "mad.h"
 
+#define DEFINE_MOP(op,a2,a3,a4,a5,a6,a7,a8,a9,aa,ab,ac) op,
 enum AArch64MOP_t {
-#include "aarch64_isa.def"
+#include "aarch64_md.def"
   kMopLast
 };
+#undef DEFINE_MOP
 
 namespace maplebe {
 

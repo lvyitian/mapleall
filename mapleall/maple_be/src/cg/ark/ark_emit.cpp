@@ -191,6 +191,8 @@ void ArkCGFunc::Emit() {
     emitter.Emit("\t.hidden\t").Emit(funcSt->GetName()).Emit("\n");
   } else if (funcSt->GetFunction()->GetAttr(FUNCATTR_local)) {
     emitter.Emit("\t.local\t").Emit(funcSt->GetName()).Emit("\n");
+  } else if (funcSt->value.mirFunc && funcSt->value.mirFunc->classTyIdx == 0 && funcSt->value.mirFunc->IsStatic()) {
+    // nothing
   } else {
     emitter.Emit("\t.globl\t").Emit(funcSt->GetName()).Emit("\n");
     emitter.Emit("\t.hidden\t").Emit(funcSt->GetName()).Emit("\n");

@@ -391,14 +391,9 @@ BaseNode *BELowerer::LowerArray(ArrayNode *array) {
   if (dim > 1) {
     BaseNode *prevNode = nullptr;
     for (int i = 0; (i < dim) && (i < numIndex); i++) {
-      if (i > 0) {
-        CHECK_FATAL(((!nestedArray && arraytype->sizeArray[i] > 0) ||
-                     (nestedArray && curArrayType->sizeArray[0] > 0)), "Zero size array dimension");
-        int32 numO = array->NumOpnds();
-        resNode = NodeConvert(array->primType, array->GetIndex(i));
-      }
       uint32 mpyDim = 1;
       if (nestedArray) {
+        CHECK_FATAL(arraytype->sizeArray[0] > 0, "Zero size array dimension");
         innerType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(curArrayType->eTyIdx);
         curArrayType = static_cast<MIRArrayType *>(innerType);
         while (innerType->GetKind() == kTypeArray) {
@@ -407,13 +402,44 @@ BaseNode *BELowerer::LowerArray(ArrayNode *array) {
           innerType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(innerArrayType->eTyIdx);
         }
       } else {
+        CHECK_FATAL(arraytype->sizeArray[i] > 0, "Zero size array dimension");
         for (int j = i + 1; j < dim; j++) {
           mpyDim *= arraytype->sizeArray[j];
         }
       }
 
+      BaseNode *index = static_cast<ConstvalNode *>(array->GetIndex(i));
+      bool isConst = false;
+      int32 indexVal = 0;
+      if (index->op == OP_constval) {
+        ConstvalNode *constNode = static_cast<ConstvalNode *>(index);
+        indexVal = (static_cast<MIRIntConst *>(constNode->constVal))->value;
+        isConst = true;
+        MIRIntConst *newConstNode = mirModule.memPool->New<MIRIntConst>(
+                    indexVal * mpyDim,
+                    GlobalTables::GetTypeTable().GetTypeFromTyIdx(TyIdx(array->primType)));
+        BaseNode *newValNode = mirModule.CurFuncCodeMemPool()->New<ConstvalNode>(newConstNode);
+        newValNode->primType = array->primType;
+        if (i == 0) {
+          prevNode = newValNode;
+          continue;
+        } else {
+          resNode = newValNode;
+        }
+      }
+      if (i > 0 && isConst == false) {
+        resNode = NodeConvert(array->primType, array->GetIndex(i));
+      }
+
       BaseNode *mpyNode;
-      if (mpyDim == 1 && prevNode) {
+      if (isConst) {
+        MIRIntConst *mulConst = mirModule.memPool->New<MIRIntConst>(
+                    mpyDim * indexVal,
+                    GlobalTables::GetTypeTable().GetTypeFromTyIdx(TyIdx(array->primType)));
+        BaseNode *mulSize = mirModule.CurFuncCodeMemPool()->New<ConstvalNode>(mulConst);
+        mulSize->primType = array->primType;
+        mpyNode = mulSize;
+      } else if (mpyDim == 1 && prevNode) {
         mpyNode = prevNode;
         prevNode = resNode;
       } else {
@@ -775,7 +801,7 @@ BaseNode *BELowerer::LowerExpr(BaseNode *originParent, BaseNode *parent, BaseNod
   }
 }
 
-#if TARGARM || TARGAARCH64 || TARGARK
+#if TARGARM || TARGAARCH64 || TARGARK || TARGRISCV64
 BlockNode *BELowerer::LowerReturnStruct(NaryStmtNode *retnode) {
   BlockNode *blk = mirModule.CurFuncCodeMemPool()->New<BlockNode>();
   for (uint32 i = 0; i < retnode->nOpnd.size(); i++) {
@@ -1328,14 +1354,14 @@ BlockNode *BELowerer::LowerBlock(BlockNode *block) {
       case OP_intrinsiccall:
       case OP_call:
       case OP_icall:
-#if TARGARM || TARGAARCH64 || TARGARK
+#if TARGARM || TARGAARCH64 || TARGARK || TARGRISCV64
         LowerCallStmt(stmt, nextstmt, newblk);
 #else
         LowerStmt(stmt, newblk);
 #endif
         break;
       case OP_return: {
-#if TARGARM || TARGAARCH64 || TARGARK
+#if TARGARM || TARGAARCH64 || TARGARK || TARGRISCV64
         if (GetCurrentFunc()->IsReturnStruct()) {
           newblk->AppendStatementsFromBlock(LowerReturnStruct(static_cast<NaryStmtNode *>(stmt)));
         } else

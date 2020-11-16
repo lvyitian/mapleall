@@ -59,6 +59,11 @@ bool CGOptions::useBarriersForVolatile = false;
 bool CGOptions::useRange = false;
 bool CGOptions::inRange = false;
 bool CGOptions::quiet = false;
+#if TARGRISCV64
+bool CGOptions::doPatchLongBranch = false;
+#else
+bool CGOptions::doPatchLongBranch = true;
+#endif
 bool CGOptions::doZeroExtend = false;
 bool CGOptions::doConstFold = true;
 bool CGOptions::exclusiveEh = false;
@@ -67,6 +72,7 @@ bool CGOptions::doEbo = false;
 bool CGOptions::doCfgo = false;
 bool CGOptions::doIco = false;
 bool CGOptions::doStoreLoadOpt = false;
+bool CGOptions::doMultiPassColorRA = true;
 bool CGOptions::doPreLsraOpt = false;
 bool CGOptions::doGlobalOpt = false;
 bool CGOptions::doPostLsraOpt = false;
@@ -74,6 +80,7 @@ bool CGOptions::doLocalRefSpill = false;
 bool CGOptions::doLvarPathOpt = false;
 bool CGOptions::checkarraystore = false;
 bool CGOptions::doCalleeToSpill = false;
+bool CGOptions::doCallerCrossCall = false;
 bool CGOptions::doStructFpInInt = true;
 bool CGOptions::dumpOLog = false;
 bool CGOptions::doPrePeephole = false;
@@ -91,7 +98,6 @@ bool CGOptions::replaceasm = false;
 bool CGOptions::emitBlockMarker = true;
 bool CGOptions::printLowerIR = false;
 bool CGOptions::printFunction = false;
-bool CGOptions::doSimplePrint = false;
 bool CGOptions::nativeopt = false;
 bool CGOptions::withDwarf = false;
 
@@ -165,12 +171,14 @@ enum OptionIndex {
   kPeep,
   kPreSchedule,
   kSchedule,
+  kMultiPassRA,
   kPrelsraopt,
   kPostlsraopt,
   kNativeOpt,
   kLocalrefSpill,
   kLocalrefvarPathOpt,
   kOptcallee,
+  kCallerCrossCall,
   kStructFpInInt,
   kPie,
   PIC,
@@ -186,6 +194,7 @@ enum OptionIndex {
   kGenPrimorList,
   kRaLinear,
   kRaColor,
+  kPatchLongBranch,
   kZeroextend,
   kConstfold,
   kSuppressFinfo,
@@ -240,7 +249,6 @@ enum OptionIndex {
   kFieldMetaProfile,
   kPrintLowerIR,
   kPrintFunction,
-  kPrintSimple,
   kDumpPhases,
   kSkipPhases,
   kSkipFrom,
@@ -325,6 +333,10 @@ const Descriptor kUsage[] = {
     "  --schedule                              Perform scheduling" },
   { kSchedule, OTI_DISABLED, "", "no-schedule", kBuildTypeAll, kArgCheckPolicyNone, "  --no-schedule\n" },
 
+  { kMultiPassRA, OTI_ENABLED, "", "fullcolor", kBuildTypeAll, kArgCheckPolicyNone,
+    "  --fullcolor                           Perform multi-pass coloring RA\n" },
+  { kMultiPassRA, OTI_DISABLED, "", "no-fullcolor", kBuildTypeAll, kArgCheckPolicyNone, "  --no-fullcolor\n" },
+
   { kPrelsraopt, OTI_ENABLED, "", "prelsra", kBuildTypeAll, kArgCheckPolicyNone,
     "  --prelsra                           Perform live interval simplification in LSRA\n" },
   { kPrelsraopt, OTI_DISABLED, "", "no-prelsra", kBuildTypeAll, kArgCheckPolicyNone, "  --no-prelsra\n" },
@@ -349,6 +361,9 @@ const Descriptor kUsage[] = {
   { kOptcallee, OTI_ENABLED, "", "lsra-optcallee", kBuildTypeAll, kArgCheckPolicyNone,
     "  --lsra-optcallee                           Spill callee if only one def to use\n" },
   { kOptcallee, OTI_DISABLED, "", "no-lsra-optcallee", kBuildTypeAll, kArgCheckPolicyNone, "  --no-lsra-optcallee\n" },
+  { kCallerCrossCall, OTI_ENABLED, "", "lsra-caller-cross-call", kBuildTypeAll, kArgCheckPolicyNone,
+    "  --lsra-caller-cross-call                   Use caller like callee for special mrt funcs\n" },
+  { kCallerCrossCall, OTI_DISABLED, "", "no-lsra-caller-cross-call", kBuildTypeAll, kArgCheckPolicyNone, "  --no-lsra-caller-cross-call\n" },
   { kStructFpInInt, OTI_ENABLED, "", "allow-struct-parm-in-fp", kBuildTypeAll, kArgCheckPolicyNone,
     "  --allow-struct-parm-in-fp                   Pass struct in int regs instead of fp regs\n" },
   { kStructFpInInt, OTI_DISABLED, "", "no-allow-struct-parm-in-fp", kBuildTypeAll, kArgCheckPolicyNone, "  --no-allow-struct-parm-in-fp" },
@@ -426,6 +441,8 @@ const Descriptor kUsage[] = {
     "  --with-ra-linear-scan               Do linear-scan register allocation" },
   { kRaColor, 0, "", "with-ra-graph-color", kBuildTypeAll, kArgCheckPolicyNone,
     "  --with-ra-graph-color    Do coloring-based register allocation" },
+  { kPatchLongBranch, OTI_ENABLED, "", "patch-long-branch", kBuildTypeAll, kArgCheckPolicyNone, "  --patch-long-branch            Enable patching of long distance branch" },
+  { kPatchLongBranch, OTI_DISABLED, "","no-patch-long-branch", kBuildTypeAll, kArgCheckPolicyNone, "  --no-patch-long-branch      Disable patching of long distance branch" },
   { kZeroextend, OTI_ENABLED, "", "zero-extend", kBuildTypeAll, kArgCheckPolicyNone, "  --zero-extend                     Enable zero extension" },
   { kZeroextend, OTI_DISABLED, "","no-zero-extend", kBuildTypeAll, kArgCheckPolicyNone, "  --no-zero-extend                  Disable zero extension" },
   { kConstfold, OTI_ENABLED, "", "const-fold", kBuildTypeAll, kArgCheckPolicyNone, "  --const-fold                        Enable constant folding" },
@@ -478,7 +495,6 @@ const Descriptor kUsage[] = {
   { kDumpssadef, 0, "", "dump-ssadef", kBuildTypeAll, kArgCheckPolicyNone, "  --dump-ssadef" },
   { kPrintLowerIR, 0, "", "print-ir", kBuildTypeAll, kArgCheckPolicyNone, "  --print-ir" },
   { kPrintFunction, 0, "", "print-func", kBuildTypeAll, kArgCheckPolicyNone, "  --print-func" },
-  { kPrintSimple, 0, "", "print-simple", kBuildTypeAll, kArgCheckPolicyNone,                        "  --print-simple" },
   { kCheckComplete, 0, "", "check-complete", kBuildTypeAll, kArgCheckPolicyNone, "  --check-complete                  Check incomplete types" },
 #if DEBUG
   { kLocalvarsToPregs, 0, "", "convert-java-localvars-to-pregs", kBuildTypeAll, kArgCheckPolicyNone, "  --convert-java-localvars-to-pregs" },
@@ -649,9 +665,6 @@ bool CGOptions::ParseOptions(int argc, char **argv, string &fileName) {
       case kPrintFunction:
         printFunction = true;
         break;
-      case kPrintSimple:
-        doSimplePrint = true;
-        break;
       case kTrace:
         SetOption(options_, kAddDebugTrace);
         break;
@@ -660,6 +673,9 @@ bool CGOptions::ParseOptions(int argc, char **argv, string &fileName) {
         break;
       case kSuppressFinfo:
         SetOption(options_, kSuppressFileinfo);
+        break;
+      case kPatchLongBranch:
+        doPatchLongBranch = (opt.Type() == OTI_ENABLED);
         break;
       case kZeroextend:
         doZeroExtend = (opt.Type() == OTI_ENABLED);
@@ -774,6 +790,9 @@ bool CGOptions::ParseOptions(int argc, char **argv, string &fileName) {
       case kSchedule:
         doSchedule = (opt.Type() == OTI_ENABLED);
         break;
+      case kMultiPassRA:
+        doMultiPassColorRA = (opt.Type() == OTI_ENABLED);
+        break;
       case kPrelsraopt:
         doPreLsraOpt = (opt.Type() == OTI_ENABLED);
         break;
@@ -791,6 +810,9 @@ bool CGOptions::ParseOptions(int argc, char **argv, string &fileName) {
         break;
       case kOptcallee:
         doCalleeToSpill = (opt.Type() == OTI_ENABLED);
+        break;
+      case kCallerCrossCall:
+        doCallerCrossCall = (opt.Type() == OTI_ENABLED);
         break;
       case kStructFpInInt:
         doStructFpInInt = (opt.Type() == OTI_ENABLED);
@@ -917,6 +939,15 @@ bool CGOptions::ParseOptions(int argc, char **argv, string &fileName) {
 #endif
   } else {
     ClearOption(options_, kDebugFriendly);
+  }
+
+  // override some options when dwarf is generated
+  if (WithDwarf()) {
+    doEbo = false;
+    doCfgo = false;
+    doIco = false;
+    generate_gdb_friendly_code = true;
+    SetOption(options_, kDebugFriendly);
   }
 
   if (result) {
