@@ -70,8 +70,8 @@ class MeSSALPre : public SSAPre {
   void BuildWorkListExpr(MeStmt *, int32, MeExpr *, bool, MeExpr *, bool isRootExpr);
   void BuildWorkList();
   BB *GetBB(BBId id) {
-    CHECK(id.idx < func->bbVec.size(), "index out of range in MeSSALPre::GetBB");
-    return func->bbVec[id.idx];
+    CHECK(id.idx < func->theCFG->bbVec.size(), "index out of range in MeSSALPre::GetBB");
+    return func->theCFG->bbVec[id.idx];
   }
 
   PUIdx GetPuidx(MeStmt *stmt) {

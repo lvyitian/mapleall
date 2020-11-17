@@ -46,7 +46,7 @@ void SyncSelect::SetSyncKind(StmtNode *stmt, uint32_t n) const {
 }
 
 void SyncSelect::SetAllSyncKind(uint32_t n) {
-  for (auto bb : currfunc_->bbVec) {
+  for (auto bb : currfunc_->theCFG->bbVec) {
     if (bb == nullptr) {
       continue;
     }

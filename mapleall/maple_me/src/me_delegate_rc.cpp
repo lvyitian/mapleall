@@ -713,7 +713,7 @@ AnalysisResult *MeDoDelegateRC::Run(MeFunction *func, MeFuncResultMgr *m) {
   }
 
   // first pass: set cantdelegate flag and count uses
-  for (BB *bb : func->bbVec) {
+  for (BB *bb : func->theCFG->bbVec) {
     if (bb == nullptr) {
       continue;
     }
@@ -779,7 +779,7 @@ AnalysisResult *MeDoDelegateRC::Run(MeFunction *func, MeFuncResultMgr *m) {
   }
 
   // main pass
-  for (BB *bb : func->bbVec) {
+  for (BB *bb : func->theCFG->bbVec) {
     if (bb == nullptr) {
       continue;
     }
@@ -796,7 +796,7 @@ AnalysisResult *MeDoDelegateRC::Run(MeFunction *func, MeFuncResultMgr *m) {
   // final pass: rename the uses of the delegated ref pointer variable versions;
   // set live_localrefvars based on appearances on LHS
   std::set<OStIdx> liveLocalrefvars;  // to detect dead localrefvars
-  for (BB *bb : func->bbVec) {
+  for (BB *bb : func->theCFG->bbVec) {
     if (bb == nullptr) {
       continue;
     }
@@ -839,7 +839,7 @@ AnalysisResult *MeDoDelegateRC::Run(MeFunction *func, MeFuncResultMgr *m) {
   }
 
   // postpass: go through the cleanup intrinsics to delete dead localrefvars
-  for (BB *bb : func->commonExitBB->pred) {
+  for (BB *bb : func->theCFG->commonExitBB->pred) {
     MeStmt *lastMeStmt = bb->meStmtList.last;
     if (lastMeStmt == nullptr || lastMeStmt->op != OP_return) {
       continue;
@@ -877,7 +877,7 @@ AnalysisResult *MeDoDelegateRC::Run(MeFunction *func, MeFuncResultMgr *m) {
     }
   }
   if (MeOption::earlydecref) {  // delete decref if opnd not in livelocalrefvars
-    for (BB *bb : func->bbVec) {
+    for (BB *bb : func->theCFG->bbVec) {
       if (bb == nullptr) {
         continue;
       }

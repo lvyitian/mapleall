@@ -36,8 +36,8 @@ AnalysisResult *MeDoIrMapBuild::Run(MeFunction *func, MeFuncResultMgr *m) {
   MemPool *propMp = mempoolctrler.NewMemPool("meirbuild prop");
   MeProp meprop(irMap, dom, propMp, false, false, false, false, false, false);
   IrMapBuild irmapbuild(irMap, &meprop);
-  std::vector<bool> bbIrmapProcessed(func->NumBBs(), false);
-  irmapbuild.BuildBB(func->commonEntryBB, bbIrmapProcessed);
+  std::vector<bool> bbIrmapProcessed(func->theCFG->NumBBs(), false);
+  irmapbuild.BuildBB(func->theCFG->commonEntryBB, bbIrmapProcessed);
   if (DEBUGFUNC(func)) {
     irMap->Dump();
   }
@@ -55,7 +55,7 @@ AnalysisResult *MeDoIrMapBuild::Run(MeFunction *func, MeFuncResultMgr *m) {
     func->meSSATab->versionStTable.versionStVector[i] = nullptr;
   }
   // clear BB's phiList which uses versionst; nullify first_stmt_, last_stmt_
-  for (BB *bb : func->bbVec) {
+  for (BB *bb : func->theCFG->bbVec) {
     if (bb == nullptr) {
       continue;
     }

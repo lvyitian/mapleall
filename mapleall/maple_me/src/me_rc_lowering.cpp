@@ -760,7 +760,7 @@ void RCLowering::PostBBLower() {
     }
   }
   // compact RC
-  for (BB *bb : func->bbVec) {
+  for (BB *bb : func->theCFG->bbVec) {
     if (bb) {
       CompactRC(bb);
     }
@@ -857,7 +857,7 @@ VarMeExpr *RCLowering::GetMeExprForNewTemp(bool isLocalrefvar) {
 // where local ref assignments can be ignored
 // functions with global write cannot use fast path
 void RCLowering::FastRCLower(BB *bb) {
-  MapleMap<uint32, MeStmt *> exceptionAllocsites(func->alloc.Adapter());
+  std::map<uint32, MeStmt *> exceptionAllocsites;
 
   for (auto stmt : bb->meStmtList) {
     Opcode opcode = stmt->op;
@@ -1153,7 +1153,7 @@ AnalysisResult *MeDoRCLowering::Run(MeFunction *func, MeFuncResultMgr *m, Module
 
   bool fastLowering = func->mirFunc->GetAttr(FUNCATTR_rclocalunowned);
   if (fastLowering) {
-    for (BB *bb : func->bbVec) {
+    for (BB *bb : func->theCFG->bbVec) {
       if (bb != nullptr) {
         rcLowering.FastRCLower(bb);
       }
@@ -1175,8 +1175,8 @@ AnalysisResult *MeDoRCLowering::Run(MeFunction *func, MeFuncResultMgr *m, Module
     }
   }
 
-  for (BB *bb : func->bbVec) {
-    if (bb == nullptr || bb == func->commonEntryBB || bb == func->commonExitBB) {
+  for (BB *bb : func->theCFG->bbVec) {
+    if (bb == nullptr || bb == func->theCFG->commonEntryBB || bb == func->theCFG->commonExitBB) {
       continue;
     }
     rcLowering.EpreFixup(bb);

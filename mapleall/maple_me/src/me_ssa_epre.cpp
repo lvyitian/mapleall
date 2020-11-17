@@ -25,7 +25,7 @@ namespace maple {
 void MeSSAEPre::BuildWorkList() {
   const MapleVector<BBId> &preorderDt = dominance->dtPreOrder;
   for (uint32 i = 0; i < preorderDt.size(); i++) {
-    BB *bb = func->bbVec[preorderDt[i].idx];
+    BB *bb = func->theCFG->bbVec[preorderDt[i].idx];
     BuildWorkListBB(bb);
   }
 }

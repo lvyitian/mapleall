@@ -42,7 +42,7 @@ void IdentifyLoops::SetLoopParent4BB(const BB *bb, LoopDesc *aloop) {
 
 // process each BB in preorder traversal of dominator tree
 void IdentifyLoops::ProcessBB(BB *bb) {
-  if (bb == nullptr || bb == func->commonExitBB) {
+  if (bb == nullptr || bb == func->theCFG->commonExitBB) {
     return;
   }
   for (BB *pred : bb->pred) {
@@ -72,7 +72,7 @@ void IdentifyLoops::ProcessBB(BB *bb) {
   // recursive call
   MapleSet<BBId> *domChildren = &dominance->domChildren[bb->id.idx];
   for (MapleSet<BBId>::iterator bbit = domChildren->begin(); bbit != domChildren->end(); bbit++) {
-    ProcessBB(func->bbVec.at(bbit->idx));
+    ProcessBB(func->theCFG->bbVec.at(bbit->idx));
   }
 }
 
@@ -96,7 +96,7 @@ AnalysisResult *MeDoMeLoop::Run(MeFunction *func, MeFuncResultMgr *m) {
   CHECK_FATAL(dom, "dominance phase has problem");
   MemPool *meloopmp = mempoolctrler.NewMemPool(PhaseName().c_str());
   IdentifyLoops *identloops = meloopmp->New<IdentifyLoops>(meloopmp, func, dom);
-  identloops->ProcessBB(func->commonEntryBB);
+  identloops->ProcessBB(func->theCFG->commonEntryBB);
   if (DEBUGFUNC(func)) {
     identloops->Dump();
   }

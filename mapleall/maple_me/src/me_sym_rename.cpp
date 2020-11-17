@@ -31,8 +31,8 @@ namespace maple {
 void SymRename::PerformSymRename() {
   UnionFind unionFind(mp, irMap->verst2MeExprTable.size());
   // conduct a pass over the program code to perform union-find
-  for (BB *bb : func->bbVec) {
-    if (bb == nullptr || bb == func->commonEntryBB || bb == func->commonExitBB) {
+  for (BB *bb : func->theCFG->bbVec) {
+    if (bb == nullptr || bb == func->theCFG->commonEntryBB || bb == func->theCFG->commonExitBB) {
       continue;
     }
     // go thru all the phi's in the program to perform union-find

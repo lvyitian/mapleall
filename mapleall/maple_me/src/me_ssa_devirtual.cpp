@@ -40,7 +40,7 @@ AnalysisResult *MeDoSSADevirtual::Run(MeFunction *func, MeFuncResultMgr *frm, Mo
     SSADevirtual::debug = true;
   }
 
-  messadevirtual->Perform(func->commonEntryBB);
+  messadevirtual->Perform(func->theCFG->commonEntryBB);
   /* this is a transform phase, delete mempool */
   mempoolctrler.DeleteMemPool(ssadevirtualmp);
 

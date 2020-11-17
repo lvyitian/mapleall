@@ -146,7 +146,7 @@ bool AnalyzeRC::NeedIncref(MeStmt *stmt) {
 // identify assignments to ref pointers and insert decref before it and incref
 // after it
 void AnalyzeRC::IdentifyRCStmts() {
-  for (BB *bb : func->bbVec) {
+  for (BB *bb : func->theCFG->bbVec) {
     if (bb == nullptr) {
       continue;
     }
@@ -227,7 +227,7 @@ void AnalyzeRC::InsertEntryIncrefs4Formals() {
       formalOstVec.push_back(ost);
       FindOrCreateRCItem(ost);
       MeStmt *dass = CreateIncrefZeroVersion(ost);
-      dass->bb = func->first_bb_;
+      dass->bb = func->theCFG->first_bb;
       dass->bb->AddMeStmtFirst(dass);
     }
   }
@@ -244,7 +244,7 @@ void AnalyzeRC::InsertEntryIncrefs4Formals() {
     return;
   }
   // insert decref for the formals at each return
-  for (BB *bb : func->commonExitBB->pred) {
+  for (BB *bb : func->theCFG->commonExitBB->pred) {
     MeStmt *lastMeStmt = bb->meStmtList.last;
     if (lastMeStmt == nullptr || lastMeStmt->op != OP_return) {
       continue;
@@ -257,7 +257,7 @@ void AnalyzeRC::InsertEntryIncrefs4Formals() {
 }
 
 void AnalyzeRC::CreateCleanupIntrinsics() {
-  for (BB *bb : func->commonExitBB->pred) {
+  for (BB *bb : func->theCFG->commonExitBB->pred) {
     MeStmt *lastMeStmt = bb->meStmtList.last;
     if (lastMeStmt && lastMeStmt->op == OP_return) {
       IntrinsiccallMeStmt *intrn = irMap->NewInPool<IntrinsiccallMeStmt>(OP_intrinsiccall, INTRN_MPL_CLEANUP_LOCALREFVARS);
@@ -336,7 +336,7 @@ void AnalyzeRC::RenameRefPtrs(BB *bb) {
   MapleSet<BBId> *domChildren = &dominance->domChildren[bb->id.idx];
   for (MapleSet<BBId>::iterator bbit = domChildren->begin(); bbit != domChildren->end(); bbit++) {
     BBId childbbid = *bbit;
-    RenameRefPtrs(func->bbVec[childbbid.idx]);
+    RenameRefPtrs(func->theCFG->bbVec[childbbid.idx]);
   }
 
   // restore the stacks to their size at entry to this function invocation
@@ -377,9 +377,9 @@ void AnalyzeRC::InsertInitAtPUEntry(RCItem *rci) {
   } else {
     dass = CreateDassignInit(rci->ost->index);
   }
-  dass->bb = func->first_bb_;
+  dass->bb = func->theCFG->first_bb;
   dass->bb->AddMeStmtFirst(dass);
-  rci->occurBBs.insert(func->first_bb_->id);
+  rci->occurBBs.insert(func->theCFG->first_bb->id);
 }
 
 void AnalyzeRC::CollectLocalRefPointerUses(MeExpr *x, BBId bbid) {
@@ -469,7 +469,7 @@ void AnalyzeRC::RenameDecrefsBeforeExit(BB *bb) {
   MapleSet<BBId> *domChildren = &dominance->domChildren[bb->id.idx];
   for (MapleSet<BBId>::iterator bbit = domChildren->begin(); bbit != domChildren->end(); bbit++) {
     BBId childbbid = *bbit;
-    RenameDecrefsBeforeExit(func->bbVec[childbbid.idx]);
+    RenameDecrefsBeforeExit(func->theCFG->bbVec[childbbid.idx]);
   }
 
   // restore the stacks to their size at entry to this function invocation
@@ -538,7 +538,7 @@ static bool BBHasCall(BB *bb) {
 }
 
 void AnalyzeRC::OptimizeRC() {
-  for (BB *bb : func->bbVec) {
+  for (BB *bb : func->theCFG->bbVec) {
     if (bb == nullptr) {
       continue;
     }
@@ -639,7 +639,7 @@ void AnalyzeRC::OptimizeRC() {
     }
     placeopt.ComputePlacement(&rci->occurBBs);
     for (BBId bbid : placeopt.inserted_bbs) {
-      BB *insertedbb = func->bbVec[bbid.idx];
+      BB *insertedbb = func->theCFG->bbVec[bbid.idx];
       MeStmt *insertedLast = insertedbb->meStmtList.last;
       if (insertedbb->succ.size() == 0 && insertedLast && insertedLast->op == OP_return &&
           !BBHasCall(insertedbb)) {
@@ -669,7 +669,7 @@ void AnalyzeRC::OptimizeRC() {
       }
     }
     for (BBId bbid : placeopt.lastuse_bbs) {
-      BB *lastusebb = func->bbVec[bbid.idx];
+      BB *lastusebb = func->theCFG->bbVec[bbid.idx];
       MeStmt *lastStmt = lastusebb->meStmtList.last;
       if (lastusebb->succ.empty() && lastStmt && lastStmt->op == OP_throw) {
         continue;  // decref before exit  not needed if exitting via throw
@@ -712,7 +712,7 @@ void AnalyzeRC::OptimizeRC() {
       }
     }
   }
-  RenameDecrefsBeforeExit(func->commonEntryBB);
+  RenameDecrefsBeforeExit(func->theCFG->commonEntryBB);
 }
 
 // among the arguments in the intrinsiccall to INTRN_CLEANUP_LOCALREFVARS, those
@@ -722,7 +722,7 @@ void AnalyzeRC::OptimizeRC() {
 // whether it is zero version or not, because it always has incref inserted
 // at function entry.
 void AnalyzeRC::RemoveUnneededCleanups() {
-  for (BB *bb : func->commonExitBB->pred) {
+  for (BB *bb : func->theCFG->commonExitBB->pred) {
     MeStmt *lastMeStmt = bb->meStmtList.last;
     if (lastMeStmt == nullptr || lastMeStmt->op != OP_return) {
       continue;
@@ -802,7 +802,7 @@ AnalysisResult *MeDoAnalyzeRC::Run(MeFunction *func, MeFuncResultMgr *m) {
     if (!analyzerc.skip_localrefvars) {
       analyzerc.CreateCleanupIntrinsics();
     }
-    analyzerc.RenameRefPtrs(func->commonEntryBB);
+    analyzerc.RenameRefPtrs(func->theCFG->commonEntryBB);
     if (MeOption::optLevel > 0 && !analyzerc.skip_localrefvars) {
       analyzerc.RemoveUnneededCleanups();
     }

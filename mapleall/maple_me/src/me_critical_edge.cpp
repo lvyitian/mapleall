@@ -51,13 +51,13 @@ void MeDoSplitCEdge::BreakCriticalEdge(MeFunction *func, BB *pred, BB *succ) {
   newbb->kind = kBBFallthru; /* default kind */
   newbb->artificial = true;
   /* use replace instead of remove/add to keep position in pred/succ */
-  if (pred == func->commonEntryBB) {
+  if (pred == func->theCFG->commonEntryBB) {
     pred->ReplaceSuccOfCommonEntryBB(succ, newbb);
     newbb->succ.push_back(succ);
     succ->pred.push_back(newbb);
     newbb->isEntry = true;
     succ->isEntry = false;
-    func->first_bb_ = newbb;
+    func->theCFG->first_bb = newbb;
   } else {
     pred->ReplaceSucc(succ, newbb);
     succ->ReplacePred(pred, newbb);
@@ -112,11 +112,11 @@ AnalysisResult *MeDoSplitCEdge::Run(MeFunction *func, MeFuncResultMgr *m) {
   MapleAllocator localAlloc(localmp);
   MapleVector<std::pair<BB *, BB *>> criticaledge(localAlloc.Adapter());
 
-  for (BB *bb : func->bbVec) {
+  for (BB *bb : func->theCFG->bbVec) {
     if (bb == nullptr) {
       continue;
     }
-    if (bb == func->commonExitBB) {
+    if (bb == func->theCFG->commonExitBB) {
       continue;
     }
     MapleVector<BB *> &preds = bb->pred;
@@ -136,9 +136,9 @@ AnalysisResult *MeDoSplitCEdge::Run(MeFunction *func, MeFuncResultMgr *m) {
     }
   }
   // separate treatment for commonEntryBB's succ BBs
-  for (BB *entrybb : func->commonEntryBB->succ) {
+  for (BB *entrybb : func->theCFG->commonEntryBB->succ) {
     if (entrybb->pred.size() > 0 && !entrybb->IsCatch()) {
-      criticaledge.push_back(std::make_pair(func->commonEntryBB, entrybb));
+      criticaledge.push_back(std::make_pair(func->theCFG->commonEntryBB, entrybb));
     }
   }
   if (criticaledge.size() > 0) {

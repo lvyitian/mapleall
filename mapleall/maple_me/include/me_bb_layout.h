@@ -16,6 +16,7 @@
 #ifndef MAPLE_ME_INCLUDE_ME_BB_LAYOUT_H
 #define MAPLE_ME_INCLUDE_ME_BB_LAYOUT_H
 #include "me_function.h"
+#include "me_cfg.h"
 #include "me_phase.h"
 
 namespace maple {
@@ -23,6 +24,7 @@ namespace maple {
 class BBLayout : public AnalysisResult {
  private:
   MeFunction *func;
+  MirCFG *cfg;
   MapleAllocator layoutAlloc;
   MapleVector<BB *> layoutBBs;  // gives the determined layout order
   BBId curBBId;               // to index into func->bbVec to return the next BB
@@ -35,21 +37,22 @@ class BBLayout : public AnalysisResult {
   explicit BBLayout(MemPool *mp, MeFunction *f)
     : AnalysisResult(mp),
       func(f),
+      cfg(f->theCFG),
       layoutAlloc(mp),
       layoutBBs(layoutAlloc.Adapter()),
       curBBId(0),
       bbCreated(false),
-      laidOut(func->bbVec.size(), false, layoutAlloc.Adapter()),
+      laidOut(f->theCFG->bbVec.size(), false, layoutAlloc.Adapter()),
       tryOutstanding(false) {
-    laidOut[func->commonEntryBB->id.idx] = true;
-    laidOut[func->commonExitBB->id.idx] = true;
+    laidOut[func->theCFG->commonEntryBB->id.idx] = true;
+    laidOut[func->theCFG->commonExitBB->id.idx] = true;
   }
 
   BB *NextBB() {
     // return the next BB following strictly program input order
     curBBId.idx++;
-    while (curBBId.idx < func->bbVec.size()) {
-      BB *nextbb = func->bbVec[curBBId.idx];
+    while (curBBId.idx < cfg->bbVec.size()) {
+      BB *nextbb = cfg->bbVec[curBBId.idx];
       if (nextbb != nullptr && !laidOut[nextbb->id.idx]) {
         return nextbb;
       }

@@ -36,8 +36,8 @@
 namespace maple {
 // step 2 : mark the special stmts.
 void MeDSE::DseProcess() {
-  for (int32 i = func->bbVec.size() - 1; i >= 0; i--) {
-    BB *bb = func->bbVec[i];
+  for (int32 i = cfg->bbVec.size() - 1; i >= 0; i--) {
+    BB *bb = cfg->bbVec[i];
     if (bb == nullptr) {
       continue;
     }
@@ -211,7 +211,7 @@ void MeDSE::UpdateStmt(BB *bb) {
             bb->RemoveBBFromSucc(succbb);
             succbb->RemoveBBFromPred(bb);
             if (succbb->pred.size() == 1) {
-              func->theCFG->ConvertPhis2IdentityAssigns(succbb);
+              cfg->ConvertPhis2IdentityAssigns(succbb);
             }
             break;
           }
@@ -293,7 +293,7 @@ void MeDSE::UpdateStmt(BB *bb) {
 }
 
 void MeDSE::Update() {
-  for (BB *bb : func->bbVec) {
+  for (BB *bb : cfg->bbVec) {
     if (bb == nullptr) {
       continue;
     }
@@ -303,15 +303,15 @@ void MeDSE::Update() {
 
 void MeDSE::DseInit() {
   // Init bb's required flag
-  bb_required.resize(func->bbVec.size());
+  bb_required.resize(cfg->bbVec.size());
   for (uint32 i = 0; i < bb_required.size(); i++) {
     bb_required[i] = false;
   }
-  if (func->commonEntryBB != func->first_bb_) {
-    bb_required[func->commonEntryBB->id.idx] = true;
+  if (cfg->commonEntryBB != cfg->first_bb) {
+    bb_required[cfg->commonEntryBB->id.idx] = true;
   }
-  if (func->commonExitBB != func->last_bb_) {
-    bb_required[func->commonExitBB->id.idx] = true;
+  if (cfg->commonExitBB != cfg->last_bb) {
+    bb_required[cfg->commonExitBB->id.idx] = true;
   }
 
   // Init the versionst table;
@@ -323,8 +323,8 @@ void MeDSE::DseInit() {
 }
 
 void MeDSE::VerifyPhi() {
-  for (auto bb : func->bbVec) {
-    if (bb == nullptr || bb == func->commonExitBB || bb->phiList.empty()) {
+  for (auto bb : cfg->bbVec) {
+    if (bb == nullptr || bb == cfg->commonExitBB || bb->phiList.empty()) {
       continue;
     }
     uint32 predbbNums = bb->pred.size();
@@ -355,7 +355,7 @@ void MeDSE::Dse() {
   }
   Update();
   /* remove unreached BB */
-  func->theCFG->UnreachCodeAnalysis(/* update_phi */ true);
+  cfg->UnreachCodeAnalysis(/* update_phi */ true);
   VerifyPhi();
   if (DEBUGFUNC(func)) {
     func->DumpFunction();

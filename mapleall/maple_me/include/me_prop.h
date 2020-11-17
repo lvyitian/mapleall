@@ -26,7 +26,7 @@ class MeProp : public Prop {
  public:
   MeProp(MeIRMap *hmap, Dominance *dom, MemPool *mp, bool propbase, bool propiloadref, bool propglobalref,
          bool propfinaliloadref, bool propiloadrefNonparm, bool nopropatphi)
-    : Prop(hmap, dom, mp, hmap->mirFunc->bbVec.size(), propbase, propiloadref, propglobalref, propfinaliloadref,
+    : Prop(hmap, dom, mp, hmap->mirFunc->theCFG->bbVec.size(), propbase, propiloadref, propglobalref, propfinaliloadref,
            propiloadrefNonparm, nopropatphi),
       func(hmap->mirFunc) {}
 
@@ -34,7 +34,7 @@ class MeProp : public Prop {
   MeFunction *func;
 
   BB *GetBB(BBId id) {
-    return func->bbVec.at(id.idx);
+    return func->theCFG->bbVec.at(id.idx);
   }
 
   bool InConstructorFunc() {

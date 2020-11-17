@@ -46,7 +46,7 @@ void MeFunction::PartialInit(bool issecondpass) {
   secondPass = issecondpass;
   maple::ConstantFold cf(&mirModule);
   cf.Simplify(mirModule.CurFunction()->body);
-  if (JAVALANG && (mirModule.CurFunction()->info.size() > 0)) {
+  if (JAVALANG && (mirFunc->info.size() > 0)) {
     std::string string("INFO_registers");
     GStrIdx strIdx = GlobalTables::GetStrTable().GetOrCreateStrIdxFromName(string);
     regNum = mirModule.CurFunction()->GetInfo(strIdx);
@@ -58,7 +58,7 @@ void MeFunction::PartialInit(bool issecondpass) {
 }
 
 void MeFunction::DumpFunction() {
-  for (BB *bb : bbVec) {
+  for (BB *bb : theCFG->bbVec) {
     if (bb == nullptr) {
       continue;
     }
@@ -76,7 +76,7 @@ void MeFunction::DumpFunction() {
 }
 
 void MeFunction::DumpFunctionNoSSA() {
-  for (BB *bb : bbVec) {
+  for (BB *bb : theCFG->bbVec) {
     if (bb == nullptr) {
       continue;
     }
@@ -94,7 +94,7 @@ void MeFunction::DumpFunctionNoSSA() {
 }
 
 void MeFunction::DumpMeFunc() {
-  for (BB *bb : bbVec) {
+  for (BB *bb : theCFG->bbVec) {
     if (bb == nullptr) {
       continue;
     }
@@ -108,7 +108,7 @@ void MeFunction::DumpMeFunc() {
 }
 
 void MeFunction::DumpMayDUFunction() {
-  for (BB *bb : bbVec) {
+  for (BB *bb : theCFG->bbVec) {
     if (bb == nullptr) {
       continue;
     }
@@ -138,10 +138,10 @@ void MeFunction::SetTryBlockInfo(StmtNode *javatryStmt, BB *lastjavatryBb, const
   if (nextstmt->op == OP_endtry) {
     curbb->isTryEnd = true;
     ASSERT(lastjavatryBb != nullptr, "");
-    endTryBB2TryBB[curbb] = lastjavatryBb;
+    theCFG->endTryBB2TryBB[curbb] = lastjavatryBb;
   } else {
     newbb->isTry = true;
-    bbTryNodeMap[newbb] = javatryStmt;
+    theCFG->bbTryNodeMap[newbb] = javatryStmt;
   }
 }
 
@@ -168,23 +168,23 @@ BaseNode *CreateDummyReturnValue(MIRBuilder *mirBuilder, MIRType *retty) {
 }
 
 void MeFunction::CreateBasicBlocks(MirCFG *cfg) {
-  if (mirModule.CurFunction()->IsEmpty()) {
+  if (mirFunc->IsEmpty()) {
     if (!MeOption::quiet) {
       LogInfo::MapleLogger() << "function is empty, cfg is nullptr\n";
     }
     return;
   }
   /* create common_entry/exit bb first as bbVec[0] and bbVec[1] */
-  commonEntryBB = NewBasicBlock();
-  commonEntryBB->isEntry = true;
-  commonExitBB = NewBasicBlock();
-  commonExitBB->isExit = true;
+  cfg->commonEntryBB = NewBasicBlock();
+  cfg->commonEntryBB->isEntry = true;
+  cfg->commonExitBB = NewBasicBlock();
+  cfg->commonExitBB->isExit = true;
 
-  first_bb_ = NewBasicBlock();
-  first_bb_->isEntry = true;
-  StmtNode *nextstmt = mirModule.CurFunction()->body->GetFirst();
+  cfg->first_bb = NewBasicBlock();
+  cfg->first_bb->isEntry = true;
+  StmtNode *nextstmt = mirFunc->body->GetFirst();
   ASSERT(nextstmt != nullptr, "function has no statement");
-  BB *curbb = first_bb_;
+  BB *curbb = cfg->first_bb;
   std::stack<StmtNode *> tryStmtStack;
   std::stack<BB *> tryBBStack;      // bb containing javatry_stmt
   do {
@@ -307,7 +307,7 @@ void MeFunction::CreateBasicBlocks(MirCFG *cfg) {
             curbb->kind = kBBFallthru;
           }
           curbb->isTryEnd = true;
-          endTryBB2TryBB[curbb] = tryBBStack.top();
+          cfg->endTryBB2TryBB[curbb] = tryBBStack.top();
           curbb = NewBasicBlock();
         } else {
           // endtry has already been processed in SetTryBlockInfo() for java
@@ -315,7 +315,7 @@ void MeFunction::CreateBasicBlocks(MirCFG *cfg) {
             // create the empty BB
             curbb->kind = kBBFallthru;
             curbb->isTryEnd = true;
-            endTryBB2TryBB[curbb] = tryBBStack.top();
+            cfg->endTryBB2TryBB[curbb] = tryBBStack.top();
             curbb = NewBasicBlock();
           }
         }
@@ -344,7 +344,7 @@ void MeFunction::CreateBasicBlocks(MirCFG *cfg) {
         tryBBStack.push(curbb);
         curbb->isTry = true;
         if (JAVALANG) {
-          bbTryNodeMap[curbb] = tryStmtStack.top();
+          cfg->bbTryNodeMap[curbb] = tryStmtStack.top();
           // prepare a new bb that contains only a OP_javatry. It is needed
           // to work correctly: assignments in a try block should not affect
           // assignments before the try block as exceptions might occur.
@@ -443,12 +443,12 @@ void MeFunction::CreateBasicBlocks(MirCFG *cfg) {
           if (!tryStmtStack.empty()) {
             newbb->isTry = true;
             if (JAVALANG) {
-              bbTryNodeMap[newbb] = tryStmtStack.top();
+              cfg->bbTryNodeMap[newbb] = tryStmtStack.top();
             }
           }
           curbb = newbb;
         }
-        labelBBIdMap[labidx] = curbb;
+        cfg->labelBBIdMap[labidx] = curbb;
         curbb->bbLabel = labidx;
         break;
       }
@@ -493,14 +493,14 @@ void MeFunction::CreateBasicBlocks(MirCFG *cfg) {
   } while (nextstmt);
   ASSERT(tryStmtStack.empty(), "CreateBasicBlcoks: missing endtry");
   ASSERT(tryBBStack.empty(), "CreateBasicBlocks: javatry and endtry should be one-to-one mapping");
-  last_bb_ = curbb;
-  if (last_bb_->IsEmpty() || last_bb_->kind == kBBUnknown) {
+  cfg->last_bb = curbb;
+  if (cfg->last_bb->IsEmpty() || cfg->last_bb->kind == kBBUnknown) {
     // insert a return statement
     MIRType *retty = mirModule.CurFunction()->GetReturnType();
     BaseNode *retOpnd = CreateDummyReturnValue(mirModule.mirBuilder, retty);
-    last_bb_->stmtNodeList.push_back(mirModule.mirBuilder->CreateStmtReturn(retOpnd));
-    last_bb_->isExit = true;
-    last_bb_->kind = kBBReturn;
+    cfg->last_bb->stmtNodeList.push_back(mirModule.mirBuilder->CreateStmtReturn(retOpnd));
+    cfg->last_bb->isExit = true;
+    cfg->last_bb->kind = kBBReturn;
   }
   return;
 }
@@ -523,49 +523,9 @@ void MeFunction::Verify() {
 }
 
 BB *MeFunction::NewBasicBlock() {
-  BB *newbb = memPool->New<BB>(&alloc, &versAlloc, BBId(nextBBId++));
-  bbVec.push_back(newbb);
+  BB *newbb = theCFG->cfgAlloc.mp->New<BB>(&theCFG->cfgAlloc, &versAlloc, BBId(theCFG->nextBBId++));
+  theCFG->bbVec.push_back(newbb);
   return newbb;
-}
-
-void MeFunction::DeleteBasicBlock(const BB *bb) {
-  ASSERT(bbVec[bb->id.idx] == bb, "");
-  /* update first_bb_ and last_bb if needed */
-  if (first_bb_ == bb) {
-    first_bb_ = NextBB(bb);
-  } else if (last_bb_ == bb) {
-    last_bb_ = PrevBB(bb);
-  }
-  bbVec.at(bb->id.idx) = nullptr;
-  return;
-}
-
-/* get next bb in bbVec*/
-BB *MeFunction::NextBB(const BB *bb) {
-  if (bb->id.idx == bbVec.size() - 1) {
-    return nullptr;
-  }
-  uint32 i = bb->id.idx + 1;
-  for (; i < bbVec.size(); i++) {
-    if (bbVec[i] != nullptr) {
-      return bbVec[i];
-    }
-  }
-  return nullptr;
-}
-
-/* get prev bb in bbVec*/
-BB *MeFunction::PrevBB(const BB *bb) {
-  if (bb->id.idx == 0) {
-    return nullptr;
-  }
-  int32 i = bb->id.idx - 1;
-  for (; i >= 0; i--) {
-    if (bbVec[i] != nullptr) {
-      return bbVec[i];
-    }
-  }
-  return nullptr;
 }
 
 /* clone stmtnode in orig bb to newbb */
@@ -612,9 +572,9 @@ BB *MeFunction::SplitBB(BB *bb, StmtNode *splitPoint) {
   bb->kind = kBBFallthru;
 
   // Special Case: commonExitBB is orig bb's succ
-  for (uint32 i = 0; i < commonExitBB->pred.size(); i++) {
-    if (commonExitBB->pred[i] == bb) {
-      commonExitBB->pred[i] = newbb;
+  for (uint32 i = 0; i < theCFG->commonExitBB->pred.size(); i++) {
+    if (theCFG->commonExitBB->pred[i] == bb) {
+      theCFG->commonExitBB->pred[i] = newbb;
       break;
     }
   }
@@ -631,7 +591,7 @@ BB *MeFunction::SplitBB(BB *bb, StmtNode *splitPoint) {
   // Setup flags
   newbb->CopyFlagsAfterSplit(bb);
   newbb->isTryEnd = bb->isTryEnd;
-  endTryBB2TryBB[newbb] = endTryBB2TryBB[bb];
+  theCFG->endTryBB2TryBB[newbb] = theCFG->endTryBB2TryBB[bb];
   bb->isExit = false;
   bb->isTryEnd = false;
   return newbb;
@@ -643,10 +603,10 @@ void MeFunction::CreateBBLabel(BB *bb) {
     return;
   }
 
-  LabelIdx label = mirModule.CurFunction()->labelTab->CreateLabelWithPrefix('m');
-  mirModule.CurFunction()->labelTab->AddToStringLabelMap(label);
+  LabelIdx label = mirFunc->labelTab->CreateLabelWithPrefix('m');
+  mirFunc->labelTab->AddToStringLabelMap(label);
   bb->bbLabel = label;
-  labelBBIdMap.insert(make_pair(label, bb));
+  theCFG->labelBBIdMap.insert(make_pair(label, bb));
 }
 
 // Recognize the following kind of simple pattern and remove corresponding EH edges
@@ -656,11 +616,11 @@ void MeFunction::CreateBBLabel(BB *bb) {
 //  endtry
 //  throw (dread ptr %Reg0_R524935)
 void MeFunction::RemoveEhEdgesInSyncRegion() {
-  if (endTryBB2TryBB.size() != 1) {
+  if (theCFG->endTryBB2TryBB.size() != 1) {
     return;
   }
 
-  for (auto iter : endTryBB2TryBB) {
+  for (auto iter : theCFG->endTryBB2TryBB) {
     BB *tryBB = iter.second;
     BB *endtryBB = iter.first;
     // Filter out complex cases
@@ -668,7 +628,7 @@ void MeFunction::RemoveEhEdgesInSyncRegion() {
         !endtryBB->IsJavaFinally() || endtryBB->stmtNodeList.last->op != OP_syncexit || (tryBB->stmtNodeList.last->op != OP_javatry && tryBB->stmtNodeList.last->op != OP_try)) {
       return;
     }
-    for (auto it : bbTryNodeMap) {
+    for (auto it : theCFG->bbTryNodeMap) {
       BB *bb = it.first;
       if (bb != tryBB && bb != endtryBB) {
         for (auto stmt : bb->stmtNodeList) {
@@ -681,7 +641,7 @@ void MeFunction::RemoveEhEdgesInSyncRegion() {
     }
 
     // Unmark unnecessary isTry flags
-    for (auto it : bbTryNodeMap) {
+    for (auto it : theCFG->bbTryNodeMap) {
       BB *bb = it.first;
       if (bb != tryBB && bb != endtryBB) {
         bb->isTry = false;

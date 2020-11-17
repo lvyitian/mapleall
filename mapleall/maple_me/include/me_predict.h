@@ -68,6 +68,7 @@ class MePrediction : public AnalysisResult {
         mePredAlloc(mp),
         tmpAlloc(tmppool),
         func(mf),
+        cfg(mf->theCFG),
         dom(dm),
         meLoop(loops),
         hmap(map),
@@ -101,6 +102,7 @@ class MePrediction : public AnalysisResult {
   MapleAllocator mePredAlloc;
   MapleAllocator tmpAlloc;
   MeFunction *func;
+  MirCFG *cfg;
   Dominance *dom;
   IdentifyLoops *meLoop;
   MeIRMap *hmap;

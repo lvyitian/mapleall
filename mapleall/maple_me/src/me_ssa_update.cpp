@@ -34,7 +34,7 @@ void SSAUpdate::InsertPhis() {
     }
     for (BBId bbid : dfSet) {
       // insert a phi node
-      BB *bb = func->bbVec[bbid.idx];
+      BB *bb = func->theCFG->bbVec[bbid.idx];
       MapleMap<OStIdx, MePhiNode *>::iterator philistit = bb->mePhiList.find(it->first);
       if (philistit != bb->mePhiList.end()) {
         philistit->second->isLive = true;
@@ -220,7 +220,7 @@ void SSAUpdate::RenameBB(BB *bb) {
   // recurse down dominator tree in pre-order traversal
   MapleSet<BBId> *children = &dom->domChildren[bb->id.idx];
   for (BBId child : *children) {
-    RenameBB(func->bbVec[child.idx]);
+    RenameBB(func->theCFG->bbVec[child.idx]);
   }
 
   // pop stacks back to where they were at entry to this BB
@@ -245,9 +245,9 @@ void SSAUpdate::Run() {
   }
 
   // recurse down dominator tree in pre-order traversal
-  MapleSet<BBId> *children = &dom->domChildren[func->commonEntryBB->id.idx];
+  MapleSet<BBId> *children = &dom->domChildren[func->theCFG->commonEntryBB->id.idx];
   for (BBId child : *children) {
-    RenameBB(func->bbVec[child.idx]);
+    RenameBB(func->theCFG->bbVec[child.idx]);
   }
 }
 

@@ -53,7 +53,7 @@ class MeTI {
       orig_type(vst_size, kPtyInvalid, ti_allocator.Adapter()),
       inferred_type(vst_size, kPtyInvalid, ti_allocator.Adapter()),
       new_symbol(vst_size, nullptr, ti_allocator.Adapter()),
-      bb_rebuilt(func->bbVec.size(), false, ti_allocator.Adapter()),
+      bb_rebuilt(func->theCFG->bbVec.size(), false, ti_allocator.Adapter()),
       worklist(std::less<VarMeExpr *>(), ti_allocator.Adapter()) {}
 
   void BuildUseFromExpr(MeExpr *expr, MeStmt *mestmt);

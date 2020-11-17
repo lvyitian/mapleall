@@ -18,6 +18,7 @@
 #include "alias_class.h"
 #include "me_phase.h"
 #include "me_function.h"
+#include "me_cfg.h"
 
 namespace maple {
 
@@ -33,10 +34,10 @@ class MeAliasClass : public AliasClass {
   MeFunction *func;
 
   BB *GetBB(BBId id) {
-    if (func->bbVec.size() < id.idx) {
+    if (func->theCFG->bbVec.size() < id.idx) {
       return nullptr;
     }
-    return func->bbVec[id.idx];
+    return func->theCFG->bbVec[id.idx];
   }
 
   bool InConstructorFunc() {

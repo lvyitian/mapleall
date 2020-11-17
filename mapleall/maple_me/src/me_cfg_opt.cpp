@@ -80,8 +80,8 @@ bool MeCfgOpt::HasFloatCmp(MeExpr *meexpr) {
 }
 
 bool MeCfgOpt::PreCheck(MeFunction *func) {
-  const uint32 kSize = func->bbVec.size();
-  MapleVector<BB *> &bbvec = func->bbVec;
+  const uint32 kSize = func->theCFG->bbVec.size();
+  MapleVector<BB *> &bbvec = func->theCFG->bbVec;
   for (uint32 i = 0; i < kSize; i++) {
     BB *bb = bbvec[i];
     if (!bb) {
@@ -114,8 +114,8 @@ bool MeCfgOpt::Run(MeFunction *func) {
   }
   uint32 i = 0;
   uint32 nexti = -1;
-  const uint32 kSize = func->bbVec.size();
-  MapleVector<BB *> &bbvec = func->bbVec;
+  const uint32 kSize = func->theCFG->bbVec.size();
+  MapleVector<BB *> &bbvec = func->theCFG->bbVec;
   while (i < kSize) {
     nexti = i + 1;
     BB *bb = bbvec[i];
@@ -220,7 +220,7 @@ bool MeCfgOpt::Run(MeFunction *func) {
 }
 
 void MeDoCfgOpt::EmitMapleir(MeFunction *func, MeFuncResultMgr *m) {
-  if (func->NumBBs() > 0) {
+  if (func->theCFG->NumBBs() > 0) {
     BBLayout *layoutbbs = static_cast<BBLayout *>(m->GetAnalysisResult(MeFuncPhase_BBLAYOUT, func));
     CHECK_FATAL(func->irMap != nullptr, "");
     MIRFunction *mirfunction = func->mirFunc;

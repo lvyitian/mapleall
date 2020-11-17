@@ -28,6 +28,46 @@ using namespace std;
 
 namespace maple {
 
+/* get next bb in bbVec*/
+BB *MirCFG::NextBB(const BB *bb) {
+  if (bb->id.idx == bbVec.size() - 1) {
+    return nullptr;
+  }
+  uint32 i = bb->id.idx + 1;
+  for (; i < bbVec.size(); i++) {
+    if (bbVec[i] != nullptr) {
+      return bbVec[i];
+    }
+  }
+  return nullptr;
+}
+
+/* get prev bb in bbVec*/
+BB *MirCFG::PrevBB(const BB *bb) {
+  if (bb->id.idx == 0) {
+    return nullptr;
+  }
+  int32 i = bb->id.idx - 1;
+  for (; i >= 0; i--) {
+    if (bbVec[i] != nullptr) {
+      return bbVec[i];
+    }
+  }
+  return nullptr;
+}
+
+void MirCFG::DeleteBasicBlock(const BB *bb) {
+  ASSERT(bbVec[bb->id.idx] == bb, "");
+  /* update first_bb_ and last_bb if needed */
+  if (first_bb == bb) {
+    first_bb = NextBB(bb);
+  } else if (last_bb == bb) {
+    last_bb = PrevBB(bb);
+  }
+  bbVec[bb->id.idx] = nullptr;
+  return;
+}
+
 // determine if need to be replaced by assertnonnull
 bool MirCFG::IfReplaceWithAssertnonnull(BB *bb) {
   StmtNode *stmt = bb->stmtNodeList.first;
@@ -87,12 +127,12 @@ bool MirCFG::IfReplaceWithAssertnonnull(BB *bb) {
 }
 
 void MirCFG::BuildMirCFG() {
-  MapleVector<BB *> entryblocks(func->alloc.Adapter());
-  MapleVector<BB *> exitblocks(func->alloc.Adapter());
+  std::vector<BB *> entryblocks;
+  std::vector<BB *> exitblocks;;
 
   // bbVec[0,1] are common entry/exit bb
-  for (uint32 i = func->commonExitBB->id.idx + 1; i < func->bbVec.size(); i++) {
-    BB *bb = func->bbVec[i];
+  for (uint32 i = commonExitBB->id.idx + 1; i < bbVec.size(); i++) {
+    BB *bb = bbVec[i];
     if (bb == nullptr) {
       continue;
     }
@@ -111,7 +151,7 @@ void MirCFG::BuildMirCFG() {
         CHECK_FATAL(lastStmt->op == OP_goto, "");
         GotoNode *gotostmt = static_cast<GotoNode *>(lastStmt);
         LabelIdx lblidx = (LabelIdx)gotostmt->offset;
-        BB *meBb = func->labelBBIdMap[lblidx];
+        BB *meBb = labelBBIdMap[lblidx];
         bb->succ.push_back(meBb);
         meBb->pred.push_back(bb);
         break;
@@ -120,14 +160,14 @@ void MirCFG::BuildMirCFG() {
         StmtNode *laststmt = bb->stmtNodeList.last;
         CHECK_FATAL(laststmt->IsCondBr(), "");
         /* succ[0] is fallthru, succ[1] is gotobb */
-        BB *rightnextbb = func->NextBB(bb);
+        BB *rightnextbb = NextBB(bb);
         CHECK_FATAL(rightnextbb, "null ptr check ");
         rightnextbb->pred.push_back(bb);
         bb->succ.push_back(rightnextbb);
         /* link goto */
         CondGotoNode *gotostmt = static_cast<CondGotoNode *>(laststmt);
         LabelIdx lblidx = (LabelIdx)gotostmt->offset;
-        BB *meBb = func->labelBBIdMap[lblidx];
+        BB *meBb = labelBBIdMap[lblidx];
         bb->succ.push_back(meBb);
         meBb->pred.push_back(bb);
         /* can the gotostmt be replaced by assertnonnull ? */
@@ -141,12 +181,12 @@ void MirCFG::BuildMirCFG() {
         CHECK_FATAL(laststmt->op == OP_switch, "");
         SwitchNode *switchstmt = static_cast<SwitchNode *>(laststmt);
         LabelIdx lblidx = switchstmt->defaultLabel;
-        BB *mirbb = func->labelBBIdMap[lblidx];
+        BB *mirbb = labelBBIdMap[lblidx];
         bb->succ.push_back(mirbb);
         mirbb->pred.push_back(bb);
         for (uint32_t j = 0; j < switchstmt->switchTable.size(); j++) {
           lblidx = switchstmt->switchTable[j].second;
-          BB *mebb = func->labelBBIdMap[lblidx];
+          BB *mebb = labelBBIdMap[lblidx];
           // Avoid duplicate succs.
           MapleVector<BB *>::iterator it = std::find(bb->succ.begin(), bb->succ.end(), mebb);
           if (it == bb->succ.end()) {
@@ -158,7 +198,7 @@ void MirCFG::BuildMirCFG() {
       }
       case kBBIgoto: {
         for (LabelIdx lidx : func->mirFunc->labelTab->addrTakenLabels) {
-          BB *mebb = func->labelBBIdMap[lidx];
+          BB *mebb = labelBBIdMap[lidx];
           bb->succ.push_back(mebb);
           mebb->pred.push_back(bb);
         }
@@ -168,7 +208,7 @@ void MirCFG::BuildMirCFG() {
         break;
       default: {
         // fall through?
-        BB *rightnextbb = func->NextBB(bb);
+        BB *rightnextbb = NextBB(bb);
         if (rightnextbb) {
           rightnextbb->pred.push_back(bb);
           bb->succ.push_back(rightnextbb);
@@ -178,15 +218,15 @@ void MirCFG::BuildMirCFG() {
     }
     /* deal try blocks, add catch handler to try's succ */
     if (func->mirModule.IsJavaModule() && bb->isTry) {
-      ASSERT((func->bbTryNodeMap.find(bb) != func->bbTryNodeMap.end()), "try bb without try");
-      StmtNode *stmt = func->bbTryNodeMap[bb];
+      ASSERT((bbTryNodeMap.find(bb) != bbTryNodeMap.end()), "try bb without try");
+      StmtNode *stmt = bbTryNodeMap[bb];
       TryNode *trynode = static_cast<TryNode *>(stmt);
       bool hasfinallyhandler = false;
       /* add exception handler bb */
       for (uint32 i = 0; i < trynode->offsets.size(); i++) {
         LabelIdx labelIdx = trynode->offsets[i];
-        ASSERT(func->labelBBIdMap.find(labelIdx) != func->labelBBIdMap.end(), "");
-        BB *meBb = func->labelBBIdMap[labelIdx];
+        ASSERT(labelBBIdMap.find(labelIdx) != labelBBIdMap.end(), "");
+        BB *meBb = labelBBIdMap[labelIdx];
         ASSERT(meBb != nullptr && meBb->IsCatch(), "");
         uint32 si = 0;
         if (meBb->IsJavaFinally() || meBb->IsCatch()) {
@@ -221,12 +261,12 @@ void MirCFG::BuildMirCFG() {
     }
   }
   // merge all blocks in entryblocks
-  for (MapleVector<BB *>::iterator it = entryblocks.begin(); it != entryblocks.end(); ++it) {
-    func->commonEntryBB->succ.push_back(*it);
+  for (std::vector<BB *>::iterator it = entryblocks.begin(); it != entryblocks.end(); ++it) {
+    commonEntryBB->succ.push_back(*it);
   }
   // merge all blocks in exitblocks
-  for (MapleVector<BB *>::iterator it = exitblocks.begin(); it != exitblocks.end(); ++it) {
-    func->commonExitBB->pred.push_back(*it);
+  for (std::vector<BB *>::iterator it = exitblocks.begin(); it != exitblocks.end(); ++it) {
+    commonExitBB->pred.push_back(*it);
   }
 }
 
@@ -241,7 +281,7 @@ void MirCFG::ReplaceWithAssertnonnull() {
     return;
   }
   for (LabelIdx lblidx : pattern_set_) {
-    BB *bb = func->labelBBIdMap[lblidx];
+    BB *bb = labelBBIdMap[lblidx];
     /* if BB->pred.size()==0, it won't enter this function */
     for (uint32 i = 0; i < bb->pred.size(); i++) {
       BB *innerBb = bb->pred[i];
@@ -344,44 +384,44 @@ void MirCFG::ConvertPhis2IdentityAssigns(BB *mebb) {
 // analyse the CFG to find the BBs that are not reachable from function entries
 // and delete them
 void MirCFG::UnreachCodeAnalysis(bool updatePhi) {
-  std::vector<bool> visitedBBs(func->NumBBs(), false);
-  func->commonEntryBB->FindReachableBBs(visitedBBs);
+  std::vector<bool> visitedBBs(NumBBs(), false);
+  commonEntryBB->FindReachableBBs(visitedBBs);
 
   // delete the unreached bb
   BB *bb = nullptr;
-  for (uint32_t i = 0; i < func->bbVec.size(); i++) {
-    bb = func->bbVec[i];
-    if (!visitedBBs[i] && bb && !bb->isEntry && bb != func->commonExitBB) {
+  for (uint32_t i = 0; i < bbVec.size(); i++) {
+    bb = bbVec[i];
+    if (!visitedBBs[i] && bb && !bb->isEntry && bb != commonExitBB) {
       bb->wontExit = true;
       /* avoid redundant pred before adding to commonExitBB's pred list */
       uint32 pi = 0;
-      for (; pi < func->commonExitBB->pred.size(); pi++) {
-        if (bb == func->commonExitBB->pred[pi]) {
+      for (; pi < commonExitBB->pred.size(); pi++) {
+        if (bb == commonExitBB->pred[pi]) {
           break;
         }
       }
-      if (pi == func->commonExitBB->pred.size()) {
-        func->commonExitBB->pred.push_back(bb);
+      if (pi == commonExitBB->pred.size()) {
+        commonExitBB->pred.push_back(bb);
       }
       if (!MeOption::quiet) {
         LogInfo::MapleLogger() << "#### BB " << bb->id.idx << " deleted because unreachable\n";
       }
       if (bb->isTryEnd) {
         // unreachable bb has try end info
-        BB *trybb = func->endTryBB2TryBB[bb];
+        BB *trybb = endTryBB2TryBB[bb];
         if (visitedBBs[trybb->id.idx]) { // corresponding try is still around
           // move endtry tag to previous non-deleted bb
           int j = static_cast<int>(i) - 1;
           for (; j >= 0; j--) {
-            if (func->bbVec[j] != nullptr) {
-              func->bbVec[j]->isTryEnd = true;
-              func->endTryBB2TryBB[func->bbVec[j]] = func->endTryBB2TryBB[bb];
+            if (bbVec[j] != nullptr) {
+              bbVec[j]->isTryEnd = true;
+              endTryBB2TryBB[bbVec[j]] = endTryBB2TryBB[bb];
               break;
             }
           }
         }
       }
-      func->DeleteBasicBlock(bb);
+      DeleteBasicBlock(bb);
       // remove the bb from its succ's pred list
       for (MapleVector<BB *>::iterator it = bb->succ.begin(); it != bb->succ.end(); it++) {
         BB *sucbb = *it;
@@ -397,10 +437,10 @@ void MirCFG::UnreachCodeAnalysis(bool updatePhi) {
         }
       }
       // remove the bb from commonExitBB's pred list if it is there
-      for (MapleVector<BB *>::iterator it = func->commonExitBB->pred.begin();
-           it != func->commonExitBB->pred.end(); it++) {
+      for (MapleVector<BB *>::iterator it = commonExitBB->pred.begin();
+           it != commonExitBB->pred.end(); it++) {
         if (*it == bb) {
-          func->commonExitBB->RemoveBBFromPred(bb);
+          commonExitBB->RemoveBBFromPred(bb);
           break;
         }
       }
@@ -412,17 +452,17 @@ void MirCFG::UnreachCodeAnalysis(bool updatePhi) {
 // are BBs inside infinite loops; mark their wontExit flag and create
 // artificial edges from them to commonExitBB
 void MirCFG::WontExitAnalysis() {
-  if (func->NumBBs() == 0) {
+  if (NumBBs() == 0) {
     return;
   }
-  vector<bool> visitedBBs(func->NumBBs(), false);
-  func->commonExitBB->FindWillExitBBs(visitedBBs);
+  vector<bool> visitedBBs(NumBBs(), false);
+  commonExitBB->FindWillExitBBs(visitedBBs);
 
   BB *bb = nullptr;
-  uint32_t bbvecsize = func->bbVec.size();
+  uint32_t bbvecsize = bbVec.size();
   for (uint32_t i = 0; i < bbvecsize; i++) {
-    bb = func->bbVec[i];
-    if (!visitedBBs[i] && bb && (bb != func->commonEntryBB)) {
+    bb = bbVec[i];
+    if (!visitedBBs[i] && bb && (bb != commonEntryBB)) {
       bb->wontExit = true;
       if (!MeOption::quiet) {
         printf("#### BB %d wont exit\n", i);
@@ -436,7 +476,7 @@ void MirCFG::WontExitAnalysis() {
         bb->succ.push_back(newbb);
         newbb->pred.push_back(bb);
 
-        func->commonExitBB->pred.push_back(newbb);
+        commonExitBB->pred.push_back(newbb);
       }
     }
   }
@@ -446,13 +486,13 @@ void MirCFG::WontExitAnalysis() {
 // Check bb-vec and bb-list are strictly consistent.
 void MirCFG::Verify() {
   // Check every bb in bb-list.
-  for (BB *bb : func->bbVec) {
+  for (BB *bb : bbVec) {
     if (bb == nullptr) {
       continue;
     }
-    ASSERT(bb->id.idx < func->bbVec.size(), "CFG Error!");
-    ASSERT(func->bbVec[bb->id.idx] == bb, "CFG Error!");
-    if (bb->IsEmpty() || bb == func->commonEntryBB || bb == func->commonExitBB) {
+    ASSERT(bb->id.idx < bbVec.size(), "CFG Error!");
+    ASSERT(bbVec[bb->id.idx] == bb, "CFG Error!");
+    if (bb->IsEmpty() || bb == commonEntryBB || bb == commonExitBB) {
       continue;
     }
     ASSERT(bb->kind != kBBUnknown, "");
@@ -477,8 +517,8 @@ void MirCFG::Verify() {
 
 // check that all the target labels in jump statements are defined
 void MirCFG::VerifyLabels(void) {
-  for (uint32_t i = 0; i < func->bbVec.size(); i++) {
-    BB *mirbb = func->bbVec[i];
+  for (uint32_t i = 0; i < bbVec.size(); i++) {
+    BB *mirbb = bbVec[i];
     if (mirbb == nullptr) {
       continue;
     }
@@ -491,21 +531,21 @@ void MirCFG::VerifyLabels(void) {
       }
       GotoNode *gotostmt = static_cast<GotoNode *>(mirbb->stmtNodeList.last);
       LabelIdx targetLabidx = (LabelIdx)gotostmt->offset;
-      BB *bb = func->labelBBIdMap[targetLabidx];
+      BB *bb = labelBBIdMap[targetLabidx];
       CHECK_FATAL(bb->bbLabel == targetLabidx, "undefined label in goto");
     } else if (mirbb->kind == kBBCondGoto) {
       CondGotoNode *cgotostmt = static_cast<CondGotoNode *>(mirbb->stmtNodeList.last);
       LabelIdx targetLabidx = (LabelIdx)cgotostmt->offset;
-      BB *bb = func->labelBBIdMap[targetLabidx];
+      BB *bb = labelBBIdMap[targetLabidx];
       CHECK_FATAL(bb->bbLabel == targetLabidx, "undefined label in conditional branch");
     } else if (mirbb->kind == kBBSwitch) {
       SwitchNode *switchstmt = static_cast<SwitchNode *>(mirbb->stmtNodeList.last);
       LabelIdx targetLabidx = switchstmt->defaultLabel;
-      BB *bb = func->labelBBIdMap[targetLabidx];
+      BB *bb = labelBBIdMap[targetLabidx];
       CHECK_FATAL(bb->bbLabel == targetLabidx, "undefined label in switch");
       for (uint32_t j = 0; j < switchstmt->switchTable.size(); j++) {
         targetLabidx = switchstmt->switchTable[j].second;
-        bb = func->labelBBIdMap[targetLabidx];
+        bb = labelBBIdMap[targetLabidx];
         CHECK_FATAL(bb->bbLabel == targetLabidx, "undefined switch target label");
       }
     }
@@ -517,11 +557,11 @@ void MirCFG::Dump() {
   // map<uint32, uint32> visited_map;
   // set<uint32> visited_set;
   printf("####### CFG Dump: ");
-  CHECK_FATAL(func->NumBBs() != 0, "size to be allocated is 0");
-  bool *visitedMap = static_cast<bool*>(calloc(func->NumBBs(), sizeof(bool)));
+  CHECK_FATAL(NumBBs() != 0, "size to be allocated is 0");
+  bool *visitedMap = static_cast<bool*>(calloc(NumBBs(), sizeof(bool)));
   if (visitedMap != nullptr) {
     queue<BB *> qu;
-    qu.push(func->first_bb_);
+    qu.push(first_bb);
     while (!qu.empty()) {
       BB *bb = qu.front();
       qu.pop();
@@ -595,11 +635,11 @@ void MirCFG::DumpToFile(const char *prefix, bool dumpinstrs) {
   cfgfile << "digraph {\n";
   cfgfile << " # /*" << func->GetName().c_str() << " (red line is exception handler)*/\n";
   /* dump edge */
-  for (BB *bb : func->bbVec) {
+  for (BB *bb : bbVec) {
     if (bb == nullptr) {
       continue;
     }
-    if (bb == func->commonExitBB) {
+    if (bb == commonExitBB) {
       /* specical case for commonExitBB */
       for (auto it = bb->pred.begin(); it != bb->pred.end(); it++) {
         cfgfile << "BB" << (*it)->id.idx << " -> "
@@ -610,7 +650,7 @@ void MirCFG::DumpToFile(const char *prefix, bool dumpinstrs) {
     for (auto it = bb->succ.begin(); it != bb->succ.end(); it++) {
       cfgfile << "BB" << bb->id.idx << " -> "
               << "BB" << (*it)->id.idx;
-      if (bb == func->commonEntryBB) {
+      if (bb == commonEntryBB) {
         cfgfile << "[style=dotted];\n";
         continue;
       }
@@ -624,7 +664,7 @@ void MirCFG::DumpToFile(const char *prefix, bool dumpinstrs) {
   }
   /* dump instruction in each BB */
   if (dumpinstrs) {
-    for (BB *bb : func->bbVec) {
+    for (BB *bb : bbVec) {
       if (bb == nullptr || bb->IsEmpty()) {
         continue;
       }
@@ -666,7 +706,7 @@ AnalysisResult *MeDoCfgBuild::Run(MeFunction *func, MeFuncResultMgr *m) {
   MirCFG *cfg = cfgMp->New<MirCFG>(func, cfgMp);
   func->theCFG = cfg;
   func->CreateBasicBlocks(cfg);
-  if (func->NumBBs() == 0) {
+  if (func->theCFG->NumBBs() == 0) {
     /* there's no basicblock generated */
     return nullptr;
   }

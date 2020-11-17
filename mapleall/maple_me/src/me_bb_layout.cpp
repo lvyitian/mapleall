@@ -444,8 +444,8 @@ AnalysisResult *MeDoBBLayout::Run(MeFunction *func, MeFuncResultMgr *m) {
   BBLayout *bblayout = layoutMp->New<BBLayout>(layoutMp, func);
 
   // assume commonEntryBB is always bb 0
-  CHECK_FATAL(func->bbVec[0] == func->commonEntryBB, "assume bb[0] is the commont entry bb");
-  BB *bb = func->first_bb_;
+  CHECK_FATAL(func->theCFG->bbVec[0] == func->theCFG->commonEntryBB, "assume bb[0] is the commont entry bb");
+  BB *bb = func->theCFG->first_bb;
   while (bb != nullptr) {
     bblayout->AddBB(bb);
     if (bb->kind == kBBCondGoto || bb->kind == kBBGoto) {
@@ -465,7 +465,7 @@ AnalysisResult *MeDoBBLayout::Run(MeFunction *func, MeFuncResultMgr *m) {
       CHECK_FATAL(!(isJavatry && bblayout->tryOutstanding),
              "cannot emit another javatry if last javatry has not been ended");
       if (nextbb->isTryEnd) {
-        BB *trybb = func->endTryBB2TryBB[nextbb];
+        BB *trybb = func->theCFG->endTryBB2TryBB[nextbb];
         CHECK_FATAL(trybb == nextbb || bblayout->laidOut[trybb->id.idx],
                "cannot emit endtry bb before its corresponding try bb");
       }

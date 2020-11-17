@@ -149,7 +149,7 @@ AnalysisResult *MeDoFSAA::Run(MeFunction *func, MeFuncResultMgr *m) {
 
   FSAA fsaa(func, dom);
 
-  for (BB *bb : func->bbVec) {
+  for (BB *bb : func->theCFG->bbVec) {
     if (bb != nullptr) {
       fsaa.ProcessBB(bb);
     }
@@ -160,11 +160,11 @@ AnalysisResult *MeDoFSAA::Run(MeFunction *func, MeFuncResultMgr *m) {
     MeSSA ssa(func, ssaTab, dom, ssamp);
     ssa.runRenameOnly = true;
 
-    ssa.InitRenameStack(&ssaTab->originalStTable, func->bbVec.size(), ssaTab->versionStTable);
+    ssa.InitRenameStack(&ssaTab->originalStTable, func->theCFG->bbVec.size(), ssaTab->versionStTable);
     // recurse down dominator tree in pre-order traversal
-    MapleSet<BBId> *children = &dom->domChildren[func->commonEntryBB->id.idx];
+    MapleSet<BBId> *children = &dom->domChildren[func->theCFG->commonEntryBB->id.idx];
     for (BBId child : *children) {
-      ssa.RenameBB(func->bbVec[child.idx]);
+      ssa.RenameBB(func->theCFG->bbVec[child.idx]);
     }
 
     mempoolctrler.DeleteMemPool(ssamp);

@@ -23,13 +23,13 @@ class MeSSADevirtual : public SSADevirtual {
  public:
   MeSSADevirtual(MemPool *mp, MIRModule *mod, MeFunction *f, IRMap *irMap, KlassHierarchy *kh, Dominance *dom,
                  Clone *clone)
-    : SSADevirtual(mp, mod, irMap, kh, dom, f->bbVec.size(), clone), func(f) {}
+    : SSADevirtual(mp, mod, irMap, kh, dom, f->theCFG->bbVec.size(), clone), func(f) {}
 
   ~MeSSADevirtual() {}
 
  protected:
   BB *GetBB(BBId id) override {
-    return func->bbVec[id.idx];
+    return func->theCFG->bbVec[id.idx];
   }
 
   MIRFunction *GetMIRFunction() override {

@@ -27,7 +27,7 @@ void MeIRMap::Dump() {
   MemPool *backup = mirfunction->codeMemPool;
   mirfunction->SetMemPool(mempoolctrler.NewMemPool("IR Dump"));
   LogInfo::MapleLogger() << "===================Me IR dump==================\n";
-  for (BB *bb : mirFunc->bbVec) {
+  for (BB *bb : mirFunc->theCFG->bbVec) {
     if (bb == nullptr) {
       continue;
     }

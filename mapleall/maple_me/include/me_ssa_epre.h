@@ -47,8 +47,8 @@ class MeSSAEPre : public SSAEPre {
  private:
   void BuildWorkList();
   BB *GetBB(BBId id) {
-    CHECK(id.idx < func->bbVec.size(), "index out of range in MeSSAEPre::GetBB");
-    return func->bbVec[id.idx];
+    CHECK(id.idx < func->theCFG->bbVec.size(), "index out of range in MeSSAEPre::GetBB");
+    return func->theCFG->bbVec[id.idx];
   }
 
   PUIdx GetPuidx(MeStmt *stmt) {

@@ -34,7 +34,7 @@ AnalysisResult *MeDoEmission::Run(MeFunction *func, MeFuncResultMgr *m) {
   std::string passName = GetPreviousPhaseName();  // get previous phase
   bool emitHssaOrAfter = kHssaPhases.find(std::string(passName)) != kHssaPhases.end();
 
-  if (func->NumBBs() > 0) {
+  if (func->theCFG->NumBBs() > 0) {
     /* generate bblist after layout (bb physical position) */
     if (!MeOption::quiet) {
       CHECK_FATAL(m->GetAnalysisPhase(MeFuncPhase_BBLAYOUT) && m->GetAnalysisPhase(MeFuncPhase_BBLAYOUT)->PhaseName().c_str(),
@@ -84,7 +84,7 @@ AnalysisResult *MeDoEmission::Run(MeFunction *func, MeFuncResultMgr *m) {
       LogInfo::MapleLogger() << "\n==============after meemit =============" << std::endl;
       func->mirFunc->Dump();
       LogInfo::MapleLogger() << "\nRC operations do not need locking" << std::endl;
-      for (BB *bb : func->bbVec) {
+      for (BB *bb : func->theCFG->bbVec) {
         if (bb == nullptr) {
           continue;
         }

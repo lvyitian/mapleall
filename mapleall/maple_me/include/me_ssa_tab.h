@@ -16,6 +16,7 @@
 #ifndef MAPLE_ME_INCLUDE_ME_SSA_TAB_H
 #define MAPLE_ME_INCLUDE_ME_SSA_TAB_H
 #include "me_function.h"
+#include "me_cfg.h"
 #include "me_phase.h"
 
 namespace maple {

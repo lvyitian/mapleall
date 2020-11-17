@@ -20,6 +20,7 @@
 #include "constant_fold.h"
 #include "mir_nodes.h"
 #include "me_function.h"
+#include "me_cfg.h"
 #include "ssa_mir_nodes.h"
 #include "mir_builder.h"
 
@@ -130,8 +131,8 @@ static bool IsConstant(BaseNode *stmt, MapleMap<VersionSt *, BaseNode *> constan
 void MeConstProp::IntraConstProp() {
   MapleMap<VersionSt *, BaseNode *> constantMp(std::less<VersionSt *>(), constprop_alloc.Adapter());
   maple::ConstantFold cf(&func->mirModule);
-  for (uint32 i = 0; i < func->bbVec.size(); i++) {
-    BB *bb = func->bbVec[i];
+  for (uint32 i = 0; i < func->theCFG->bbVec.size(); i++) {
+    BB *bb = func->theCFG->bbVec[i];
     if (bb == nullptr) {
       continue;
     }

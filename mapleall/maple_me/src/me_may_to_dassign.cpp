@@ -22,7 +22,7 @@ namespace maple {
 
 bool May2Dassign::Doit() {
   bool changed = false;
-  for (BB *bb : func->bbVec) {
+  for (BB *bb : func->theCFG->bbVec) {
     if (bb == nullptr) {
       continue;
     }

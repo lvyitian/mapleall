@@ -17,6 +17,7 @@
 #define MAPLE_ME_INCLUDE_ME_DOMINANCE_H
 #include "dominance.h"
 #include "me_function.h"
+#include "me_cfg.h"
 #include "me_phase.h"
 
 namespace maple {

@@ -721,7 +721,7 @@ void MeStmtPre::ConstructUseOccurMap() {
   // do a pass over the program
   const MapleVector<BBId> &preorderDt = dominance->dtPreOrder;
   for (uint32 i = 0; i < preorderDt.size(); i++) {
-    BB *bb = func->bbVec[preorderDt[i].idx];
+    BB *bb = func->theCFG->bbVec[preorderDt[i].idx];
     for (auto stmt : bb->meStmtList) {
       for (int32 j = 0; j < stmt->NumMeStmtOpnds(); j++) {
         ConstructUseOccurMapExpr(i, stmt->GetMeStmtOpnd(j));
@@ -1074,7 +1074,7 @@ void MeStmtPre::BuildWorkList() {
     versionStackVec[ost->index.idx] = versStack;
   }
 
-  BuildWorkListBB(func->commonEntryBB);
+  BuildWorkListBB(func->theCFG->commonEntryBB);
 }
 
 void MeStmtPre::RemoveUnecessaryDassign(DassignMeStmt *dssmestmt) {

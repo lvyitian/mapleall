@@ -55,12 +55,12 @@ namespace maple {
 void MeSSA::BuildSSA() {
   InsertPhiNode();
 
-  InitRenameStack(&mirFunc->meSSATab->originalStTable, mirFunc->bbVec.size(), mirFunc->meSSATab->versionStTable);
+  InitRenameStack(&mirFunc->meSSATab->originalStTable, mirFunc->theCFG->bbVec.size(), mirFunc->meSSATab->versionStTable);
 
   // recurse down dominator tree in pre-order traversal
-  MapleSet<BBId> *children = &dom_->domChildren[mirFunc->commonEntryBB->id.idx];
+  MapleSet<BBId> *children = &dom_->domChildren[mirFunc->theCFG->commonEntryBB->id.idx];
   for (BBId child : *children) {
-    RenameBB(mirFunc->bbVec[child.idx]);
+    RenameBB(mirFunc->theCFG->bbVec[child.idx]);
   }
 }
 
@@ -84,7 +84,7 @@ void MeSSA::InsertPhiNode() {
     for (BBId bbid : phibbs) {
       BB *phiBB = bbVec[bbid.idx];
       CHECK_FATAL(phiBB != nullptr, "MeSSA::InsertPhiNode: non-existent BB for definition");
-      phiBB->InsertPhi(&mirFunc->alloc, vst);
+      phiBB->InsertPhi(&mirFunc->theCFG->cfgAlloc, vst);
     }
   }
 }
@@ -112,7 +112,7 @@ bool MeSSA::VerifySSAOpnd(BaseNode *node) {
 bool MeSSA::VerifySSA() {
   VersionStTable *versionsttable = &mirFunc->meSSATab->versionStTable;
   uint32 vtableSize = mirFunc->meSSATab->versionStTable.Size();
-  for (BB *bb : mirFunc->bbVec) {
+  for (BB *bb : mirFunc->theCFG->bbVec) {
     if (bb == nullptr) {
       continue;
     }

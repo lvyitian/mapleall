@@ -306,7 +306,7 @@ void SSARename2Preg::Init() {
 
 void SSARename2Preg::RunSelf() {
   Init();
-  for (BB *mebb : func->bbVec) {
+  for (BB *mebb : func->theCFG->bbVec) {
     if (mebb == nullptr) {
       continue;
     }
@@ -315,7 +315,7 @@ void SSARename2Preg::RunSelf() {
       LogInfo::MapleLogger() << " working on phi part of BB" << mebb->id.idx << endl;
     }
     MapleMap<OStIdx, MePhiNode *> &phiList = mebb->mePhiList;
-    MapleMap<OStIdx, MePhiNode *> regPhiList(func->alloc.Adapter());
+    MapleMap<OStIdx, MePhiNode *> regPhiList(func->theCFG->cfgAlloc.Adapter());
     for (std::pair<const OStIdx, MePhiNode *> apair : phiList) {
       if (!apair.second->UseReg()) {
         Rename2PregPhi(mebb, apair.second, regPhiList);
@@ -341,7 +341,7 @@ void SSARename2Preg::PromoteEmptyFunction() {
 
 AnalysisResult *MeDoSSARename2Preg::Run(MeFunction *func, MeFuncResultMgr *m) {
   MemPool *renamemp = mempoolctrler.NewMemPool(PhaseName().c_str());
-  if (func->bbVec.size() == 0) {
+  if (func->theCFG->bbVec.size() == 0) {
     // empty function, we only promote the parameter
     SSARename2Preg emptyrenamer(renamemp, func, nullptr, nullptr);
     emptyrenamer.PromoteEmptyFunction();

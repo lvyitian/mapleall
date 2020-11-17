@@ -38,7 +38,7 @@ AnalysisResult *MeDoMeProp::Run(MeFunction *func, MeFuncResultMgr *m) {
                 MeOption::propglobalref, MeOption::propfinaliloadref, MeOption::propiloadrefnonparm,
                 MeOption::propatphi);
   MIRFunction *mirfunction = func->mirFunc;
-  meprop.TraversalBB(func->commonEntryBB);
+  meprop.TraversalBB(func->theCFG->commonEntryBB);
   mempoolctrler.DeleteMemPool(propmp);
   if (DEBUGFUNC(func)) {
     LogInfo::MapleLogger() << "\n============== After Copy Propagation  =============" << std::endl;

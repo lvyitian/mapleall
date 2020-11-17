@@ -199,8 +199,8 @@ AnalysisResult *MeDoLoopCanon::Run(MeFunction *func, MeFuncResultMgr *m) {
 
   // set MirCFG's hasDoWhile flag
   MirCFG *cfg = func->theCFG;
-  for (BB *bb : func->bbVec) {
-    if (bb == nullptr || bb == func->commonEntryBB || bb == func->commonExitBB) {
+  for (BB *bb : cfg->bbVec) {
+    if (bb == nullptr || bb == cfg->commonEntryBB || bb == cfg->commonExitBB) {
       continue;
     }
     if (bb->kind != kBBCondGoto) {
@@ -229,15 +229,15 @@ AnalysisResult *MeDoLoopCanon::Run(MeFunction *func, MeFuncResultMgr *m) {
   MapleMap<Key, bool> swapSuccs(std::less<Key>(), localAlloc.Adapter());
 
   /* collect backedge first: if bb dominator its pred, then the edge pred->bb is a backedge */
-  for (BB *bb : func->bbVec) {
-    if (bb == nullptr || bb == func->commonEntryBB || bb == func->commonExitBB) {
+  for (BB *bb : cfg->bbVec) {
+    if (bb == nullptr || bb == cfg->commonEntryBB || bb == cfg->commonExitBB) {
       continue;
     }
     MapleVector<BB *> &preds = bb->pred;
     for (BB *pred : preds) {
-      ASSERT(func->commonEntryBB && pred, "");
+      ASSERT(cfg->commonEntryBB && pred, "");
       /* bb is reachable from entry && bb dominator pred */
-      if (dom->Dominate(func->commonEntryBB, bb) && dom->Dominate(bb, pred) && !pred->wontExit &&
+      if (dom->Dominate(cfg->commonEntryBB, bb) && dom->Dominate(bb, pred) && !pred->wontExit &&
           (NeedConvert(func, bb, pred, localAlloc, swapSuccs))) {
         if (DEBUGFUNC(func)) {
           LogInfo::MapleLogger() << "find backedge " << bb->id.idx << " <-- " << pred->id.idx << endl;

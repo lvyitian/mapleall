@@ -102,7 +102,7 @@ void LowerGlobals::LowerGlobalDreads(MeStmt *stmt, MeExpr *x) {
 }
 
 void LowerGlobals::Run() {
-  for (BB *bb : func->bbVec) {
+  for (BB *bb : func->theCFG->bbVec) {
     if (bb == nullptr) {
       continue;
     }

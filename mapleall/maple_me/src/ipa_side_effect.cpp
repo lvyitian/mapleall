@@ -672,7 +672,7 @@ void IpaSideEffect::SideEffectAnalyzeBB(maple::BB *bb, vector<bool> &bbvisited) 
   MapleSet<BBId> *domChildren = &dominance->domChildren[bbid.idx];
   for (const BBId &bbid : *domChildren) {
     BBId childbbid = bbid;
-    SideEffectAnalyzeBB(mefunc->bbVec.at(childbbid.idx), bbvisited);
+    SideEffectAnalyzeBB(mefunc->theCFG->bbVec[childbbid.idx], bbvisited);
   }
 }
 
@@ -922,25 +922,25 @@ void IpaSideEffect::TrimCallGraph(maple::BB *bb, vector<bool> &bbvisited) {
   MapleSet<BBId> *domChildren = &dominance->domChildren[bbid.idx];
   for (MapleSet<BBId>::iterator bbit = domChildren->begin(); bbit != domChildren->end(); bbit++) {
     BBId childbbid = *bbit;
-    TrimCallGraph(mefunc->bbVec.at(childbbid.idx), bbvisited);
+    TrimCallGraph(mefunc->theCFG->bbVec[childbbid.idx], bbvisited);
   }
 }
 
 void IpaSideEffect::DoAnalysis() {
   MapFuncNameToPuidx();
-  BB *entrybb = mefunc->commonEntryBB;
+  BB *entrybb = mefunc->theCFG->commonEntryBB;
   MIRFunction *mirFunc = mefunc->mirFunc;
   sccId = GetSCCNodeId(mirFunc);
   if (mirFunc->body == nullptr) {
     // External function from mplt, need to update effects
     UpdateExternalFuncSideEffects(mirFunc);
   } else {
-    vector<bool> bbvisited(mefunc->bbVec.size(), false);
+    vector<bool> bbvisited(mefunc->theCFG->bbVec.size(), false);
     // Trim call graph based on the result of devirtualization
     TrimCallGraph(entrybb, bbvisited);
     SetEffectsForAllCallees(mirFunc);
     if (!(notPure && hasUse && hasDef && hasRetallocobj && hasThrexception)) {
-      vector<bool> bbvisited(mefunc->bbVec.size(), false);
+      vector<bool> bbvisited(mefunc->theCFG->bbVec.size(), false);
       SideEffectAnalyzeBB(entrybb, bbvisited);
     }
   }

@@ -29,7 +29,7 @@ namespace maple {
 class MeHDSE : public HDSE {
  public:
   explicit MeHDSE(MeFunction *f, Dominance *pdom, IRMap *map)
-    : HDSE(&f->mirModule, f->meSSATab, pdom, map, mempoolctrler.NewMemPool(PhaseName().c_str()), f->bbVec),
+    : HDSE(&f->mirModule, f->meSSATab, pdom, map, mempoolctrler.NewMemPool(PhaseName().c_str()), f->theCFG->bbVec),
       func(f),
       verstUseCounts(dse_allocator.Adapter()),
       backSubsCands(dse_allocator.Adapter()) {}

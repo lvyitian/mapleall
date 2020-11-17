@@ -22,6 +22,7 @@
 #include "me_option.h"
 #include "dominance.h"
 #include "me_function.h"
+#include "me_cfg.h"
 #include "dse.h"
 
 namespace maple {
@@ -29,7 +30,7 @@ namespace maple {
 class MeDSE : private DSE {
  public:
   explicit MeDSE(MeFunction *f, Dominance *dom, MemPool *mp)
-    : DSE(&f->mirModule, &f->meSSATab->stmtsSSAPart, dom, mp), func(f), cfg_updated(false) {}
+    : DSE(&f->mirModule, &f->meSSATab->stmtsSSAPart, dom, mp), func(f), cfg(f->theCFG), cfg_updated(false) {}
 
   void DseInit();
   void DseProcess();
@@ -47,10 +48,11 @@ class MeDSE : private DSE {
 
  private:
   MeFunction *func;
+  MirCFG *cfg;
   bool cfg_updated;
 
   BB *GetBB(BBId id) {
-    return func->bbVec.at(id.idx);
+    return cfg->bbVec[id.idx];
   }
 };
 

@@ -42,7 +42,7 @@ void MeStorePre::CheckCreateCurTemp() {
 // each bb.  The return value is the cur_temp version that contains the RHS value
 // at the entry to bb;
 RegMeExpr* MeStorePre::EnsureRhsInCurTemp(BB *bb) {
-  CHECK_FATAL(bb != func->commonEntryBB, "EnsureRhsInCurTemp: cannot find earlier definition");
+  CHECK_FATAL(bb != func->theCFG->commonEntryBB, "EnsureRhsInCurTemp: cannot find earlier definition");
   // see if processed before
   MapleUnorderedMap<BB *, RegMeExpr *>::iterator map_it = bb_cur_temp_map.find(bb);
   if (map_it != bb_cur_temp_map.end()) {
@@ -213,7 +213,7 @@ void MeStorePre::CreateRealOcc(OStIdx oidx, MeStmt *mestmt) {
     // if it is local symbol, insert artificial real occ at commonExitBB
     if (ost->isLocal) {
       SRealOcc *artocc = ssuPreMempool->New<SRealOcc>();
-      artocc->mirbb = func->commonExitBB;
+      artocc->mirbb = func->theCFG->commonExitBB;
       wkcand->real_occs.push_back(artocc);
     }
   }
@@ -364,7 +364,7 @@ void MeStorePre::BuildWorkListBB(BB *bb) {
 
   // recurse on child BBs in post-dominator tree
   for (BBId bbid : dominance->pdomChildren[bb->id.idx]) {
-    BuildWorkListBB(func->bbVec[bbid.idx]);
+    BuildWorkListBB(func->theCFG->bbVec[bbid.idx]);
   }
 }
 

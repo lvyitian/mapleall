@@ -16,6 +16,7 @@
 #ifndef MAPLE_ME_INCLUDE_ME_IDENT_LOOP_H
 #define MAPLE_ME_INCLUDE_ME_IDENT_LOOP_H
 #include "me_function.h"
+#include "me_cfg.h"
 #include "bb.h"
 #include "me_phase.h"
 #include "dominance.h"
@@ -58,7 +59,7 @@ class IdentifyLoops : public AnalysisResult {
       func(mf),
       dominance(dm),
       meloops(meloop_alloc.Adapter()),
-      bbloopparent(func->bbVec.size(), nullptr, meloop_alloc.Adapter()) {}
+      bbloopparent(func->theCFG->bbVec.size(), nullptr, meloop_alloc.Adapter()) {}
 
   LoopDesc *CreateLoopDesc(BB *hd, BB *tail);
   void SetLoopParent4BB(const BB *bb, LoopDesc *aloop);

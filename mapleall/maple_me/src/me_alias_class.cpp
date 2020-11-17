@@ -38,7 +38,7 @@ void MeAliasClass::PerformAliasClass() {
   if (DEBUGFUNC(func)) {
     LogInfo::MapleLogger() << "\n============ Alias Classification Pass 1 ============" << endl;
   }
-  for (BB *bb : func->bbVec) {
+  for (BB *bb : func->theCFG->bbVec) {
     if (bb == nullptr) {
       continue;
     }
@@ -78,7 +78,7 @@ void MeAliasClass::PerformAliasClass() {
   if (DEBUGFUNC(func)) {
     LogInfo::MapleLogger() << "\n============ Alias Classification Pass 2 ============" << endl;
   }
-  for (BB *bb : func->bbVec) {
+  for (BB *bb : func->theCFG->bbVec) {
     if (bb == nullptr) {
       continue;
     }

@@ -71,7 +71,7 @@ class MeStmtPre : public SSAEPre {
   void RemoveUnecessaryDassign(DassignMeStmt *);
   void DoSSAFRE();
   BB *GetBB(BBId id) {
-    return func->bbVec[id.idx];
+    return func->theCFG->bbVec[id.idx];
   }
 
   PUIdx GetPuidx(MeStmt *stmt) {

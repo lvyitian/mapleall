@@ -95,7 +95,7 @@ bool CondBased::NullValueFromTestCond(VarMeExpr *varmeexpr, BB *bb, bool expecte
   bool provennull = false;
 
   while (pdomfrt->size() == 1) {
-    BB *cdbb = func->bbVec[(pdomfrt->begin())->idx];
+    BB *cdbb = func->theCFG->bbVec[(pdomfrt->begin())->idx];
     if (visitedmap[cdbb->id.idx]) {
       break;
     }
@@ -240,7 +240,7 @@ AnalysisResult *MeDoCondBasedRC::Run(MeFunction *func, MeFuncResultMgr *m) {
 
   CondBased condbasedrc(func, dom);
 
-  for (BB *bb : func->bbVec) {
+  for (BB *bb : func->theCFG->bbVec) {
     if (bb == nullptr) {
       continue;
     }
@@ -282,7 +282,7 @@ AnalysisResult *MeDoCondBasedNPC::Run(MeFunction *func, MeFuncResultMgr *m) {
   Dominance *dom = static_cast<Dominance *>(m->GetAnalysisResult(MeFuncPhase_DOMINANCE, func));
 
   CondBased condbasednpc(func, dom);
-  for (BB *bb : func->bbVec) {
+  for (BB *bb : func->theCFG->bbVec) {
     if (bb == nullptr) {
       continue;
     }

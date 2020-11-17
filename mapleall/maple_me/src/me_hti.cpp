@@ -374,7 +374,7 @@ void MeTI::BuildUseAndFindMustNotInfersFromStmt(MeStmt *stmt) {
 
 // this is the only time we traverse the program code
 void MeTI::BuildUseListsAndFindMustNotInfers() {
-  for (BB *bb : func->bbVec) {
+  for (BB *bb : func->theCFG->bbVec) {
     if (bb == nullptr) {
       continue;
     }
@@ -981,7 +981,7 @@ MeStmt *MeTI::CreateDassign(MeExpr *lhs, MeExpr *rhs, uint32_t fieldId, BBId bbI
   DassignMeStmt *mestmt = module->memPool->New<DassignMeStmt>(&irMap->irMapAlloc, stmt);
   mestmt->rhs = rhs;
   mestmt->UpdateLhs(var);
-  mestmt->bb = func->bbVec.at(bbId.idx);
+  mestmt->bb = func->theCFG->bbVec[bbId.idx];
   return mestmt;
 }
 
@@ -1628,7 +1628,7 @@ void MeTI::TypeInfer() {
   DumpStatus();
   // rebuild BBs via preorder traversal of the dominator tree
   for (BBId bbid : dom->dtPreOrder) {
-    RebuildBB(func->bbVec[bbid.idx]);
+    RebuildBB(func->theCFG->bbVec[bbid.idx]);
   }
   if (DEBUGFUNC(func)) {
     LogInfo::MapleLogger() << "\n============== TypeInference =============" << endl;

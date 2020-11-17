@@ -105,7 +105,7 @@ class PlacementOpt {
       classcount(0),
       inserted_bbs(std::less<BBId>(), percand_allocator.Adapter()),
       lastuse_bbs(std::less<BBId>(), percand_allocator.Adapter()) {
-    for (BB *entrybb : func->commonEntryBB->succ) {
+    for (BB *entrybb : func->theCFG->commonEntryBB->succ) {
       entry_dfns.insert(dominance->pdtDfn[entrybb->id.idx]);
     }
   }

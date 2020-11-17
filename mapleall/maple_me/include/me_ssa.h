@@ -16,6 +16,7 @@
 #ifndef MAPLE_ME_INCLUDE_ME_SSA_H
 #define MAPLE_ME_INCLUDE_ME_SSA_H
 #include "me_function.h"
+#include "me_cfg.h"
 #include "ssa.h"
 
 namespace maple {
@@ -31,7 +32,7 @@ class MeSSA : public maple::SSA, public AnalysisResult {
 
  public:
   explicit MeSSA(MeFunction *func, SSATab *stab, Dominance *dom, MemPool *mp) :
-      SSA(mp, stab, dom, func->bbVec), AnalysisResult(mp), mirFunc(func) {}
+      SSA(mp, stab, dom, func->theCFG->bbVec), AnalysisResult(mp), mirFunc(func) {}
 
   ~MeSSA() {}
 

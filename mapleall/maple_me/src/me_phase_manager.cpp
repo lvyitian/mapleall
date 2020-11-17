@@ -82,7 +82,7 @@ void MeFuncPhaseManager::RunFuncPhase(MeFunction *func, MeFuncPhase *phase) {
   // 4. run: skip mplme phase except "emit" if no cfg in MeFunction
   AnalysisResult *r = nullptr;
   MePhaseID phaseid = phase->GetPhaseId();
-  if ((func->NumBBs() > 0) || (phaseid == MeFuncPhase_EMIT) || (phaseid == MeFuncPhase_SSARENAME2PREG) || (phaseid == MeFuncPhase_CFGBUILD)) {
+  if ((phaseid == MeFuncPhase_CFGBUILD) || (func->theCFG->NumBBs() > 0) || (phaseid == MeFuncPhase_EMIT) || (phaseid == MeFuncPhase_SSARENAME2PREG)) {
     r = phase->Run(func, &arFuncManager, modResMgr);
   }
 #ifdef DEBUG_TIMER
@@ -223,9 +223,8 @@ void MeFuncPhaseManager::Run(MIRFunction *mirFunc, uint64 rangenum, const string
       LogInfo::MapleLogger() << "Function  < " << mirFunc->GetName() << "not optimized because it has setjmp\n";
     return;
   }
-  MemPool *funcmp = mempoolctrler.NewMemPool("mapleme per-function mempool");
   MemPool *versmp = mempoolctrler.NewMemPool("first verst mempool");
-  MeFunction func(&module, mirFunc, funcmp, versmp, meinput, false, MeOption::optLevel == 3);
+  MeFunction func(&module, mirFunc, versmp, meinput, false, MeOption::optLevel == 3);
 #if DEBUG
   g_mirmodule = &module;
   g_func = &func;
@@ -288,7 +287,7 @@ void MeFuncPhaseManager::Run(MIRFunction *mirFunc, uint64 rangenum, const string
   if (changecfgphase) {
     // do all the phases start over
     MemPool *versmp2 = mempoolctrler.NewMemPool("second verst mempool");
-    MeFunction func2(&module, mirFunc, funcmp, versmp2, meinput, true);
+    MeFunction func2(&module, mirFunc, versmp2, meinput, true);
     func2.Prepare(rangenum);
     for (auto it = PhaseSeqBegin(); it != PhaseSeqEnd(); it++) {
       PhaseID id = GetPhaseId(it);
@@ -331,7 +330,6 @@ void MeFuncPhaseManager::Run(MIRFunction *mirFunc, uint64 rangenum, const string
     }
     GetAnalysisResultManager()->InvalidAllResults();
   }
-  mempoolctrler.DeleteMemPool(funcmp);
 }
 
 }  // namespace maple

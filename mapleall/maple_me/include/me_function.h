@@ -42,26 +42,13 @@ extern SSATab *g_ssatab;
 
 class MeFunction : public FuncEmit {
  public:
-  MemPool *memPool;
-  MapleAllocator alloc;
   MemPool *versMemPool;
   MapleAllocator versAlloc;
   MIRModule &mirModule;
   MIRFunction *mirFunc;
-  BB *first_bb_;
-  BB *last_bb_;
-  BB *commonEntryBB;
-  BB *commonExitBB;
-  uint32 nextBBId;
-  /* mempool */
-  MapleUnorderedMap<LabelIdx, BB *> labelBBIdMap;
-  MapleVector<BB *> bbVec;
   MirCFG *theCFG;
   SSATab *meSSATab;
   MeIRMap *irMap;
-  MapleUnorderedMap<BB *, StmtNode *> bbTryNodeMap;  // maps isTry bb to its try stmt
-  MapleUnorderedMap<BB *, BB *> endTryBB2TryBB;           // maps endtry bb to its try bb
-  /* input */
   std::string fileName;
 
   uint32 regNum;   // count virtual registers
@@ -70,34 +57,19 @@ class MeFunction : public FuncEmit {
   bool isLfo;
   bool placementRCOn;   // whethering doing placement RC
 
-  explicit MeFunction(MIRModule *mod, MIRFunction *func, MemPool *mp, MemPool *versmp, const std::string &fileName,
+  explicit MeFunction(MIRModule *mod, MIRFunction *func, MemPool *versmp, const std::string &fileName,
                       bool issecondpass = false, bool islfo = false)
-    : memPool(mp),
-      alloc(mp),
-      versMemPool(versmp),
+    : versMemPool(versmp),
       versAlloc(versmp),
       mirModule(*mod),
       mirFunc(func),
-      first_bb_(nullptr),
-      last_bb_(nullptr),
-      commonEntryBB(nullptr),
-      commonExitBB(nullptr),
-      nextBBId(0),
-      labelBBIdMap(alloc.Adapter()),
-      bbVec(alloc.Adapter()),
       meSSATab(nullptr),
-      bbTryNodeMap(alloc.Adapter()),
-      endTryBB2TryBB(alloc.Adapter()),
       fileName(fileName) {
     PartialInit(issecondpass);
     isLfo = islfo;
   }
 
   virtual ~MeFunction() {}
-
-  uint32 NumBBs(void) const {
-    return nextBBId;
-  }
 
   void DumpFunction();
   void DumpFunctionNoSSA();
@@ -110,9 +82,6 @@ class MeFunction : public FuncEmit {
   }
 
   BB *NewBasicBlock();
-  void DeleteBasicBlock(const BB *bb);
-  BB *NextBB(const BB *bb);
-  BB *PrevBB(const BB *bb);
 
   /* create label for bb */
   void CreateBBLabel(BB *bb);

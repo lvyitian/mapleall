@@ -515,7 +515,7 @@ bool MeBDC::AnalyzeExitCondGoto(LoopDesc *mploop, ScalarMeExpr *meexpr, const BB
   CHECK_FATAL(bb->id.idx < dom->pdomFrontier.size(), "out of range in MeBDC::AnalyzeExitCondGoto");
   MapleSet<BBId> *pdomfrt = &dom->pdomFrontier[bb->id.idx];
   for (MapleSet<BBId>::iterator it = pdomfrt->begin(); it != pdomfrt->end(); it++) {
-    BB *cdbb = mefunc->bbVec[it->idx];
+    BB *cdbb = mefunc->theCFG->bbVec[it->idx];
     if (!mploop->Has(cdbb)) {
       continue;
     }
@@ -592,7 +592,7 @@ void MeBDC::DoBdcForLoop(LoopDesc *mploop) {
   MapleSet<BBId> &loopbbs = mploop->loop_bbs;
   std::vector<std::pair<MeStmt *, NaryMeExpr *>> arrayvec;
   for (MapleSet<BBId>::iterator stit = loopbbs.begin(); stit != loopbbs.end(); stit++) {
-    BB *bb = mefunc->bbVec[stit->idx];
+    BB *bb = mefunc->theCFG->bbVec[stit->idx];
     for (auto mestmt : bb->meStmtList) {
       for (int32 iii = 0; iii < mestmt->NumMeStmtOpnds(); iii++) {
         MeExpr *meexpr = mestmt->GetMeStmtOpnd(iii);
@@ -985,7 +985,7 @@ bool MeBDC::AnalyzeABDCByCondArrayExpr(BB *bb, NaryMeExpr *arrayexpr) {
   uint32 sizeofbb = dom->bbVec.size();
   std::vector<bool> visitedmap(sizeofbb, false);
   while (pdomfrt->size() == 1) {
-    BB *cdbb = mefunc->bbVec[(pdomfrt->begin())->idx];
+    BB *cdbb = mefunc->theCFG->bbVec[(pdomfrt->begin())->idx];
     if (visitedmap[cdbb->id.idx]) {
       break;
     }
@@ -1089,7 +1089,7 @@ void MeBDC::DoIt() {
   // do #2 - #4
   // first collect all the array expr
   std::vector<std::pair<MeStmt *, NaryMeExpr *>> arrayvec;
-  for (BB *bb : mefunc->bbVec) {
+  for (BB *bb : mefunc->theCFG->bbVec) {
     if (!bb) {
       continue;
     }

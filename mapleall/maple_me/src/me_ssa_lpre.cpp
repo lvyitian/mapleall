@@ -201,7 +201,7 @@ void MeSSALPre::BuildEntryLhsOcc4Formals() {
   work_cand->real_occs.insert(occit, occ);  // insert at beginning
   occ->is_lhs = true;
   occ->is_formal_at_entry = true;
-  occ->mirbb = func->first_bb_;
+  occ->mirbb = func->theCFG->first_bb;
 }
 
 void MeSSALPre::BuildWorkListLHSOcc(MeStmt *mestmt, int32 seqstmt) {
@@ -354,8 +354,8 @@ void MeSSALPre::BuildWorkList() {
 
   const MapleVector<BBId> &preorderDt = dominance->dtPreOrder;
   for (uint32 i = 0; i < numbbs; i++) {
-    CHECK(preorderDt[i].idx < func->bbVec.size(), "index out of range in MeSSALPre::BuildWorkList");
-    BB *bb = func->bbVec[preorderDt[i].idx];
+    CHECK(preorderDt[i].idx < func->theCFG->bbVec.size(), "index out of range in MeSSALPre::BuildWorkList");
+    BB *bb = func->theCFG->bbVec[preorderDt[i].idx];
     BuildWorkListBB(bb);
   }
 }

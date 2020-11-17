@@ -32,7 +32,7 @@ void MeDominance::Run() {
   ComputeDomChildren();
   ComputeIterDomFrontiers();
   uint32 num = 0;
-  ComputeDtPreorder(func->commonEntryBB, num);
+  ComputeDtPreorder(func->theCFG->commonEntryBB, num);
   dtPreOrder.resize(num);
   ComputeDtDfn();
 
@@ -42,7 +42,7 @@ void MeDominance::Run() {
   ComputePdomChildren();
   ComputeIterPdomFrontiers();
   num = 0;
-  ComputePdtPreorder(func->commonExitBB, num);
+  ComputePdtPreorder(func->theCFG->commonExitBB, num);
   pdtPreOrder.resize(num);
   ComputePdtDfn();
 }
@@ -52,7 +52,7 @@ AnalysisResult *MeDoDominance::Run(MeFunction *func, MeFuncResultMgr *m) {
   MemPool *tmppool = mempoolctrler.NewMemPool("dominance temps");
 
   MeDominance *dom =
-    mp->New<MeDominance>(mp, tmppool, (MapleVector<BB *> *)&func->bbVec, func->commonEntryBB, func->commonExitBB, func);
+    mp->New<MeDominance>(mp, tmppool, (MapleVector<BB *> *)&func->theCFG->bbVec, func->theCFG->commonEntryBB, func->theCFG->commonExitBB, func);
 
   dom->Run();
 

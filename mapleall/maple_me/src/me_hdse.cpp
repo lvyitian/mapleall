@@ -57,12 +57,12 @@ namespace maple {
 void MeHDSE::DseInit() {
   // Init bb's required flag
   bb_required.resize(0);
-  bb_required.resize(func->bbVec.size(), false);
-  if (func->commonEntryBB != func->first_bb_) {
-    bb_required[func->commonEntryBB->id.idx] = true;
+  bb_required.resize(func->theCFG->bbVec.size(), false);
+  if (func->theCFG->commonEntryBB != func->theCFG->first_bb) {
+    bb_required[func->theCFG->commonEntryBB->id.idx] = true;
   }
-  if (func->commonExitBB != func->last_bb_) {
-    bb_required[func->commonExitBB->id.idx] = true;
+  if (func->theCFG->commonExitBB != func->theCFG->last_bb) {
+    bb_required[func->theCFG->commonExitBB->id.idx] = true;
   }
 
   // Init all MeExpr to be dead;
@@ -75,7 +75,7 @@ void MeHDSE::DseInit() {
 
 void MeHDSE::DseInitFull() {
   DseInit();
-  for (BB *bb : func->bbVec) {
+  for (BB *bb : func->theCFG->bbVec) {
     if (bb == nullptr) {
       continue;
     }
@@ -245,7 +245,7 @@ void MeHDSE::BackwardSubstitution() {
 }
 
 void MeDohDSE::MakeEmptyTrysUnreachable(MeFunction *func) {
-  MapleVector<BB *> &bbVec = func->bbVec;
+  MapleVector<BB *> &bbVec = func->theCFG->bbVec;
   for (uint32_t i = 0; i < bbVec.size(); i++) {
     BB *trybb = bbVec[i];
     if (trybb != nullptr && trybb->isTry && trybb->meStmtList.first != nullptr &&

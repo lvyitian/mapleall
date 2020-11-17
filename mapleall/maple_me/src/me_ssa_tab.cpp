@@ -29,14 +29,14 @@ AnalysisResult *MeDoSSATab::Run(MeFunction *func, MeFuncResultMgr *m) {
   }
   MemPool *mp = mempoolctrler.NewMemPool(PhaseName().c_str());
   // allocate ssaTab including its SSAPart to store SSA information for statements
-  SSATab *ssaTab = mp->New<SSATab>(mp, func->versMemPool, &func->mirModule, func->bbVec.size());
+  SSATab *ssaTab = mp->New<SSATab>(mp, func->versMemPool, &func->mirModule, func->theCFG->bbVec.size());
   func->meSSATab = ssaTab;
 #if DEBUG
   g_ssatab = ssaTab;
 #endif
 
   // pass through the program statements
-  for (BB *bb : func->bbVec) {
+  for (BB *bb : func->theCFG->bbVec) {
     if (bb == nullptr) {
       continue;
     }

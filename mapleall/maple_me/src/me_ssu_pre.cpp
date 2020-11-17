@@ -339,7 +339,7 @@ void MeSSUPre::CreateSortedOccs() {
   std::multiset<uint32> lambdares_dfns;
   for (uint32 dfn : lambda_dfns) {
     BBId bbid = dominance->pdtPreOrder[dfn];
-    BB *bb = func->bbVec[bbid.idx];
+    BB *bb = func->theCFG->bbVec[bbid.idx];
     for (BB *succ : bb->succ) {
       lambdares_dfns.insert(dominance->pdtDfn[succ->id.idx]);
     }
@@ -363,11 +363,11 @@ void MeSSUPre::CreateSortedOccs() {
   }
   SLambdaOcc *nextLambdaocc = nullptr;
   if (lambdadfnIt != lambda_dfns.end()) {
-    nextLambdaocc = ssuPreMempool->New<SLambdaOcc>(func->bbVec[dominance->pdtPreOrder[*lambdadfnIt].idx], &ssuPreAlloc);
+    nextLambdaocc = ssuPreMempool->New<SLambdaOcc>(func->theCFG->bbVec[dominance->pdtPreOrder[*lambdadfnIt].idx], &ssuPreAlloc);
   }
   SLambdaResOcc *nextLambdaresocc = nullptr;
   if (lambdaresdfnIt != lambdares_dfns.end()) {
-    nextLambdaresocc = ssuPreMempool->New<SLambdaResOcc>(func->bbVec[dominance->pdtPreOrder[*lambdaresdfnIt].idx]);
+    nextLambdaresocc = ssuPreMempool->New<SLambdaResOcc>(func->theCFG->bbVec[dominance->pdtPreOrder[*lambdaresdfnIt].idx]);
 
     std::unordered_map<BBId, std::forward_list<SLambdaResOcc *>>::iterator it =
         bb2lambdaresMap.find(dominance->pdtPreOrder[*lambdaresdfnIt]);
@@ -425,7 +425,7 @@ void MeSSUPre::CreateSortedOccs() {
           lambdadfnIt++;
           if (lambdadfnIt != lambda_dfns.end()) {
             nextLambdaocc =
-                ssuPreMempool->New<SLambdaOcc>(func->bbVec[dominance->pdtPreOrder[*lambdadfnIt].idx], &ssuPreAlloc);
+                ssuPreMempool->New<SLambdaOcc>(func->theCFG->bbVec[dominance->pdtPreOrder[*lambdadfnIt].idx], &ssuPreAlloc);
           } else {
             nextLambdaocc = nullptr;
           }
@@ -434,7 +434,7 @@ void MeSSUPre::CreateSortedOccs() {
           CHECK_FATAL(lambdaresdfnIt != lambdares_dfns.end(), "iterator check");
           lambdaresdfnIt++;
           if (lambdaresdfnIt != lambdares_dfns.end()) {
-            nextLambdaresocc = ssuPreMempool->New<SLambdaResOcc>(func->bbVec[dominance->pdtPreOrder[*lambdaresdfnIt].idx]);
+            nextLambdaresocc = ssuPreMempool->New<SLambdaResOcc>(func->theCFG->bbVec[dominance->pdtPreOrder[*lambdaresdfnIt].idx]);
             std::unordered_map<BBId, std::forward_list<SLambdaResOcc *>>::iterator it =
                 bb2lambdaresMap.find(dominance->pdtPreOrder[*lambdaresdfnIt]);
             if (it == bb2lambdaresMap.end()) {
@@ -473,7 +473,7 @@ void MeSSUPre::CreateSortedOccs() {
 }
 
 void MeSSUPre::ApplySSUPre() {
-  BuildWorkListBB(func->commonExitBB);
+  BuildWorkListBB(func->theCFG->commonExitBB);
   if (prekind != k2ndDecrefPre) { // #0 build worklist
     CreateEmptyCleanupIntrinsics();
   }

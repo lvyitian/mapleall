@@ -25,14 +25,40 @@ class MirCFG : public AnalysisResult {
  public:
   MeFunction *func;
   MapleAllocator cfgAlloc;
-  bool hasDoWhile;
+  BB *first_bb;
+  BB *last_bb;
+  BB *commonEntryBB;
+  BB *commonExitBB;
+  uint32 nextBBId;
+  MapleVector<BB *> bbVec;
+  MapleUnorderedMap<LabelIdx, BB *> labelBBIdMap;
+  MapleUnorderedMap<BB *, StmtNode *> bbTryNodeMap;  // maps isTry bb to its try stmt
+  MapleUnorderedMap<BB *, BB *> endTryBB2TryBB; // maps endtry bb to its try bb
   MapleSet<LabelIdx> pattern_set_;
+  bool hasDoWhile;
 
   explicit MirCFG(MeFunction *f, MemPool *mp) : AnalysisResult(mp),
-    func(f), cfgAlloc(mp), hasDoWhile(false), pattern_set_(cfgAlloc.Adapter()) {}
+    func(f),
+    cfgAlloc(mp),
+    first_bb(nullptr),
+    last_bb(nullptr),
+    commonEntryBB(nullptr),
+    commonExitBB(nullptr),
+    nextBBId(0),
+    bbVec(cfgAlloc.Adapter()),
+    labelBBIdMap(cfgAlloc.Adapter()),
+    bbTryNodeMap(cfgAlloc.Adapter()),
+    endTryBB2TryBB(cfgAlloc.Adapter()),
+    pattern_set_(cfgAlloc.Adapter()),
+    hasDoWhile(false) {}
 
   ~MirCFG() {}
 
+  uint32 NumBBs(void) const { return nextBBId; }
+
+  BB *NextBB(const BB *bb);
+  BB *PrevBB(const BB *bb);
+  void DeleteBasicBlock(const BB *bb);
   bool IfReplaceWithAssertnonnull(BB *bb);
   void BuildMirCFG();
   void ReplaceWithAssertnonnull();

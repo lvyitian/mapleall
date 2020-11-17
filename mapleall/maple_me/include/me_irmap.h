@@ -17,6 +17,7 @@
 #define MAPLE_ME_INCLUDE_ME_IRMAP_H
 #include "ssa_tab.h"
 #include "me_function.h"
+#include "me_cfg.h"
 #include "irmap.h"
 
 const int kHmapHashLength = 24593;  // from planetmath.org/goodhashtableprimes
@@ -35,11 +36,11 @@ class MeIRMap : public IRMap {
 
   // following are virtual functions
   BB *GetBB(BBId id) {
-    return mirFunc->bbVec.at(id.idx);
+    return mirFunc->theCFG->bbVec.at(id.idx);
   }
 
   BB *GetBBForLabidx(LabelIdx lidx, PUIdx pidx = 0) {
-    return mirFunc->labelBBIdMap[lidx];
+    return mirFunc->theCFG->labelBBIdMap[lidx];
   }
 
   void Dump();

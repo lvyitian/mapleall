@@ -52,7 +52,7 @@ void PlacementOpt::FormLambdas() {
   lambda_dfns.clear();
   for (uint32 dfn : occur_dfns) {
     BBId bbid = dominance->pdtPreOrder[dfn];
-    BB *bb = func->bbVec[bbid.idx];
+    BB *bb = func->theCFG->bbVec[bbid.idx];
     GetIterPdomFrontier(bb, &lambda_dfns);
   }
 }
@@ -61,7 +61,7 @@ void PlacementOpt::FormLambdaRes() {
   lambdares_dfns.clear();
   for (uint32 dfn : lambda_dfns) {
     BBId bbid = dominance->pdtPreOrder[dfn];
-    BB *bb = func->bbVec[bbid.idx];
+    BB *bb = func->theCFG->bbVec[bbid.idx];
     for (BB *succ : bb->succ) {
       lambdares_dfns.insert(dominance->pdtDfn[succ->id.idx]);
     }
@@ -156,7 +156,7 @@ void PlacementOpt::CreateSortedOccs() {
 
   // initialize lambdaRes vector in each BBLambdaOcc node
   for (BBLambdaOcc *lambdaOcc : lambda_occs) {
-    BB *bb = func->bbVec[lambdaOcc->bbid.idx];
+    BB *bb = func->theCFG->bbVec[lambdaOcc->bbid.idx];
     for (BB *succbb : bb->succ) {
       lambdaOcc->lambdaRes.push_back(bb2lambdaresMap[succbb->id]);
     }
@@ -167,7 +167,7 @@ void PlacementOpt::RenameOccs() {
   MapleStack<BBOcc *> occStack(percand_allocator.Adapter());
   for (BBOcc *occ : ordered_occs) {
     while (!occStack.empty() &&
-           !dominance->Postdominate(func->bbVec[occStack.top()->bbid.idx], func->bbVec[occ->bbid.idx])) {
+           !dominance->Postdominate(func->theCFG->bbVec[occStack.top()->bbid.idx], func->theCFG->bbVec[occ->bbid.idx])) {
       occStack.pop();
     }
     switch (occ->occty) {
@@ -300,7 +300,7 @@ void PlacementOpt::ComputeCanbeant() {
           }
         }
         // check for critical edge
-        BB *insertbb = func->bbVec[lmbdares0->bbid.idx];
+        BB *insertbb = func->theCFG->bbVec[lmbdares0->bbid.idx];
         if (insertbb->pred.size() > 1) {
           ResetCanbeant(lambdaOcc);
           has_crit_edge = true;
@@ -385,7 +385,7 @@ void PlacementOpt::ComputePlacement(MapleSet<BBId> *occurbbs) {
           continue;
         }
       }
-      BB *insertbb = func->bbVec[lambdares0->bbid.idx];
+      BB *insertbb = func->theCFG->bbVec[lambdares0->bbid.idx];
       CHECK_FATAL(insertbb->pred.size() == 1, "ComputePlacement: cannot insert at critical edge");
       inserted_bbs.insert(lambdares0->bbid);
     }
