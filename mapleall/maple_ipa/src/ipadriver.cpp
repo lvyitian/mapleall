@@ -129,8 +129,7 @@ void DoIpaSideEffectAnalysis(MIRModule *mirModule) {
   modphases.clear();
 
   vector<string> mephases;
-  mephases.push_back(string("loopcanon"));
-  mephases.push_back(string("splitcriticaledge"));
+  mephases.push_back(string("cfgbuild"));
   mephases.push_back(string("aliasclass"));
   mephases.push_back(string("ssa"));
   mephases.push_back(string("ssadevirt"));
@@ -142,6 +141,7 @@ void DoIpaSideEffectAnalysis(MIRModule *mirModule) {
   mgr.AddPhases(modphases, true, timePhases);
   modphases.clear();
 
+  mephases.push_back(string("cfgbuild"));
   mephases.push_back(string("aliasclass"));
   mephases.push_back(string("ssa"));
   mephases.push_back(string("ssadevirt"));
