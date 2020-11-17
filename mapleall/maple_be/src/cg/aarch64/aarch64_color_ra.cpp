@@ -64,6 +64,7 @@ const uint32 kSwitchCaseNum = 5;
 const uint32 kLoopWeight = 10;
 const uint32 kMaxParamNum = 8;
 const uint32 kNumPregBits = V31 + 1;
+const uint32 kNumInsnThreashold = 200000;
 
 #define GCRA_DUMP CGDEBUGFUNC(cgfunc_)
 
@@ -1235,23 +1236,24 @@ void GraphColorRegAllocator::BuildInterferenceGraph() {
   std::vector<LiveRange *> fpLrVec;
   BuildInterferenceGraphSeparateIntFp(intLrVec, fpLrVec);
 
-  std::vector<LiveRange *>::iterator it1, it2;
-  for (it1 = intLrVec.begin(); it1 != intLrVec.end(); it1++) {
-    LiveRange *lr1 = *it1;
+  int sz = intLrVec.size();
+  for (int i = 0; i < sz; i++) {
+    LiveRange *lr1 = intLrVec[i];
     CalculatePriority(lr1);
-    for (it2 = it1 + 1; it2 != intLrVec.end(); it2++) {
-      LiveRange *lr2 = *it2;
+    for (int j = i + 1; j < sz; j++) {
+      LiveRange *lr2 = intLrVec[j];
       if (lr1->regno < lr2->regno) {
         CheckInterference(lr1, lr2);
       }
     }
   }
 
-  for (it1 = fpLrVec.begin(); it1 != fpLrVec.end(); it1++) {
-    LiveRange *lr1 = *it1;
+  sz = fpLrVec.size();
+  for (int i = 0; i < sz; i++) {
+    LiveRange *lr1 = fpLrVec[i];
     CalculatePriority(lr1);
-    for (it2 = it1 + 1; it2 != fpLrVec.end(); it2++) {
-      LiveRange *lr2 = *it2;
+    for (int j = i + 1; j < sz; j++) {
+      LiveRange *lr2 = fpLrVec[j];
       if (lr1->regno < lr2->regno) {
         CheckInterference(lr1, lr2);
       }
@@ -3342,7 +3344,7 @@ void GraphColorRegAllocator::SpillLiveRangeForSpills() {
 
 // Iterate through all instructions and change the vreg to preg.
 void GraphColorRegAllocator::FinalizeRegisters() {
-  if (CGOptions::doMultiPassColorRA && hasSpill) {
+  if (doMultiPass && hasSpill) {
     SpillLiveRangeForSpills();
     return;
   }
@@ -3424,6 +3426,9 @@ bool GraphColorRegAllocator::AllocateRegisters() {
     }
   }
   CG_ASSERT(cnt <= cgfunc_->GetTotalNumberOfInstructions(), "Incorrect insn count");
+  if ((cnt < kNumInsnThreashold) && CGOptions::doMultiPassColorRA) {
+    doMultiPass = true;
+  }
 
 #ifdef PROPAGATE_REG
   if (cgfunc_->IsAfterRegAlloc() == false) {
@@ -3438,7 +3443,7 @@ bool GraphColorRegAllocator::AllocateRegisters() {
   }
 #endif
 
-  if (CGOptions::doMultiPassColorRA) {
+  if (doMultiPass) {
     doLRA = false;
     doOptProlog = false;
   }
@@ -3477,7 +3482,7 @@ bool GraphColorRegAllocator::AllocateRegisters() {
     cgfunc_->DumpCGIR();
   }
 
-  if (CGOptions::doMultiPassColorRA && hasSpill) {
+  if (doMultiPass && hasSpill) {
     return false;
   } else {
     return true;

@@ -649,6 +649,7 @@ class GraphColorRegAllocator : public RegAllocator {
         spillMemopnd0(nullptr),
         spillMemopnd1(nullptr),
         spillMemopnd2(nullptr),
+        doMultiPass(false),
 #ifdef USE_LRA
         doLRA(true),
 #else
@@ -741,6 +742,7 @@ class GraphColorRegAllocator : public RegAllocator {
   regno_t intSpillFillRegs[3];
   regno_t fpSpillFillRegs[3];
 
+  bool doMultiPass;
   bool doLRA;
   bool doOptProlog;
   bool hasSpill;
