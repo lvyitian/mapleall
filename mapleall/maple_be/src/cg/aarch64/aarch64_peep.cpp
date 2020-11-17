@@ -2072,8 +2072,9 @@ void AArch64Peep::ComplexMemOperandOptLSL() {
       MOperator thisMop = insn->GetMachineOpcode();
       if (thisMop == MOP_xaddrrrs) {
         MOperator nextMop = nextInsn->GetMachineOpcode();
+        // load/store byte not eligible.
         if (nextMop &&
-            ((nextMop >= MOP_wldrsb && nextMop <= MOP_dldr) || (nextMop >= MOP_wstrb && nextMop <= MOP_dstr))) {
+            ((nextMop >= MOP_wldrsh && nextMop <= MOP_dldr) || (nextMop >= MOP_wstrh && nextMop <= MOP_dstr))) {
           // Check if base register of nextInsn and the dest operand of insn are identical.
           AArch64MemOperand *memOpnd = static_cast<AArch64MemOperand *>(nextInsn->GetMemOpnd());
           CG_ASSERT(memOpnd != nullptr, "null ptr check");
@@ -2112,6 +2113,10 @@ void AArch64Peep::ComplexMemOperandOptLSL() {
           }
           BitShiftOperand *lsl = static_cast<BitShiftOperand *>(insn->GetOperand(3));
           uint32 shftsize = lsl->GetShiftAmount();
+          if ((nextMop == MOP_wldrsh || nextMop == MOP_wldrh || nextMop == MOP_wstrh) && shftsize > 1) {
+            // half word only allows shift value of 1 or less
+            continue;
+          }
           if ((memOpnd->GetSize() == 32 && (shftsize != 0 && shftsize != 2)) ||
               (memOpnd->GetSize() == 64 && (shftsize != 0 && shftsize != 3))) {
             continue;
