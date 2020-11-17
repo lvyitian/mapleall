@@ -504,6 +504,15 @@ void Riscv64CGFunc::SelectMpy(Operand *resopnd, Operand *opnd0, Operand *opnd1, 
     int64 immValue = llabs(imm->GetValue());
     if (immValue != 0 && (immValue & (immValue - 1)) == 0) {
       if (otherop->op_kind_ != Operand::Opd_Register) {
+        if (otherop->op_kind_ == Operand::Opd_Immediate) {
+          // both operands are immediates
+          ImmOperand *otherImm = static_cast<ImmOperand *>(otherop);
+          int64 otherImmVal = llabs(otherImm->GetValue());
+          otherImm->SetValue(otherImmVal * immValue);
+          SelectCopy(otherop, prmtype, prmtype);
+          curbb->lastinsn->SetOperand(0, resopnd);
+          return;
+        }
         otherop = SelectCopy(otherop, prmtype, prmtype);
       }
       Riscv64ImmOperand *shiftnum = CreateImmOperand(__builtin_ffsll(immValue) - 1, dsize, false);
@@ -2056,6 +2065,52 @@ Operand *Riscv64CGFunc::SelectCvt(BaseNode *parent, TypeCvtNode *node, Operand *
   PrimType totype = node->primType;
   if (fromtype == totype) {
     return opnd0;  // noop
+  }
+  if (IsPrimitiveInteger(fromtype) && IsPrimitiveInteger(totype) &&
+      opnd0->op_kind_ == Operand::Opd_Immediate &&
+      GetPrimTypeBitSize(fromtype) < GetPrimTypeBitSize(totype)) {
+    ImmOperand *otherImm = static_cast<ImmOperand *>(opnd0);
+    int64 imm = otherImm->GetValue();
+    switch (GetPrimTypeBitSize(fromtype)) {
+    case 8: {
+      int64 val;
+      if (IsSignedInteger(totype)) {
+        val = 0x7f;
+      } else {
+        val = 0xff;
+      }
+      if ((imm & val) == imm) {
+        return LoadIntoRegister(opnd0, fromtype);
+      }
+      break;
+    }
+    case 16: {
+      int64 val;
+      if (IsSignedInteger(totype)) {
+        val = 0x7fff;
+      } else {
+        val = 0xffff;
+      }
+      if ((imm & val) == imm) {
+        return LoadIntoRegister(opnd0, fromtype);
+      }
+      break;
+    }
+    case 32: {
+      int64 val;
+      if (IsSignedInteger(totype)) {
+        val = 0x7fffffff;
+      } else {
+        val = 0xffffffff;
+      }
+      if ((imm & val) == imm) {
+        return LoadIntoRegister(opnd0, fromtype);
+      }
+      break;
+    }
+    default:
+      break;
+    }
   }
   Operand *resopnd = static_cast<Operand *>(CreateRegisterOperandOfType(totype));
   if (IsPrimitiveFloat(totype) && IsPrimitiveInteger(fromtype)) {
