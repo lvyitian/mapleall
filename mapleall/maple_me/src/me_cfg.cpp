@@ -661,4 +661,25 @@ void MirCFG::DumpToFile(const char *prefix, bool dumpinstrs) {
   LogInfo::MapleLogger().rdbuf(coutbuf);
 }
 
+AnalysisResult *MeDoCfgBuild::Run(MeFunction *func, MeFuncResultMgr *m) {
+  MemPool *cfgMp = mempoolctrler.NewMemPool(PhaseName().c_str());
+  MirCFG *cfg = cfgMp->New<MirCFG>(func, cfgMp);
+  func->theCFG = cfg;
+  func->CreateBasicBlocks(cfg);
+  if (func->NumBBs() == 0) {
+    /* there's no basicblock generated */
+    return nullptr;
+  }
+  func->RemoveEhEdgesInSyncRegion();
+
+  cfg->BuildMirCFG();
+  cfg->ReplaceWithAssertnonnull();
+  cfg->VerifyLabels();
+  cfg->UnreachCodeAnalysis();
+  cfg->WontExitAnalysis();
+  cfg->Verify();
+
+  return cfg;
+}
+
 }  // namespace maple

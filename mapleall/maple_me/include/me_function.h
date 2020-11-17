@@ -67,11 +67,11 @@ class MeFunction : public FuncEmit {
   uint32 regNum;   // count virtual registers
   bool hasEH;      /* current has try statement */
   bool secondPass;  // second pass for the same function
-  bool isLno;
+  bool isLfo;
   bool placementRCOn;   // whethering doing placement RC
 
   explicit MeFunction(MIRModule *mod, MIRFunction *func, MemPool *mp, MemPool *versmp, const std::string &fileName,
-                      bool issecondpass = false, bool islno = false)
+                      bool issecondpass = false, bool islfo = false)
     : memPool(mp),
       alloc(mp),
       versMemPool(versmp),
@@ -90,7 +90,7 @@ class MeFunction : public FuncEmit {
       endTryBB2TryBB(alloc.Adapter()),
       fileName(fileName) {
     PartialInit(issecondpass);
-    isLno = islno;
+    isLfo = islfo;
   }
 
   virtual ~MeFunction() {}
@@ -132,11 +132,12 @@ class MeFunction : public FuncEmit {
     return secondPass;
   }
 
+  void CreateBasicBlocks(MirCFG *cfg);
+  void RemoveEhEdgesInSyncRegion();
+
  private:
   void PartialInit(bool issecondpass);
-  void CreateBasicBlocks();
   void SetTryBlockInfo(StmtNode *javatryStmt, BB *lastjavatryBb, const StmtNode *nextstmt, BB *curbb, BB *newbb);
-  void RemoveEhEdgesInSyncRegion();
 };
 }  // namespace maple
 #endif  // MAPLE_ME_INCLUDE_ME_FUNCTION_H

@@ -156,7 +156,7 @@ AnalysisResult *MeDoSplitCEdge::Run(MeFunction *func, MeFuncResultMgr *m) {
       func->DumpFunctionNoSSA();
       func->theCFG->DumpToFile("cfgafterbreak");
     }
-    m->InvalidAllResults();
+     m->InvalidAnalysisResult(MeFuncPhase_DOMINANCE, func);
   }
   mempoolctrler.DeleteMemPool(localmp);
   return nullptr;

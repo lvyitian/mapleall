@@ -21,6 +21,7 @@
 #include "ver_symbol.h"
 #include "dominance.h"
 #include "me_function.h"
+#include "me_cfg.h"
 
 /*
    This phase builds the SSA form of a function. Before this we have got the dominator tree
@@ -136,6 +137,7 @@ bool MeSSA::VerifySSA() {
 }
 
 AnalysisResult *MeDoSSA::Run(MeFunction *func, MeFuncResultMgr *m) {
+  MirCFG *cfg = static_cast<MirCFG *>(m->GetAnalysisResult(MeFuncPhase_CFGBUILD, func));
   Dominance *dom = static_cast<Dominance *>(m->GetAnalysisResult(MeFuncPhase_DOMINANCE, func));
   ASSERT(dom != nullptr, "dominance phase has problem");
 

@@ -31,6 +31,7 @@ ADD_MODPREPHASE("DeCouple", Options::buildApp)
 }
 // mephase begin
 if (HasThisPhase(kMplMe)) {
+ADD_MEPHASE("cfgbuild", MeOption::optLevel >= 1)
 ADD_MEPHASE("loopcanon", MeOption::optLevel >= 2)
 ADD_MEPHASE("splitcriticaledge", MeOption::optLevel >= 2)
 ADD_MEPHASE("ssatab", theModule->IsJavaModule() || MeOption::optLevel >= 1)

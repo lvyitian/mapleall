@@ -50,7 +50,6 @@ void InterleavedManager::AddPhases(const std::vector<std::string> &phases, bool 
   } else {  // MeFuncPhase
     MeFuncPhaseManager *fpm = GetMempool()->New<MeFuncPhaseManager>(GetMempool(), &mirModule, mrm);
     fpm->RegisterFuncPhases();
-    fpm->mePhaseType = kMePhaseMainopt;
     if (genmpl) {
       fpm->genMeMpl = true;
     }

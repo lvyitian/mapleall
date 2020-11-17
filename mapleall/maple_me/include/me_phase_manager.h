@@ -24,7 +24,6 @@
 #include "me_phase.h"
 
 namespace maple {
-typedef enum { kMePhaseInvalid, kMePhaseMainopt, kMePhaseLno } MePhaseType;
 
 /* driver of Me */
 class MeFuncPhaseManager : public PhaseManager {
@@ -33,7 +32,6 @@ class MeFuncPhaseManager : public PhaseManager {
   MeFuncResultMgr arFuncManager;
   MIRModule &module;
   ModuleResultMgr *modResMgr;
-  MePhaseType mePhaseType;
   bool genMeMpl;
   bool timePhases;
 
@@ -42,7 +40,6 @@ class MeFuncPhaseManager : public PhaseManager {
       arFuncManager(GetMemAllocator()),
       module(*mod),
       modResMgr(mrm),
-      mePhaseType(kMePhaseInvalid),
       genMeMpl(false),
       timePhases(false) {}
 
@@ -54,10 +51,6 @@ class MeFuncPhaseManager : public PhaseManager {
   void RegisterFuncPhases();
   void AddPhases(const std::unordered_set<std::string> &skipPhases);
   void AddPhasesNoDefault(const std::vector<std::string> &phases);
-
-  void SetMePhase(MePhaseType mephase) {
-    mePhaseType = mephase;
-  }
 
   void SetModResMgr(ModuleResultMgr *mrm) {
     modResMgr = mrm;
@@ -75,9 +68,6 @@ class MeFuncPhaseManager : public PhaseManager {
   }
 
   bool FuncFilter(const std::string &, const std::string &);
-
- private:
-   void RunMainOpt(MIRFunction *, uint64, const std::string &);
 };
 }  // namespace maple
 #endif  // MAPLE_ME_INCLUDE_ME_PHASE_MANAGER_H

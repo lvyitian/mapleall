@@ -20,6 +20,7 @@
 #include "ssa_mir_nodes.h"
 #include "ssa_tab.h"
 #include "me_function.h"
+#include "me_cfg.h"
 #include "mpl_timer.h"
 
 using namespace std;
@@ -92,6 +93,7 @@ void MeAliasClass::PerformAliasClass() {
 }
 
 AnalysisResult *MeDoAliasClass::Run(MeFunction *func, MeFuncResultMgr *m, ModuleResultMgr *mrm) {
+  MirCFG *cfg = static_cast<MirCFG *>(m->GetAnalysisResult(MeFuncPhase_CFGBUILD, func));
   SSATab *ssaTab = static_cast<SSATab *>(m->GetAnalysisResult(MeFuncPhase_SSATAB, func));
   ASSERT(ssaTab != nullptr, "ssatbb phase has problem");
   MemPool *aliasclassmp = mempoolctrler.NewMemPool(PhaseName().c_str());

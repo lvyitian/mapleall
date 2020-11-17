@@ -21,13 +21,15 @@
 
 namespace maple {
 
-class MirCFG {
+class MirCFG : public AnalysisResult {
  public:
   MeFunction *func;
+  MapleAllocator cfgAlloc;
   bool hasDoWhile;
   MapleSet<LabelIdx> pattern_set_;
 
-  explicit MirCFG(MeFunction *f) : func(f), hasDoWhile(false), pattern_set_(f->alloc.Adapter()) {}
+  explicit MirCFG(MeFunction *f, MemPool *mp) : AnalysisResult(mp),
+    func(f), cfgAlloc(mp), hasDoWhile(false), pattern_set_(cfgAlloc.Adapter()) {}
 
   ~MirCFG() {}
 
@@ -42,6 +44,18 @@ class MirCFG {
   void Dump();
   void DumpToFile(const char *prefix, bool dumpinstrs = false);
   void AddAuxilaryBB();
+};
+
+class MeDoCfgBuild : public MeFuncPhase {
+ public:
+  explicit MeDoCfgBuild(MePhaseID id) : MeFuncPhase(id) {}
+
+  ~MeDoCfgBuild() {}
+
+  AnalysisResult *Run(MeFunction *func, MeFuncResultMgr *m) override;
+  std::string PhaseName() const override {
+    return "cfgbuild";
+  }
 };
 }  // namespace maple
 #endif  // MAPLE_ME_INCLUDE_ME_CFG_H

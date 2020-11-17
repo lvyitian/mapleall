@@ -56,7 +56,6 @@ int main(int argc, char **argv) {
   // new functional phase manager
   MeFuncPhaseManager fpm(optmp, &themodule);
   fpm.RegisterFuncPhases();  // scan me_phases.def and create phase object
-  fpm.SetMePhase(kMePhaseMainopt);
 
   MIRParser theparser(themodule);
   if (!isbpl) {

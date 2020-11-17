@@ -82,7 +82,7 @@ void MeFuncPhaseManager::RunFuncPhase(MeFunction *func, MeFuncPhase *phase) {
   // 4. run: skip mplme phase except "emit" if no cfg in MeFunction
   AnalysisResult *r = nullptr;
   MePhaseID phaseid = phase->GetPhaseId();
-  if ((func->NumBBs() > 0) || (phaseid == MeFuncPhase_EMIT) || (phaseid == MeFuncPhase_SSARENAME2PREG)) {
+  if ((func->NumBBs() > 0) || (phaseid == MeFuncPhase_EMIT) || (phaseid == MeFuncPhase_SSARENAME2PREG) || (phaseid == MeFuncPhase_CFGBUILD)) {
     r = phase->Run(func, &arFuncManager, modResMgr);
   }
 #ifdef DEBUG_TIMER
@@ -139,59 +139,17 @@ void MeFuncPhaseManager::AddPhases(const std::unordered_set<std::string> &skipPh
     }
   };
 
-  bool o2 = MeOption::optLevel == 2;
-  if (mePhaseType == kMePhaseMainopt) {
-    /* default phase sequence */
-    if (o2) {
-      addPhase("loopcanon");
-      addPhase("splitcriticaledge");
-    }
+  bool o2 = MeOption::optLevel >= 2;
+  bool o3 = MeOption::optLevel == 3;
+  /* default phase sequence */
+  if (o3) {
     addPhase("ssatab");
     addPhase("aliasclass");
     addPhase("ssa");
     addPhase("dse");
     addPhase("fsaa");
-    if (JAVALANG) {
-      // addPhase("bdcopt");
-      // addPhase("syncselect");
-      // addPhase("ssadevirt");
-      // addPhase("ea");
-    }
-    addPhase("hprop");
-    addPhase("symrename");
-    addPhase("hdse");
-    if (JAVALANG) {
-      addPhase("may2dassign");
-      addPhase("condbasednpc");
-    }
-    if (o2 && JAVALANG) {
-      addPhase("cfgopt");
-    }
-    if (o2) {
-      addPhase("epre");
-      if (JAVALANG) {
-        addPhase("stmtpre");
-      }
-    }
-    if (JAVALANG && !MeOption::noRC) {
-      addPhase("analyzerc");
-      if (MeOption::rcLowering) {
-        addPhase("rclowering");
-      }
-    }
-    addPhase("rename2preg");
-    if (o2) {
-      addPhase("lpre");
-      // addPhase("storepre");
-    }
-    addPhase("emit");
-  } else {
-    addPhase("ssatab");
-    addPhase("aliasclass");
-    addPhase("ssa");
-    addPhase("dse");
     addPhase("irmapbuild");
-    addPhase("loopivcan");
+    //addPhase("loopivcan");
     addPhase("hprop");
     addPhase("hdse");
     addPhase("lnoemit");
@@ -202,6 +160,50 @@ void MeFuncPhaseManager::AddPhases(const std::unordered_set<std::string> &skipPh
       addPhase("autosimd");
     }
   }
+  addPhase("cfgbuild");
+  if (o2) {
+    addPhase("loopcanon");
+    addPhase("splitcriticaledge");
+  }
+  addPhase("ssatab");
+  addPhase("aliasclass");
+  addPhase("ssa");
+  addPhase("dse");
+  addPhase("fsaa");
+  if (JAVALANG) {
+    // addPhase("bdcopt");
+    // addPhase("syncselect");
+    // addPhase("ssadevirt");
+    // addPhase("ea");
+  }
+  addPhase("hprop");
+  addPhase("symrename");
+  addPhase("hdse");
+  if (JAVALANG) {
+    addPhase("may2dassign");
+    addPhase("condbasednpc");
+  }
+  if (o2 && JAVALANG) {
+    addPhase("cfgopt");
+  }
+  if (o2) {
+    addPhase("epre");
+    if (JAVALANG) {
+      addPhase("stmtpre");
+    }
+  }
+  if (JAVALANG && !MeOption::noRC) {
+    addPhase("analyzerc");
+    if (MeOption::rcLowering) {
+      addPhase("rclowering");
+    }
+  }
+  addPhase("rename2preg");
+  if (o2) {
+    addPhase("lpre");
+    // addPhase("storepre");
+  }
+  addPhase("emit");
 }
 
 // match sub string of function name
@@ -212,7 +214,7 @@ bool MeFuncPhaseManager::FuncFilter(const string &filter, const std::string &nam
   return false;
 }
 
-void MeFuncPhaseManager::RunMainOpt(MIRFunction *mirFunc, uint64 rangenum, const string &meinput) {
+void MeFuncPhaseManager::Run(MIRFunction *mirFunc, uint64 rangenum, const string &meinput) {
   if (!MeOption::quiet)
     LogInfo::MapleLogger() << ">>>>>>>>>>>>>>>>>>>>>>>>>>>>> Optimizing Function  < " << mirFunc->GetName()
          << " id=" << mirFunc->puIdxOrigin << " >---\n";
@@ -223,7 +225,7 @@ void MeFuncPhaseManager::RunMainOpt(MIRFunction *mirFunc, uint64 rangenum, const
   }
   MemPool *funcmp = mempoolctrler.NewMemPool("mapleme per-function mempool");
   MemPool *versmp = mempoolctrler.NewMemPool("first verst mempool");
-  MeFunction func(&module, mirFunc, funcmp, versmp, meinput, false, mePhaseType == kMePhaseLno);
+  MeFunction func(&module, mirFunc, funcmp, versmp, meinput, false, MeOption::optLevel == 3);
 #if DEBUG
   g_mirmodule = &module;
   g_func = &func;
@@ -330,10 +332,6 @@ void MeFuncPhaseManager::RunMainOpt(MIRFunction *mirFunc, uint64 rangenum, const
     GetAnalysisResultManager()->InvalidAllResults();
   }
   mempoolctrler.DeleteMemPool(funcmp);
-}
-
-void MeFuncPhaseManager::Run(MIRFunction *mirFunc, uint64 rangenum, const string &meinput) {
-  RunMainOpt(mirFunc, rangenum, meinput);
 }
 
 }  // namespace maple

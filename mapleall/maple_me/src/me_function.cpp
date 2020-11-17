@@ -167,7 +167,7 @@ BaseNode *CreateDummyReturnValue(MIRBuilder *mirBuilder, MIRType *retty) {
   return nullptr;
 }
 
-void MeFunction::CreateBasicBlocks() {
+void MeFunction::CreateBasicBlocks(MirCFG *cfg) {
   if (mirModule.CurFunction()->IsEmpty()) {
     if (!MeOption::quiet) {
       LogInfo::MapleLogger() << "function is empty, cfg is nullptr\n";
@@ -509,26 +509,12 @@ void MeFunction::Prepare(unsigned long rangeNum) {
   if (!MeOption::quiet)
     LogInfo::MapleLogger() << "---Preparing Function  < " << mirModule.CurFunction()->GetName() << " > [" << rangeNum << "] ---\n";
   /* lower first */
-  MIRLower mirlowerer(mirModule, mirModule.CurFunction());
-  if (!isLno) {
+  if (!isLfo) {
+    MIRLower mirlowerer(mirModule, mirModule.CurFunction());
     mirlowerer.SetLowerME();
     mirlowerer.SetLowerExpandArray();
     mirlowerer.LowerFunc(mirModule.CurFunction());
   }
-  CreateBasicBlocks();
-  if (NumBBs() == 0) {
-    /* there's no basicblock generated */
-    return;
-  }
-  RemoveEhEdgesInSyncRegion();
-
-  theCFG = memPool->New<MirCFG>(this);
-  theCFG->BuildMirCFG();
-  theCFG->ReplaceWithAssertnonnull();
-  theCFG->VerifyLabels();
-  theCFG->UnreachCodeAnalysis();
-  theCFG->WontExitAnalysis();
-  theCFG->Verify();
 }
 
 void MeFunction::Verify() {
