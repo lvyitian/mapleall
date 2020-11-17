@@ -2815,19 +2815,21 @@ Insn *GraphColorRegAllocator::SpillOperand(Insn *insn, Operand *opnd, bool isDef
     } else {
       insn->bb->InsertInsnAfter(insn, spillDefInsn);
     }
+  } else {
+    LiveRange *lr = lrVec[regno];
+    Insn *spillUseInsn = nullptr;
+    lr->spillReg = pregNo;
+    memopnd = GetSpillOrReuseMem(lr, regsize, isOutOfRange, insn, false);
+    spillUseInsn = cg->BuildInstruction<Riscv64Insn>(a64cgfunc->PickLdInsn(regsize, stype), phyopnd, memopnd);
+    spillUseInsn->SetSpillOp();
+    std::string comment = " RELOAD vreg: " + std::to_string(regno);
+    spillUseInsn->AddComment(comment);
+    insn->bb->InsertInsnBefore(insn, spillUseInsn);
   }
   if (insn->GetMachineOpcode() == MOP_clinit_tail) {
     return nullptr;
   }
-  LiveRange *lr = lrVec[regno];
-  Insn *spillUseInsn = nullptr;
-  lr->spillReg = pregNo;
-  memopnd = GetSpillOrReuseMem(lr, regsize, isOutOfRange, insn, false);
-  spillUseInsn = cg->BuildInstruction<Riscv64Insn>(a64cgfunc->PickLdInsn(regsize, stype), phyopnd, memopnd);
-  spillUseInsn->SetSpillOp();
-  std::string comment = " RELOAD vreg: " + std::to_string(regno);
-  spillUseInsn->AddComment(comment);
-  insn->bb->InsertInsnBefore(insn, spillUseInsn);
+
   if (spillDefInsn) {
     return spillDefInsn;
   } else {
