@@ -742,13 +742,29 @@ bool AArch64Ebo::SpecialSequence(Insn *insn, Operand **opnds, OpndInfo **origInf
             RegOperand *res1 = static_cast<RegOperand *>(insn1->GetOperand(0));
             if (RegistersIdentical(res1, op1) && RegistersIdentical(res1, res2) && GetOpndInfo(base2, -1) != nullptr &&
                 GetOpndInfo(base2, -1)->redefined == false) {
-              immVal = imm0Val + imm1->GetValue() + ((imm2->GetValue()) << 12);
+              if (before_regalloc) {
+                immVal = imm0Val + imm1->GetValue() + ((imm2->GetValue()) << 12);
+              } else if (RegistersIdentical(res2, base2)) {
+                if (RegistersIdentical(insn1->GetOperand(0), insn1->GetOperand(1))) {
+                  return false;
+                } else {
+                  immVal = imm0Val + imm1->GetValue() + ((imm2->GetValue()) << 12);
+                }
+              } else {
+                immVal = imm0Val + imm1->GetValue() + ((imm2->GetValue()) << 12);
+              }
               op1 = base2;
             } else {
               return false;
             }
           } else {
-            immVal = imm0Val + imm1->GetValue();
+            if (before_regalloc) {
+              immVal = imm0Val + imm1->GetValue();
+            } else if (RegistersIdentical(insn1->GetOperand(0), insn1->GetOperand(1))) {
+              immVal = imm0Val;
+            } else {
+              immVal = imm0Val + imm1->GetValue();
+            }
           }
           if ((!is64bits && immVal < STR_LDR_IMM32_UPPER_BOUND && immVal % 4 == 0) ||
               (is64bits && immVal < STR_LDR_IMM64_UPPER_BOUND && immVal % 8 == 0)) {
