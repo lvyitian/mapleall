@@ -2049,6 +2049,27 @@ void AArch64Peep::ComplexMemOperandOpt() {
           nextInsn->SetOperand(1, newMemOpnd);
           bb->RemoveInsn(insn);
         }
+      } else if (thisMop == MOP_xmovri32 || thisMop == MOP_xmovri64) {
+        // mov x0, #1  (small val)    =>  mov x0, #1
+        // ldr x1, [x2, x0, SXTW #2]      ldr x1, [x2, #4]
+        MOperator nextMop = nextInsn->GetMachineOpcode();
+        if (nextMop &&
+            ((nextMop >= MOP_wldrsb && nextMop <= MOP_dldp) || (nextMop >= MOP_wstrb && nextMop <= MOP_dstp))) {
+          AArch64MemOperand *memOpnd = static_cast<AArch64MemOperand *>(nextInsn->GetMemOpnd());
+          if (memOpnd->GetAddrMode() == AArch64MemOperand::kAddrModeBOrX) {
+            regno_t movReg = static_cast<RegOperand *>(insn->opnds[0])->GetRegisterNumber();
+            regno_t offReg = memOpnd->GetOffsetRegister()->GetRegisterNumber();
+            if (movReg == offReg) {
+              int32 mul = static_cast<ImmOperand *>(insn->opnds[1])->GetValue() << memOpnd->ShiftAmount();
+              if (mul < 256) {
+                AArch64MemOperand *newMemOpnd =
+                  acgfunc->GetOrCreateMemOpnd(AArch64MemOperand::kAddrModeBOi, memOpnd->GetSize(),
+                    memOpnd->GetBaseRegister(), nullptr, acgfunc->GetOrCreateOfstOpnd(mul, 32), memOpnd->GetSymbol());
+                nextInsn->SetOperand(1, newMemOpnd);
+              }
+            }
+          }
+        }
       }
     }
   }
