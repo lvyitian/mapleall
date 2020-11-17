@@ -2816,6 +2816,9 @@ Insn *GraphColorRegAllocator::SpillOperand(Insn *insn, Operand *opnd, bool isDef
       insn->bb->InsertInsnAfter(insn, spillDefInsn);
     }
   } else {
+    if (insn->GetMachineOpcode() == MOP_clinit_tail) {
+      return nullptr;
+    }
     LiveRange *lr = lrVec[regno];
     Insn *spillUseInsn = nullptr;
     lr->spillReg = pregNo;
@@ -2825,9 +2828,6 @@ Insn *GraphColorRegAllocator::SpillOperand(Insn *insn, Operand *opnd, bool isDef
     std::string comment = " RELOAD vreg: " + std::to_string(regno);
     spillUseInsn->AddComment(comment);
     insn->bb->InsertInsnBefore(insn, spillUseInsn);
-  }
-  if (insn->GetMachineOpcode() == MOP_clinit_tail) {
-    return nullptr;
   }
 
   if (spillDefInsn) {
