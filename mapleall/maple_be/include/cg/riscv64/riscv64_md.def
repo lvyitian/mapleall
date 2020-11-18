@@ -402,7 +402,7 @@ DEFINE_MOP(MOP_xcmprr, {MOPD_Reg64IS,MOPD_Reg64IS,MOPD_Undef,MOPD_Undef,MOPD_Und
 
 // Riscv64 branches
 // MOP_xbr -- branch to register
-DEFINE_MOP(MOP_xbr, {MOPD_Reg64IS,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISBRANCH,kLtBranch,"jr","0", 0, 1)
+DEFINE_MOP(MOP_xbr, {MOPD_Reg64IS,MOPD_Literal,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISBRANCH,kLtBranch,"jr","0", 0, 1)
 // MOP_Tbbuncond
 DEFINE_MOP(MOP_xuncond, {MOPD_Label,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISBRANCH,kLtBranch,"j","0", 0, 1)
 

@@ -4788,7 +4788,7 @@ void Riscv64CGFunc::InsertJumpPad(Insn *insn) {
   }
   LabelOperand *targetLabelOpnd = GetOrCreateLabelOperand(targetLabel);
   padBB->AppendInsn(cg->BuildInstruction<Riscv64Insn>(MOP_laddr, targetAddr, targetLabelOpnd));
-  padBB->AppendInsn(cg->BuildInstruction<Riscv64Insn>(MOP_xbr, targetAddr));
+  padBB->AppendInsn(cg->BuildInstruction<Riscv64Insn>(MOP_xbr, targetAddr, targetLabelOpnd));
   padBB->SetKind(BB::kBBIgoto);
   padBB->preds.push_back(bb);
   padBB->succs.push_back(targetBB);
@@ -4808,7 +4808,7 @@ void Riscv64CGFunc::ConvertJumpToRegJump(Insn *insn) {
   Insn *loadLabelInsn = cg->BuildInstruction<Riscv64Insn>(MOP_laddr, targetAddr, targetLabelOpnd);
   bb->InsertInsnBefore(insn, loadLabelInsn);
 
-  Insn *regJumpInsn = cg->BuildInstruction<Riscv64Insn>(MOP_xbr, targetAddr);
+  Insn *regJumpInsn = cg->BuildInstruction<Riscv64Insn>(MOP_xbr, targetAddr, targetLabelOpnd);
   bb->ReplaceInsn(insn, regJumpInsn);
 }
 

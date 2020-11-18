@@ -246,6 +246,7 @@ int32_t Riscv64Insn::CopyOperands() {
  * Get the jump target label operand index from the given instruction.
  * Note: MOP_xbr is a jump instruction, but the target is unknown at compile time,
  * because a register instead of label. So we don't take it as a branching instruction.
+ * Howeer for special long range branch patch, the label is installed in this case.
  */
 int Riscv64Insn::GetJumpTargetIdx() const {
   int operandIdx = 0;
@@ -253,6 +254,11 @@ int Riscv64Insn::GetJumpTargetIdx() const {
     // unconditional jump
     case MOP_xuncond: {
       operandIdx = 0;
+      break;
+    }
+    case MOP_xbr: {
+      CHECK_FATAL(opnds[1] != 0, "ERR");
+      operandIdx = 1;
       break;
     }
     // conditional jump
