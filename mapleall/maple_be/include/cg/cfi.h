@@ -101,6 +101,10 @@ class CfiInsn : public maplebe::Insn {
     return false;
   }
 
+  bool IsUncondBranch() const override {
+    return false;
+  }
+
   bool IsDataMoveInstruction() const override {
     return false;
   }

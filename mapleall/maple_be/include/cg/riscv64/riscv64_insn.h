@@ -141,6 +141,8 @@ class Riscv64Insn : public Insn {
 
   bool IsDestRegAlsoSrcReg() const override;
 
+  bool IsUncondBranch() const override;
+
   bool IsDataMoveInstruction() const override;
 
   bool IsConversionInstruction() const override;

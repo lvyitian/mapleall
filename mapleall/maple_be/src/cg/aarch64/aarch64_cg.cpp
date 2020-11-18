@@ -319,6 +319,10 @@ bool AArch64Insn::IsDestRegAlsoSrcReg() const {
   return prop0->IsRegDef() && prop0->IsRegUse();
 }
 
+bool AArch64Insn::IsUncondBranch() const {
+  return (mop_ == MOP_xbr || mop_ == MOP_xuncond);
+}
+
 bool AArch64Insn::IsDataMoveInstruction() const {
   return ((AArch64CG::kMd[mop_].properties_ & ISMOVE) != 0);
 }

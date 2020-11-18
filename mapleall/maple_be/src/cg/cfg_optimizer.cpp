@@ -229,7 +229,7 @@ bool ChainingPattern::Optimize(BB *&curbb) {
       }
       Insn *brInsn = nullptr;
       for (brInsn = curbb->lastinsn; brInsn != curbb->firstinsn->prev; brInsn = brInsn->prev) {
-        if (brInsn->mop_ == MOP_xuncond) {
+        if (brInsn->IsUncondBranch()) {
           break;
         }
       }
@@ -239,7 +239,7 @@ bool ChainingPattern::Optimize(BB *&curbb) {
       if (newTarget->GetKind() == BB::kBBGoto) {
         Insn *br = nullptr;
         for (br = newTarget->lastinsn; br != newTarget->firstinsn->prev; br = brInsn->prev) {
-          if (br->mop_ == MOP_xuncond) {
+          if (br->IsUncondBranch()) {
             break;
           }
         }
@@ -380,7 +380,7 @@ bool FlipBRPattern::Optimize(BB *&curbb) {
       Insn *brInsn = nullptr;
       for (brInsn = ftBB->lastinsn; brInsn != ftBB->firstinsn->prev; brInsn = brInsn->prev) {
 #if !TARGARK
-        if (brInsn->mop_ == MOP_xuncond) {
+        if (brInsn->IsUncondBranch()) {
           break;
         }
 #endif

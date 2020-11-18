@@ -319,6 +319,10 @@ bool Riscv64Insn::IsDestRegAlsoSrcReg() const {
   return prop0->IsRegDef() && prop0->IsRegUse();
 }
 
+bool Riscv64Insn::IsUncondBranch() const {
+  return (mop_ == MOP_xbr || mop_ == MOP_xuncond);
+}
+
 bool Riscv64Insn::IsDataMoveInstruction() const {
   return ((Riscv64CG::kMd[mop_].properties_ & ISMOVE) != 0);
 }

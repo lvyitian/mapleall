@@ -606,6 +606,8 @@ class Insn {
     return false;
   }
 
+  virtual bool IsUncondBranch() const = 0;
+
   virtual bool IsDataMoveInstruction() const = 0;
 
   virtual bool IsConversionInstruction() const = 0;
