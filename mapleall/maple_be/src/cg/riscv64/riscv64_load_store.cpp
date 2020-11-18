@@ -159,10 +159,9 @@ MOperator Riscv64CGFunc::PickMovInsn(PrimType primtype) {
 
 MOperator Riscv64CGFunc::PickMovInsn(RegOperand *lhs, RegOperand *rhs) {
   CG_ASSERT(lhs->GetSize() == rhs->GetSize(), "PickMovInsn: unequal size NYI");
-  //CG_ASSERT((lhs->GetSize() < 64 || lhs->GetRegisterType() == kRegTyFloat), "should split the 64 bits or more mov");
   if (lhs->GetRegisterType() == kRegTyInt) {
     if (rhs->GetRegisterType() == kRegTyInt) {
-      return MOP_wmovrr;
+      return ((lhs->GetSize() == 64) ? MOP_xmovrr : MOP_xmovrr);
     } else {
       return (rhs->GetSize() == 64) ? MOP_xvmovrd : MOP_xvmovrs;
     }
