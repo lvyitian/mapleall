@@ -527,6 +527,17 @@ bool Riscv64Ebo::SpecialSequence(Insn *insn, Operand **opnds, OpndInfo **origInf
       }
       break;
     }
+    case MOP_xsxtw64: {
+      OpndInfo *opndinfo = origInfo[0];
+      if (opndinfo == nullptr) {
+        return false;
+      }
+      Insn *prevInsn = origInfo[0]->insn;
+      if (prevInsn && (prevInsn->GetMachineOpcode() == opc)) {
+        insn->SetMOP(MOP_xmovrr);
+      }
+      break;
+    }
     case MOP_wstr:
     case MOP_xstr:
     case MOP_wldr:
