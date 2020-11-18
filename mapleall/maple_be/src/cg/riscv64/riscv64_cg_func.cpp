@@ -5262,7 +5262,7 @@ void Riscv64CGFunc::ReplaceLargeStackOffsetImm(Insn *insn) {
   switch (opc) {
   case MOP_xaddrri12: {
     Operand *dst = insn->opnds[0];
-    Insn *li = cg->BuildInstruction<Riscv64Insn>(MOP_xmovri64, dst, insn->opnds[1]);
+    Insn *li = cg->BuildInstruction<Riscv64Insn>(MOP_xmovri64, dst, insn->opnds[2]);
     insn->bb->InsertInsnBefore(insn, li);
     insn->SetOperand(2, dst);
     insn->SetMOP(MOP_xaddrrr);
