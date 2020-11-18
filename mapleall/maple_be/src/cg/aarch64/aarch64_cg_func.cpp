@@ -5064,7 +5064,7 @@ void AArch64CGFunc::InsertJumpPad(Insn *insn) {
   }
   ImmOperand *targetLabelOpnd = CreateImmOperand(targetLabel, 32, false);
   padBB->AppendInsn(cg->BuildInstruction<AArch64Insn>(MOP_adrp_label, targetAddr, targetLabelOpnd));
-  padBB->AppendInsn(cg->BuildInstruction<AArch64Insn>(MOP_xbr, targetAddr));
+  padBB->AppendInsn(cg->BuildInstruction<AArch64Insn>(MOP_xbr, targetAddr, targetLabelOpnd));
   padBB->SetKind(BB::kBBIgoto);
   padBB->preds.push_back(bb);
   padBB->succs.push_back(targetBB);
