@@ -118,3 +118,19 @@ DEF_MIR_INTRINSIC(JS_ADDSYSEVENTLISTENER,\
                   __js_add_sysevent_listener, INTRNISJS, kArgTyU32, kArgTyDynany, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
 DEF_MIR_INTRINSIC(JS_GET_ARGUMENTOBJECT,\
                   __jsobj_get_or_create_argument, INTRNISJS | INTRNISPURE, kArgTySimpleobj, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JS_GET_ERROR_OBJECT,\
+                  __jsobj_get_or_create_error, INTRNISJS | INTRNISPURE, kArgTySimpleobj, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JS_GET_EVALERROR_OBJECT,\
+                  __jsobj_get_or_create_evalError, INTRNISJS | INTRNISPURE, kArgTySimpleobj, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JS_GET_RANGEERROR_OBJECT,\
+                  __jsobj_get_or_create_rangeError, INTRNISJS | INTRNISPURE, kArgTySimpleobj, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JS_GET_REFERENCEERROR_OBJECT,\
+                  __jsobj_get_or_create_referenceError, INTRNISJS | INTRNISPURE, kArgTySimpleobj, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JS_GET_SYNTAXERROR_OBJECT,\
+                  __jsobj_get_or_create_syntaxError, INTRNISJS | INTRNISPURE, kArgTySimpleobj, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JS_GET_TYPEERROR_OBJECT,\
+                  __jsobj_get_or_create_typeError, INTRNISJS | INTRNISPURE, kArgTySimpleobj, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JS_GET_URIERROR_OBJECT,\
+                  __jsobj_get_or_create_uriError, INTRNISJS | INTRNISPURE, kArgTySimpleobj, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JSOP_ASSERTVALUE,
+                  __jsop_assert_value, INTRNISJS, kArgTyDynany, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
