@@ -4846,11 +4846,22 @@ void Riscv64CGFunc::OffsetAdjustmentForFPLR() {
             if (memoper) {
               Riscv64OfstOperand *oo = memoper->GetOffsetImmediate();
               if (oo->IsVary()) {
+                int32 offset;
+                Riscv64MemLayout *layout = static_cast<Riscv64MemLayout *>(memlayout);
                 if (!UseFP() && !HasVLAOrAlloca() && argsToStkpassSize > 0) {
-                  oo->AdjustOffset(static_cast<Riscv64MemLayout *>(memlayout)->RealStackFrameSize());
+                  offset = layout->RealStackFrameSize();
                 } else {
-                  oo->AdjustOffset(static_cast<Riscv64MemLayout *>(memlayout)->RealStackFrameSize() -
-                                   argsToStkpassSize);
+                  offset = layout->RealStackFrameSize() - argsToStkpassSize;
+                }
+                oo->AdjustOffset(offset);
+                if (oo->IsInBitSize(11) == false) {
+                  Riscv64RegOperand *dst = GetOrCreatePhysicalRegisterOperand(Riscv64Abi::kIntSpareReg, 64, kRegTyInt);
+                  Insn *li = cg->BuildInstruction<Riscv64Insn>(MOP_xmovri64, dst, CreateImmOperand(oo->GetOffsetValue(), 64, false));
+                  insn->bb->InsertInsnBefore(insn, li);
+                  Insn *add = cg->BuildInstruction<Riscv64Insn>(MOP_xaddrrr, dst, memoper->GetBaseRegister(), dst);
+                  insn->bb->InsertInsnBefore(insn, add);
+                  memoper->SetBaseRegister(dst);
+                  oo->SetOffsetValue(0);
                 }
                 oo->SetVary(false);
               }
@@ -5247,7 +5258,19 @@ MemOperand *Riscv64CGFunc::LoadStructCopyBase(MIRSymbol *symbol, int32 offset, i
 }
 
 void Riscv64CGFunc::ReplaceLargeStackOffsetImm(Insn *insn) {
-  CHECK_FATAL(0, "FIX");
+  MOperator opc = insn->GetMachineOpcode();
+  switch (opc) {
+  case MOP_xaddrri12: {
+    Operand *dst = insn->opnds[0];
+    Insn *li = cg->BuildInstruction<Riscv64Insn>(MOP_xmovri64, dst, insn->opnds[1]);
+    insn->bb->InsertInsnBefore(insn, li);
+    insn->SetOperand(2, dst);
+    insn->SetMOP(MOP_xaddrrr);
+    break;
+  }
+  default:
+    CHECK_FATAL(0, "FIX");
+  }
 }
 
 }  // namespace maplebe
