@@ -170,7 +170,14 @@ Insn *AArch64InsnVisitor::CloneInsn(Insn *originalInsn) {
     AArch64Insn *tobeCloned = static_cast<AArch64Insn *>(originalInsn);
     Insn *newInsn = mp->Clone<AArch64Insn>(*tobeCloned);
     for (uint32 i = 0; i < Insn::kMaxOperandNum; i++) {
-      newInsn->opnds[i] = originalInsn->opnds[i];
+      ImmOperand *iopnd = dynamic_cast<ImmOperand *>(originalInsn->opnds[i]);
+      if (iopnd && iopnd->IsVary()) {
+        AArch64ImmOperand *cloneImm = static_cast<AArch64ImmOperand *>(originalInsn->opnds[i]);
+        ImmOperand *newIopnd = mp->Clone<AArch64ImmOperand>(*cloneImm);
+        newInsn->opnds[i] = newIopnd;
+      } else {
+        newInsn->opnds[i] = originalInsn->opnds[i];
+      }
     }
     return newInsn;
   } else if (dynamic_cast<mpldbg::DbgInsn *>(originalInsn)) {
