@@ -1120,13 +1120,13 @@ bool GraphColorRegAllocator::IsLocalReg(LiveRange *lr) {
 }
 
 void GraphColorRegAllocator::CheckInterference(LiveRange *lr1, LiveRange *lr2) {
-  uint64 bitArr[bbBuckets];
-  BIT_ARR_AND(lr1->bmember, lr2->bmember, bitArr, bbBuckets);
+//  uint64 bitArr[bbBuckets];
+//  BIT_ARR_AND(lr1->bmember, lr2->bmember, bitArr, bbBuckets);
   uint32 lastBitSet;
   uint32 overlapNum = 0;
   bool stop = false;
   for (uint32 i = 0; i < bbBuckets; i++) {
-    uint64 val = bitArr[i];
+    uint64 val = lr1->bmember[i] & lr2->bmember[i];
     if (val) {
       for (uint32 x = 0; x < (sizeof(uint64) * CHAR_BIT); x++) {
         if (val & (1LL << x)) {
@@ -1197,13 +1197,43 @@ void GraphColorRegAllocator::BuildInterferenceGraph() {
   BuildInterferenceGraphSeparateIntFp(intLrVec, fpLrVec);
 
   int sz = intLrVec.size();
+
+  // Checking interferences among LVs consumes significant amount of time.
+  // Take advantage of the fact that a large portion of LVs are short-lived
+  // Delay to do the same to FP
+  std::vector<int32> idxLastBucket(sz);
+  for (int i = 0; i < sz; i++) {
+    uint32 count = 0;
+    uint32 lastPos;
+    LiveRange *lr =  intLrVec[i];
+    for (int j = 0; j < bbBuckets; j++) {
+      if (lr->bmember[j]) {
+        count++;
+        lastPos = j;
+      }
+    }
+    if (count == 1) {
+      idxLastBucket[i] = lastPos;
+    } else {
+      idxLastBucket[i] = -1;
+    }
+  }
+
   for (int i = 0; i < sz; i++) {
     LiveRange *lr1 = intLrVec[i];
     CalculatePriority(lr1);
+    int32 iLastBucketIdx = idxLastBucket[i];
+
     for (int j = i + 1; j < sz; j++) {
+      int32 jLastBucketIdx = idxLastBucket[j];
       LiveRange *lr2 = intLrVec[j];
-      if (lr1->regno < lr2->regno) {
-        CheckInterference(lr1, lr2);
+      if (lr1->regno < lr2->regno ) {
+        if (iLastBucketIdx == -1 && jLastBucketIdx == -1) {
+          CheckInterference(lr1, lr2);
+        } else if ((iLastBucketIdx >= 0 && lr1->bmember[iLastBucketIdx] & lr2->bmember[iLastBucketIdx]) ||
+                   (jLastBucketIdx >= 0 && lr1->bmember[jLastBucketIdx] & lr2->bmember[jLastBucketIdx])) {
+          CheckInterference(lr1, lr2);
+        }
       }
     }
   }
