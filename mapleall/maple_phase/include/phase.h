@@ -78,7 +78,7 @@ class AnalysisResultManager {
   }
 
   /* analysis result use global mempool and allocator */
-  AnalysisResult *GetAnalysisResult(PhaseIDT id, UnitIR *ir) {
+  AnalysisResult *GetAnalysisResult(PhaseIDT id, UnitIR *ir, bool verbose = false) {
     ASSERT(ir, "ir is null in AnalysisResultManager::GetAnalysisResult");
     std::pair<PhaseIDT, UnitIR *> key = std::make_pair(id, ir);
     if (analysisResults.find(key) != analysisResults.end()) {
@@ -87,6 +87,9 @@ class AnalysisResultManager {
     PhaseT *anaphase = GetAnalysisPhase(id);
     ASSERT(anaphase != nullptr, "anaphse is null in AnalysisResultManager::GetAnalysisResult");
     if (std::string(anaphase->PhaseName()) != Options::skipPhase) {
+      if (verbose) {
+        LogInfo::MapleLogger() << "  ++ depended phase [ " << anaphase->PhaseName() << " ] invoked\n";
+      }
       AnalysisResult *result = anaphase->Run(ir, this);
       analysisResults[key] = result; /* add r to analysisResults */
       return result;

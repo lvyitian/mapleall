@@ -48,6 +48,11 @@ bool May2Dassign::Doit() {
 }
 
 AnalysisResult *MeDoMay2Dassign::Run(MeFunction *func, MeFuncResultMgr *m) {
+  MirCFG *cfg = static_cast<MirCFG *>(m->GetAnalysisResult(MeFuncPhase_CFGBUILD, func, !MeOption::quiet));
+  ASSERT(cfg != nullptr, "cfgbuild phase has problem");
+  MeIRMap *irMap = static_cast<MeIRMap *>(m->GetAnalysisResult(MeFuncPhase_IRMAPBUILD, func, !MeOption::quiet));
+  ASSERT(irMap != nullptr, "irmapbuild phase has problem");
+
   May2Dassign may2dassign(func);
   may2dassign.Doit();
 

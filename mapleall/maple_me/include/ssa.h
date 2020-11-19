@@ -18,6 +18,7 @@
 #include <iostream>
 #include "mir_module.h"
 #include "mir_nodes.h"
+#include "me_phase.h"
 
 namespace maple {
 
@@ -42,7 +43,7 @@ class PhiNode {
   void Dump(const MIRModule *mod);
 };
 
-class SSA {
+class SSA : public AnalysisResult {
  public:
   MapleAllocator ssaAlloc;
   MapleVector<MapleStack<VersionSt *> *> vstStacks;  // rename stack for variable versions
@@ -54,7 +55,8 @@ class SSA {
   bool runRenameOnly = false;
 
   SSA(MemPool *mp, SSATab *stab, Dominance *dm, MapleVector<BB *> &bbvec)
-    : ssaAlloc(mp),
+    : AnalysisResult(mp),
+      ssaAlloc(mp),
       vstStacks(ssaAlloc.Adapter()),
       bbRenamed(ssaAlloc.Adapter()),
       bbVec(bbvec),

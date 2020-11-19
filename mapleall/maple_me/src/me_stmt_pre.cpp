@@ -1092,11 +1092,12 @@ void MeStmtPre::RemoveUnecessaryDassign(DassignMeStmt *dssmestmt) {
 }
 
 AnalysisResult *MeDoStmtPre::Run(MeFunction *func, MeFuncResultMgr *m) {
-  Dominance *dom = static_cast<Dominance *>(m->GetAnalysisResult(MeFuncPhase_DOMINANCE, func));
+  MeIRMap *irMap = static_cast<MeIRMap *>(m->GetAnalysisResult(MeFuncPhase_IRMAPBUILD, func, !MeOption::quiet));
+  ASSERT(irMap != nullptr, "irMap phase has problem");
+
+  Dominance *dom = static_cast<Dominance *>(m->GetAnalysisResult(MeFuncPhase_DOMINANCE, func, !MeOption::quiet));
   ASSERT(dom != nullptr, "dominance phase has problem");
 
-  MeIRMap *irMap = static_cast<MeIRMap *>(m->GetAnalysisResult(MeFuncPhase_IRMAPBUILD, func));
-  ASSERT(irMap != nullptr, "irMap phase has problem");
 
   MemPool *ssapremp = mempoolctrler.NewMemPool(PhaseName().c_str());
   MemPool *percandmp = mempoolctrler.NewMemPool("Per STMTPRE Candidate");

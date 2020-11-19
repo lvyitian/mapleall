@@ -330,9 +330,9 @@ void MeDohDSE::MakeEmptyTrysUnreachable(MeFunction *func) {
 }
 
 AnalysisResult *MeDohDSE::Run(MeFunction *func, MeFuncResultMgr *m) {
-  Dominance *pdom = static_cast<Dominance *>(m->GetAnalysisResult(MeFuncPhase_DOMINANCE, func));
+  Dominance *pdom = static_cast<Dominance *>(m->GetAnalysisResult(MeFuncPhase_DOMINANCE, func, !MeOption::quiet));
 
-  MeIRMap *hmap = static_cast<MeIRMap *>(m->GetAnalysisResult(MeFuncPhase_IRMAPBUILD, func));
+  MeIRMap *hmap = static_cast<MeIRMap *>(m->GetAnalysisResult(MeFuncPhase_IRMAPBUILD, func, !MeOption::quiet));
   ASSERT(hmap != nullptr, "hssamap is nullptr");
 
   MeHDSE hdse(func, pdom, hmap);

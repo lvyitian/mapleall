@@ -688,14 +688,14 @@ void MePrediction::EstimateProbability() {
 
 // Estimate the execution frequecy for all bbs.
 AnalysisResult *MeDoPredict::Run(MeFunction *func, MeFuncResultMgr *m) {
-  MeIRMap *hmap = static_cast<MeIRMap *>(m->GetAnalysisResult(MeFuncPhase_IRMAPBUILD, func));
+  MeIRMap *hmap = static_cast<MeIRMap *>(m->GetAnalysisResult(MeFuncPhase_IRMAPBUILD, func, !MeOption::quiet));
   CHECK_FATAL(hmap != nullptr, "hssamap is nullptr");
 
-  Dominance *dom = static_cast<Dominance *>(m->GetAnalysisResult(MeFuncPhase_DOMINANCE, func));
+  Dominance *dom = static_cast<Dominance *>(m->GetAnalysisResult(MeFuncPhase_DOMINANCE, func, !MeOption::quiet));
   CHECK_FATAL(dom, "dominance phase has problem");
 
   m->InvalidAnalysisResult(MeFuncPhase_MELOOP, func);
-  IdentifyLoops *meloop = static_cast<IdentifyLoops *>(m->GetAnalysisResult(MeFuncPhase_MELOOP, func));
+  IdentifyLoops *meloop = static_cast<IdentifyLoops *>(m->GetAnalysisResult(MeFuncPhase_MELOOP, func, !MeOption::quiet));
   CHECK_FATAL(meloop != NULL, "meloop has problem");
 
   std::string mePredPhaseName = PhaseName();

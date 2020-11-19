@@ -29,7 +29,8 @@ AnalysisResult *MeDoSSATab::Run(MeFunction *func, MeFuncResultMgr *m) {
   }
   MemPool *mp = mempoolctrler.NewMemPool(PhaseName().c_str());
   // allocate ssaTab including its SSAPart to store SSA information for statements
-  SSATab *ssaTab = mp->New<SSATab>(mp, func->versMemPool, &func->mirModule, func->theCFG->bbVec.size());
+  MemPool *versmp = mempoolctrler.NewMemPool("version st mempool");
+  SSATab *ssaTab = mp->New<SSATab>(mp, versmp, &func->mirModule, func->theCFG->bbVec.size());
   func->meSSATab = ssaTab;
 #if DEBUG
   g_ssatab = ssaTab;
@@ -40,6 +41,8 @@ AnalysisResult *MeDoSSATab::Run(MeFunction *func, MeFuncResultMgr *m) {
     if (bb == nullptr) {
       continue;
     }
+    // allocate phiList for the bb
+    bb->phiList = versmp->New<MapleMap<OriginalSt *, PhiNode>>(ssaTab->vers_alloc.Adapter());
     for (auto stmt : bb->stmtNodeList) {
       ssaTab->CreateSSAStmt(stmt, bb);  // this adds the SSANodes for exprs
     }

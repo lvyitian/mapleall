@@ -72,13 +72,15 @@ int main(int argc, char **argv) {
     }
   }
 
-  ModulePhaseManager mpm(modulemp, &themodule);
-  mpm.RegisterModulePhases();
-  vector<string> modphases;
-  modphases.push_back(string("classhierarchy"));
-  mpm.AddModulePhases(modphases);
-  mpm.Run();
-  fpm.SetModResMgr(mpm.GetModResultMgr());
+  if (themodule.IsJavaModule()) {
+    ModulePhaseManager mpm(modulemp, &themodule);
+    mpm.RegisterModulePhases();
+    vector<string> modphases;
+    modphases.push_back(string("classhierarchy"));
+    mpm.AddModulePhases(modphases);
+    mpm.Run();
+    fpm.SetModResMgr(mpm.GetModResultMgr());
+  }
   if (!isbpl && MeOption::parserOpt & kCheckCompleteType) {
     theparser.EmitIncompleteTypes();
   }
@@ -109,6 +111,9 @@ int main(int argc, char **argv) {
   // delete mempool
   mempoolctrler.DeleteMemPool(optmp);
   mempoolctrler.DeleteMemPool(modulemp);
-  LogInfo::MapleLogger() << "me consumes " << timer.Elapsed() << " seconds" << endl;
+  timer.Stop();
+  if (!MeOption::quiet) {
+    LogInfo::MapleLogger() << "me consumes " << timer.ElapsedMicroseconds() << " micro-seconds" << endl;
+  }
   return 0;
 }

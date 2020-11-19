@@ -236,7 +236,10 @@ bool CondBased::IsNotNullValue(VarMeExpr *varmeexpr, UnaryMeStmt *assertmestmt, 
 }
 
 AnalysisResult *MeDoCondBasedRC::Run(MeFunction *func, MeFuncResultMgr *m) {
-  Dominance *dom = static_cast<Dominance *>(m->GetAnalysisResult(MeFuncPhase_DOMINANCE, func));
+  MeIRMap *irMap = static_cast<MeIRMap *>(m->GetAnalysisResult(MeFuncPhase_IRMAPBUILD, func, !MeOption::quiet));
+  ASSERT(irMap != nullptr, "irmapbuild phase has problem");
+  Dominance *dom = static_cast<Dominance *>(m->GetAnalysisResult(MeFuncPhase_DOMINANCE, func, !MeOption::quiet));
+  ASSERT(dom != nullptr, "dominance phase has problem");
 
   CondBased condbasedrc(func, dom);
 
@@ -279,7 +282,10 @@ AnalysisResult *MeDoCondBasedRC::Run(MeFunction *func, MeFuncResultMgr *m) {
 }
 
 AnalysisResult *MeDoCondBasedNPC::Run(MeFunction *func, MeFuncResultMgr *m) {
-  Dominance *dom = static_cast<Dominance *>(m->GetAnalysisResult(MeFuncPhase_DOMINANCE, func));
+  MeIRMap *irMap = static_cast<MeIRMap *>(m->GetAnalysisResult(MeFuncPhase_IRMAPBUILD, func, !MeOption::quiet));
+  ASSERT(irMap != nullptr, "irmapbuild phase has problem");
+  Dominance *dom = static_cast<Dominance *>(m->GetAnalysisResult(MeFuncPhase_DOMINANCE, func, !MeOption::quiet));
+  ASSERT(dom != nullptr, "dominance phase has problem");
 
   CondBased condbasednpc(func, dom);
   for (BB *bb : func->theCFG->bbVec) {

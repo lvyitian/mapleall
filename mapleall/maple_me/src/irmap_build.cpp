@@ -111,7 +111,7 @@ void IrMapBuild::BuildMustdefList(MeStmt *mestmt, MapleVector<MustDefNode> &must
 }
 
 void IrMapBuild::BuildPhiMeNode(BB *bb) {
-  for (MapleMap<OriginalSt *, PhiNode>::iterator phiit = bb->phiList.begin(); phiit != bb->phiList.end(); phiit++) {
+  for (MapleMap<OriginalSt *, PhiNode>::iterator phiit = bb->phiList->begin(); phiit != bb->phiList->end(); phiit++) {
     OriginalSt *origst = (*phiit).first;
     VersionSt *verst = (*phiit).second.result;
     MePhiNode *phimenode = irMap->NewInPool<MePhiNode>();

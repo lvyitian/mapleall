@@ -141,10 +141,13 @@ void FSAA::ProcessBB(BB *bb) {
 }
 
 AnalysisResult *MeDoFSAA::Run(MeFunction *func, MeFuncResultMgr *m) {
-  SSATab *ssaTab = static_cast<SSATab *>(m->GetAnalysisResult(MeFuncPhase_SSATAB, func));
+  SSATab *ssaTab = static_cast<SSATab *>(m->GetAnalysisResult(MeFuncPhase_SSATAB, func, !MeOption::quiet));
   ASSERT(ssaTab != nullptr, "ssaTab phase has problem");
 
-  Dominance *dom = static_cast<Dominance *>(m->GetAnalysisResult(MeFuncPhase_DOMINANCE, func));
+  MeSSA *ssa = static_cast<MeSSA *>(m->GetAnalysisResult(MeFuncPhase_SSA, func, !MeOption::quiet));
+  ASSERT(ssa != nullptr, "ssa phase has problem");
+
+  Dominance *dom = static_cast<Dominance *>(m->GetAnalysisResult(MeFuncPhase_DOMINANCE, func, !MeOption::quiet));
   ASSERT(dom != nullptr, "dominance phase has problem");
 
   FSAA fsaa(func, dom);
@@ -156,19 +159,16 @@ AnalysisResult *MeDoFSAA::Run(MeFunction *func, MeFuncResultMgr *m) {
   }
 
   if (fsaa.needUpdateSSA) {
-    MemPool *ssamp = mempoolctrler.NewMemPool(PhaseName().c_str());
-    MeSSA ssa(func, ssaTab, dom, ssamp);
-    ssa.runRenameOnly = true;
+    ssa->runRenameOnly = true;
 
-    ssa.InitRenameStack(&ssaTab->originalStTable, func->theCFG->bbVec.size(), ssaTab->versionStTable);
+    ssa->InitRenameStack(&ssaTab->originalStTable, func->theCFG->bbVec.size(), ssaTab->versionStTable);
     // recurse down dominator tree in pre-order traversal
     MapleSet<BBId> *children = &dom->domChildren[func->theCFG->commonEntryBB->id.idx];
     for (BBId child : *children) {
-      ssa.RenameBB(func->theCFG->bbVec[child.idx]);
+      ssa->RenameBB(func->theCFG->bbVec[child.idx]);
     }
 
-    mempoolctrler.DeleteMemPool(ssamp);
-    ssa.VerifySSA();
+    ssa->VerifySSA();
 
     if (DEBUGFUNC(func)) {
       func->DumpFunction();

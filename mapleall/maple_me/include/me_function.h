@@ -42,8 +42,6 @@ extern SSATab *g_ssatab;
 
 class MeFunction : public FuncEmit {
  public:
-  MemPool *versMemPool;
-  MapleAllocator versAlloc;
   MIRModule &mirModule;
   MIRFunction *mirFunc;
   MirCFG *theCFG;
@@ -57,16 +55,30 @@ class MeFunction : public FuncEmit {
   bool isLfo;
   bool placementRCOn;   // whethering doing placement RC
 
-  explicit MeFunction(MIRModule *mod, MIRFunction *func, MemPool *versmp, const std::string &fileName,
-                      bool issecondpass = false, bool islfo = false)
-    : versMemPool(versmp),
-      versAlloc(versmp),
-      mirModule(*mod),
+  explicit MeFunction(MIRModule *mod, MIRFunction *func, const std::string &fileName,
+                      bool issecondpass, bool islfo)
+    : mirModule(*mod),
       mirFunc(func),
+      theCFG(nullptr),
       meSSATab(nullptr),
-      fileName(fileName) {
-    PartialInit(issecondpass);
-    isLfo = islfo;
+      irMap(nullptr),
+      fileName(fileName),
+      regNum(0),
+      hasEH(false),
+      secondPass(issecondpass),
+      isLfo(islfo),
+      placementRCOn(false) {
+    if (mod->IsJavaModule() && (mirFunc->info.size() > 0)) {
+      // set regNum
+      std::string string("INFO_registers");
+      GStrIdx strIdx = GlobalTables::GetStrTable().GetOrCreateStrIdxFromName(string);
+      regNum = mirModule.CurFunction()->GetInfo(strIdx);
+      // set hasEH
+      std::string trynum("INFO_tries_size");
+      strIdx = GlobalTables::GetStrTable().GetOrCreateStrIdxFromName(trynum);
+      uint32 num = mirModule.CurFunction()->GetInfo(strIdx);
+      hasEH = (num != 0);
+    }
   }
 
   virtual ~MeFunction() {}
@@ -75,7 +87,6 @@ class MeFunction : public FuncEmit {
   void DumpFunctionNoSSA();
   void DumpMeFunc();
   void DumpMayDUFunction();
-  virtual void Prepare(unsigned long rangeNum);
   void Verify();
   const std::string &GetName() const {
     return mirModule.CurFunction()->GetName();
@@ -105,7 +116,6 @@ class MeFunction : public FuncEmit {
   void RemoveEhEdgesInSyncRegion();
 
  private:
-  void PartialInit(bool issecondpass);
   void SetTryBlockInfo(StmtNode *javatryStmt, BB *lastjavatryBb, const StmtNode *nextstmt, BB *curbb, BB *newbb);
 };
 }  // namespace maple

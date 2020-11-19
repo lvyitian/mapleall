@@ -190,9 +190,9 @@ void SymRename::PerformSymRename() {
 }
 
 AnalysisResult *MeDoSymRename::Run(MeFunction *func, MeFuncResultMgr *m) {
-  SSATab *ssaTab = static_cast<SSATab *>(m->GetAnalysisResult(MeFuncPhase_SSATAB, func));
+  SSATab *ssaTab = static_cast<SSATab *>(m->GetAnalysisResult(MeFuncPhase_SSATAB, func, !MeOption::quiet));
   ASSERT(ssaTab != nullptr, "ssaTab phase has problem");
-  MeIRMap *irMap = static_cast<MeIRMap *>(m->GetAnalysisResult(MeFuncPhase_IRMAPBUILD, func));
+  MeIRMap *irMap = static_cast<MeIRMap *>(m->GetAnalysisResult(MeFuncPhase_IRMAPBUILD, func, !MeOption::quiet));
   ASSERT(irMap != nullptr, "irmapbuild phase has problem");
 
   SymRename symrename(func);

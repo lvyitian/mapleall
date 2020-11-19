@@ -31,24 +31,19 @@ namespace maple {
 
 /* emit IR to specified file */
 AnalysisResult *MeDoEmission::Run(MeFunction *func, MeFuncResultMgr *m) {
+  MirCFG *cfg = static_cast<MirCFG *>(m->GetAnalysisResult(MeFuncPhase_CFGBUILD, func, !MeOption::quiet));
+  ASSERT(cfg != nullptr, "cfgbuild phase has problem");
+
   std::string passName = GetPreviousPhaseName();  // get previous phase
   bool emitHssaOrAfter = kHssaPhases.find(std::string(passName)) != kHssaPhases.end();
 
   if (func->theCFG->NumBBs() > 0) {
     /* generate bblist after layout (bb physical position) */
-    if (!MeOption::quiet) {
-      CHECK_FATAL(m->GetAnalysisPhase(MeFuncPhase_BBLAYOUT) && m->GetAnalysisPhase(MeFuncPhase_BBLAYOUT)->PhaseName().c_str(),
-             "null ptr check");
-      LogInfo::MapleLogger() << "===== Check/run Depended Phase [ " << m->GetAnalysisPhase(MeFuncPhase_BBLAYOUT)->PhaseName()
-           << " ]=====\n";
-    }
     if (emitHssaOrAfter) {
-      MePrediction *predict = static_cast<MePrediction *>(m->GetAnalysisResult(MeFuncPhase_PREDICT, func));
+      MePrediction *predict = static_cast<MePrediction *>(m->GetAnalysisResult(MeFuncPhase_PREDICT, func, !MeOption::quiet));
+      ASSERT(predict != nullptr, "predict phase has problem");
     }
-    BBLayout *layoutbbs = static_cast<BBLayout *>(m->GetAnalysisResult(MeFuncPhase_BBLAYOUT, func));
-    if (!MeOption::quiet) {
-      LogInfo::MapleLogger() << "===== Depended Phase ended =====\n";
-    }
+    BBLayout *layoutbbs = static_cast<BBLayout *>(m->GetAnalysisResult(MeFuncPhase_BBLAYOUT, func, !MeOption::quiet));
     ASSERT(layoutbbs != nullptr, "layout phase has problem");
     if (emitHssaOrAfter) {
       ASSERT(func->irMap != nullptr, "");

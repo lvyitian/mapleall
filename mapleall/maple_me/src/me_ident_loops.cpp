@@ -92,7 +92,7 @@ void IdentifyLoops::Dump() {
 }
 
 AnalysisResult *MeDoMeLoop::Run(MeFunction *func, MeFuncResultMgr *m) {
-  Dominance *dom = static_cast<Dominance *>(m->GetAnalysisResult(MeFuncPhase_DOMINANCE, func));
+  Dominance *dom = static_cast<Dominance *>(m->GetAnalysisResult(MeFuncPhase_DOMINANCE, func, !MeOption::quiet));
   CHECK_FATAL(dom, "dominance phase has problem");
   MemPool *meloopmp = mempoolctrler.NewMemPool(PhaseName().c_str());
   IdentifyLoops *identloops = meloopmp->New<IdentifyLoops>(meloopmp, func, dom);

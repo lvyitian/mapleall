@@ -23,6 +23,8 @@
 #include <algorithm>
 #include "name_mangler.h"
 #include <string>
+#include "me_loop_canon.h"
+#include "me_critical_edge.h"
 
 using namespace std;
 
@@ -329,32 +331,34 @@ void MirCFG::ReplaceWithAssertnonnull() {
 
 // used only after DSE because it looks at live field of VersionSt
 void MirCFG::ConvertPhis2IdentityAssigns(BB *mebb) {
-  MapleMap<OriginalSt *, PhiNode>::iterator phiIt = mebb->phiList.begin();
-  while (phiIt != mebb->phiList.end()) {
-    if (!(*phiIt).second.result->IsLive()) {
+  if (mebb->phiList) {
+    MapleMap<OriginalSt *, PhiNode>::iterator phiIt = mebb->phiList->begin();
+    while (phiIt != mebb->phiList->end()) {
+      if (!(*phiIt).second.result->IsLive()) {
+        phiIt++;
+        continue;
+      }
+      // replace phi with identify assignment as it only has 1 opnd
+      OriginalSt *ost = (*phiIt).first;
+      if (ost->ostType == OriginalSt::kSymbolOst && ost->indirectLev == 0) {
+        MIRSymbol *st = ost->GetMIRSymbol();
+        MIRType *stype = GlobalTables::GetTypeTable().GetTypeFromTyIdx(st->GetTyIdx());
+        AddrofNode *dread = func->mirModule.mirBuilder->CreateDread(st, GetRegPrimType(stype->GetPrimType()));
+        AddrofSSANode *dread2 = func->mirFunc->codeMemPool->New<AddrofSSANode>(dread);
+        dread2->ssaVar = (*phiIt).second.phiOpnds[0];
+        DassignNode *dass = func->mirModule.mirBuilder->CreateStmtDassign(st, 0, dread2);
+        func->meSSATab->stmtsSSAPart.SetSsapartOf(dass,
+                                                   func->meSSATab->stmtsSSAPart.ssaPartMp->New<MayDefPartWithVersionSt>(
+                                                     &func->meSSATab->stmtsSSAPart.ssaPartAlloc));
+        MayDefPartWithVersionSt *thessapart =
+          static_cast<MayDefPartWithVersionSt *>(func->meSSATab->stmtsSSAPart.SsapartOf(dass));
+        thessapart->ssaVar = (*phiIt).second.result;
+        mebb->PrependStmtNode(dass);
+      }
       phiIt++;
-      continue;
     }
-    // replace phi with identify assignment as it only has 1 opnd
-    OriginalSt *ost = (*phiIt).first;
-    if (ost->ostType == OriginalSt::kSymbolOst && ost->indirectLev == 0) {
-      MIRSymbol *st = ost->GetMIRSymbol();
-      MIRType *stype = GlobalTables::GetTypeTable().GetTypeFromTyIdx(st->GetTyIdx());
-      AddrofNode *dread = func->mirModule.mirBuilder->CreateDread(st, GetRegPrimType(stype->GetPrimType()));
-      AddrofSSANode *dread2 = func->mirFunc->codeMemPool->New<AddrofSSANode>(dread);
-      dread2->ssaVar = (*phiIt).second.phiOpnds[0];
-      DassignNode *dass = func->mirModule.mirBuilder->CreateStmtDassign(st, 0, dread2);
-      func->meSSATab->stmtsSSAPart.SetSsapartOf(dass,
-                                                 func->meSSATab->stmtsSSAPart.ssaPartMp->New<MayDefPartWithVersionSt>(
-                                                   &func->meSSATab->stmtsSSAPart.ssaPartAlloc));
-      MayDefPartWithVersionSt *thessapart =
-        static_cast<MayDefPartWithVersionSt *>(func->meSSATab->stmtsSSAPart.SsapartOf(dass));
-      thessapart->ssaVar = (*phiIt).second.result;
-      mebb->PrependStmtNode(dass);
-    }
-    phiIt++;
+    mebb->phiList->clear();  // delete all the phis
   }
-  mebb->phiList.clear();  // delete all the phis
 
   MapleMap<OStIdx, MePhiNode *>::iterator mePhiIt = mebb->mePhiList.begin();
   while (mePhiIt != mebb->mePhiList.end()) {
@@ -432,7 +436,9 @@ void MirCFG::UnreachCodeAnalysis(bool updatePhi) {
           if (sucbb->pred.size() == 1) {
             ConvertPhis2IdentityAssigns(sucbb);
           } else if (sucbb->pred.empty()) {
-            sucbb->phiList.clear();
+            if (sucbb->phiList) {
+              sucbb->phiList->clear();
+            }
           }
         }
       }
@@ -677,8 +683,10 @@ void MirCFG::DumpToFile(const char *prefix, bool dumpinstrs) {
         cfgfile << "@" << func->mirFunc->GetLabelName(bb->bbLabel) << ":\n";
       }
       MapleMap<OriginalSt *, PhiNode>::iterator phiIt;
-      for (phiIt = bb->phiList.begin(); phiIt != bb->phiList.end(); phiIt++) {
-        (*phiIt).second.Dump(&(func->mirModule));
+      if (bb->phiList) {
+        for (phiIt = bb->phiList->begin(); phiIt != bb->phiList->end(); phiIt++) {
+          (*phiIt).second.Dump(&(func->mirModule));
+        }
       }
       StmtNode *stmt = bb->stmtNodeList.first;
       do {
@@ -708,7 +716,7 @@ AnalysisResult *MeDoCfgBuild::Run(MeFunction *func, MeFuncResultMgr *m) {
   func->CreateBasicBlocks(cfg);
   if (func->theCFG->NumBBs() == 0) {
     /* there's no basicblock generated */
-    return nullptr;
+    return cfg;
   }
   func->RemoveEhEdgesInSyncRegion();
 
@@ -718,6 +726,20 @@ AnalysisResult *MeDoCfgBuild::Run(MeFunction *func, MeFuncResultMgr *m) {
   cfg->UnreachCodeAnalysis();
   cfg->WontExitAnalysis();
   cfg->Verify();
+
+  if (!func->isLfo && MeOption::optLevel >= 2) {
+    MeDoLoopCanon doLoopCanon(MeFuncPhase_LOOPCANON);
+    if (!MeOption::quiet) {
+      LogInfo::MapleLogger() << "  == " << PhaseName() << " invokes [ " << doLoopCanon.PhaseName() << " ] ==\n";
+    }
+    doLoopCanon.Run(func, m);
+
+    MeDoSplitCEdge doSplitCEdge(MeFuncPhase_SPLITCEDGE);
+    if (!MeOption::quiet) {
+      LogInfo::MapleLogger() << "  == " << PhaseName() << " invokes [ " << doSplitCEdge.PhaseName() << " ] ==\n";
+    }
+    doSplitCEdge.Run(func, m);
+  }
 
   return cfg;
 }

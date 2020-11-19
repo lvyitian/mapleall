@@ -27,10 +27,10 @@
 
 namespace maple {
 AnalysisResult *MeDoMeProp::Run(MeFunction *func, MeFuncResultMgr *m) {
-  Dominance *dom = static_cast<Dominance *>(m->GetAnalysisResult(MeFuncPhase_DOMINANCE, func));
+  Dominance *dom = static_cast<Dominance *>(m->GetAnalysisResult(MeFuncPhase_DOMINANCE, func, !MeOption::quiet));
   ASSERT(dom != nullptr, "dominance phase has problem");
 
-  MeIRMap *hmap = static_cast<MeIRMap *>(m->GetAnalysisResult(MeFuncPhase_IRMAPBUILD, func));
+  MeIRMap *hmap = static_cast<MeIRMap *>(m->GetAnalysisResult(MeFuncPhase_IRMAPBUILD, func, !MeOption::quiet));
   ASSERT(hmap != nullptr, "hssamap has problem");
 
   MemPool *propmp = mempoolctrler.NewMemPool(PhaseName().c_str());

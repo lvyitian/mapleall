@@ -162,14 +162,14 @@ MeStmt *BB::GetTheOnlyMeStmtWithGoto() {
 
 void BB::DumpPhi(const MIRModule *mod) {
   MapleMap<OriginalSt *, PhiNode>::iterator phiIt;
-  for (phiIt = phiList.begin(); phiIt != phiList.end(); phiIt++) {
+  for (phiIt = phiList->begin(); phiIt != phiList->end(); phiIt++) {
     (*phiIt).second.Dump(mod);
   }
 }
 
 PhiNode *BB::PhiofVerstInserted(VersionSt *vsym) {
-  MapleMap<OriginalSt *, PhiNode>::iterator phiit = phiList.find(vsym->ost);
-  return (phiit != phiList.end()) ? &(*phiit).second : nullptr;
+  MapleMap<OriginalSt *, PhiNode>::iterator phiit = phiList->find(vsym->ost);
+  return (phiit != phiList->end()) ? &(*phiit).second : nullptr;
 }
 
 void BB::InsertPhi(MapleAllocator *alloc, VersionSt *vsym) {
@@ -180,7 +180,7 @@ void BB::InsertPhi(MapleAllocator *alloc, VersionSt *vsym) {
     phinode.phiOpnds.push_back(vsym);
   }
 
-  phiList.insert(std::make_pair(vsym->ost, phinode));
+  phiList->insert(std::make_pair(vsym->ost, phinode));
 }
 
 bool BB::IsInList(MapleVector<BB *> &bblist) const {
@@ -217,9 +217,11 @@ int BB::RemoveBBFromVector(MapleVector<BB *> &bvec) {
 
 void BB::RemoveBBFromPred(BB *bb) {
   int index = bb->RemoveBBFromVector(pred);
-  for (auto phiIt = phiList.begin(); phiIt != phiList.end(); phiIt++) {
-    MapleVector<VersionSt *> *opnds = &(*phiIt).second.phiOpnds;
-    opnds->erase(opnds->begin() + index);
+  if (phiList) {
+    for (auto phiIt = phiList->begin(); phiIt != phiList->end(); phiIt++) {
+      MapleVector<VersionSt *> *opnds = &(*phiIt).second.phiOpnds;
+      opnds->erase(opnds->begin() + index);
+    }
   }
   for (auto phiIt = mePhiList.begin(); phiIt != mePhiList.end(); phiIt++) {
     MapleVector<ScalarMeExpr *> *opnds = &(*phiIt).second->opnds;

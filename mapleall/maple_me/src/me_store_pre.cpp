@@ -369,13 +369,13 @@ void MeStorePre::BuildWorkListBB(BB *bb) {
 }
 
 AnalysisResult *MeDoStorePre::Run(MeFunction *func, MeFuncResultMgr *m) {
-  Dominance *dom = static_cast<Dominance *>(m->GetAnalysisResult(MeFuncPhase_DOMINANCE, func));
+  Dominance *dom = static_cast<Dominance *>(m->GetAnalysisResult(MeFuncPhase_DOMINANCE, func, !MeOption::quiet));
   ASSERT(dom != nullptr, "dominance phase has problem");
 
-  AliasClass *aliasclass = static_cast<AliasClass *>(m->GetAnalysisResult(MeFuncPhase_ALIASCLASS, func));
+  AliasClass *aliasclass = static_cast<AliasClass *>(m->GetAnalysisResult(MeFuncPhase_ALIASCLASS, func, !MeOption::quiet));
   ASSERT(aliasclass != nullptr, "aliasclass phase has problem");
 
-  MeIRMap *irMap = static_cast<MeIRMap *>(m->GetAnalysisResult(MeFuncPhase_IRMAPBUILD, func));
+  MeIRMap *irMap = static_cast<MeIRMap *>(m->GetAnalysisResult(MeFuncPhase_IRMAPBUILD, func, !MeOption::quiet));
   CHECK_FATAL(irMap != nullptr, "irMap phase has problem");
 
   MemPool *spremp = mempoolctrler.NewMemPool(PhaseName().c_str());

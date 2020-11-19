@@ -50,10 +50,14 @@ class MeAliasClass : public AliasClass {
 };
 
 class MeDoAliasClass : public MeFuncPhase {
+  ModuleResultMgr *moduleResultMgr;
  public:
-  explicit MeDoAliasClass(MePhaseID id) : MeFuncPhase(id) {}
+  explicit MeDoAliasClass(MePhaseID id) : MeFuncPhase(id), moduleResultMgr(nullptr) {}
 
   AnalysisResult *Run(MeFunction *ir, MeFuncResultMgr *m, ModuleResultMgr *mrm) override;
+  AnalysisResult *Run(MeFunction *ir, MeFuncResultMgr *m) override {
+    return Run(ir, m, moduleResultMgr);
+  }
   std::string PhaseName() const override {
     return "aliasclass";
   }

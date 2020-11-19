@@ -56,6 +56,8 @@
 #include "me_fsaa.h"
 #include "me_sym_rename.h"
 #include "mpl_timer.h"
+#include "constant_fold.h"
+#include "mir_lower.h"
 
 using namespace std;
 
@@ -82,7 +84,7 @@ void MeFuncPhaseManager::RunFuncPhase(MeFunction *func, MeFuncPhase *phase) {
   // 4. run: skip mplme phase except "emit" if no cfg in MeFunction
   AnalysisResult *r = nullptr;
   MePhaseID phaseid = phase->GetPhaseId();
-  if ((phaseid == MeFuncPhase_CFGBUILD) || (func->theCFG->NumBBs() > 0) || (phaseid == MeFuncPhase_EMIT) || (phaseid == MeFuncPhase_SSARENAME2PREG)) {
+  if ((phaseid == MeFuncPhase_CFGBUILD) || (func->theCFG->NumBBs() > 0) || (phaseid == MeFuncPhase_EMIT)) {
     r = phase->Run(func, &arFuncManager, modResMgr);
   }
 #ifdef DEBUG_TIMER
@@ -147,7 +149,6 @@ void MeFuncPhaseManager::AddPhases(const std::unordered_set<std::string> &skipPh
     addPhase("aliasclass");
     addPhase("ssa");
     addPhase("dse");
-    addPhase("fsaa");
     addPhase("irmapbuild");
     //addPhase("loopivcan");
     addPhase("hprop");
@@ -161,15 +162,11 @@ void MeFuncPhaseManager::AddPhases(const std::unordered_set<std::string> &skipPh
     }
   }
   addPhase("cfgbuild");
-  if (o2) {
-    addPhase("loopcanon");
-    addPhase("splitcriticaledge");
-  }
   addPhase("ssatab");
   addPhase("aliasclass");
   addPhase("ssa");
   addPhase("dse");
-  addPhase("fsaa");
+  addPhase("irmapbuild");
   if (JAVALANG) {
     // addPhase("bdcopt");
     // addPhase("syncselect");
@@ -179,12 +176,12 @@ void MeFuncPhaseManager::AddPhases(const std::unordered_set<std::string> &skipPh
   addPhase("hprop");
   addPhase("symrename");
   addPhase("hdse");
+  if (o2 && JAVALANG) {
+    addPhase("cfgopt");
+  }
   if (JAVALANG) {
     addPhase("may2dassign");
     addPhase("condbasednpc");
-  }
-  if (o2 && JAVALANG) {
-    addPhase("cfgopt");
   }
   if (o2) {
     addPhase("epre");
@@ -223,15 +220,24 @@ void MeFuncPhaseManager::Run(MIRFunction *mirFunc, uint64 rangenum, const string
       LogInfo::MapleLogger() << "Function  < " << mirFunc->GetName() << "not optimized because it has setjmp\n";
     return;
   }
-  MemPool *versmp = mempoolctrler.NewMemPool("first verst mempool");
-  MeFunction func(&module, mirFunc, versmp, meinput, false, MeOption::optLevel == 3);
+  MeFunction func(&module, mirFunc, meinput, false, MeOption::optLevel == 3);
 #if DEBUG
   g_mirmodule = &module;
   g_func = &func;
 #endif
-  func.Prepare(rangenum);
+  // call constant folding
+  maple::ConstantFold cf(&module);
+  cf.Simplify(mirFunc->body);
+
+  if (!MeOption::quiet)
+    LogInfo::MapleLogger() << "---Preparing Function  < " << module.CurFunction()->GetName() << " > [" << rangenum << "] ---\n";
+  if (MeOption::optLevel < 3) { // lower for mainopt
+    MIRLower mirlowerer(module, mirFunc);
+    mirlowerer.SetLowerME();
+    mirlowerer.SetLowerExpandArray();
+    mirlowerer.LowerFunc(mirFunc);
+  }
   std::string phaseName;
-  MeFuncPhase *changecfgphase = nullptr;
   /* each function level phase */
   bool dumpFunc = FuncFilter(MeOption::dumpFunc, func.GetName());
   int phaseIndex = 0;
@@ -277,59 +283,8 @@ void MeFuncPhaseManager::Run(MIRFunction *mirFunc, uint64 rangenum, const string
       --it;
       --it;  // restore iterator to emit
     }
-    if (p->IsChangedCFG()) {
-      changecfgphase = p;
-      p->ClearChangeCFG();
-      break;
-    }
   }
   GetAnalysisResultManager()->InvalidAllResults();
-  if (changecfgphase) {
-    // do all the phases start over
-    MemPool *versmp2 = mempoolctrler.NewMemPool("second verst mempool");
-    MeFunction func2(&module, mirFunc, versmp2, meinput, true);
-    func2.Prepare(rangenum);
-    for (auto it = PhaseSeqBegin(); it != PhaseSeqEnd(); it++) {
-      PhaseID id = GetPhaseId(it);
-      MeFuncPhase *p = static_cast<MeFuncPhase *>(GetPhase(id));
-      CHECK_FATAL(p, "null ptr check ");
-      if (p == changecfgphase) {
-        continue;
-      }
-
-      if (MeOption::skipFrom.compare(p->PhaseName()) == 0) {
-        // fast-forward to emit pass, which is last pass
-        while (++it != PhaseSeqEnd())
-          ;
-        --it;  // restore iterator
-        id = GetPhaseId(it);
-        p = static_cast<MeFuncPhase *>(GetPhase(id));
-        CHECK_FATAL(p, "null ptr check ");
-      }
-
-      p->SetPreviousPhaseName(phaseName); /* prev phase name is for filename used in emission after phase */
-      phaseName = p->PhaseName();         // new phase name
-      bool dumpPhase = MeOption::DumpPhase(phaseName);
-
-      if (MeOption::dumpBefore && dumpFunc && dumpPhase) {
-        LogInfo::MapleLogger() << ">>>>>Second time Dump before " << phaseName << " <<<<<\n";
-        func2.DumpFunction();
-      }
-      RunFuncPhase(&func2, p);
-      if (MeOption::dumpAfter && dumpFunc && dumpPhase) {
-        LogInfo::MapleLogger() << ">>>>>Second time Dump after " << phaseName << " <<<<<\n";
-        func2.DumpFunction();
-      }
-      if (MeOption::skipAfter.compare(phaseName) == 0) {
-        // fast-forward to emit pass, which is last pass
-        while (++it != PhaseSeqEnd())
-          ;
-        --it;
-        --it;  // restore iterator to emit
-      }
-    }
-    GetAnalysisResultManager()->InvalidAllResults();
-  }
 }
 
 }  // namespace maple

@@ -1119,11 +1119,11 @@ AnalysisResult *MeDoBDCOpt::Run(MeFunction *func, MeFuncResultMgr *frm, ModuleRe
   if (func->secondPass) {
     return nullptr;
   }
-  Dominance *dom = static_cast<Dominance *>(frm->GetAnalysisResult(MeFuncPhase_DOMINANCE, func));
+  Dominance *dom = static_cast<Dominance *>(frm->GetAnalysisResult(MeFuncPhase_DOMINANCE, func, !MeOption::quiet));
   ASSERT(dom, "dominance phase has problem");
-  MeIRMap *hmap = static_cast<MeIRMap *>(frm->GetAnalysisResult(MeFuncPhase_IRMAPBUILD, func));
+  MeIRMap *hmap = static_cast<MeIRMap *>(frm->GetAnalysisResult(MeFuncPhase_IRMAPBUILD, func, !MeOption::quiet));
   ASSERT(hmap, "hssamap has problem");
-  IdentifyLoops *meloop = static_cast<IdentifyLoops *>(frm->GetAnalysisResult(MeFuncPhase_MELOOP, func));
+  IdentifyLoops *meloop = static_cast<IdentifyLoops *>(frm->GetAnalysisResult(MeFuncPhase_MELOOP, func, !MeOption::quiet));
   CHECK_FATAL(meloop, "meloop has problem");
   MemPool *dobdcoptmp = mempoolctrler.NewMemPool(PhaseName().c_str());
   MeBDC *mebdc = dobdcoptmp->New<MeBDC>(func, meloop);

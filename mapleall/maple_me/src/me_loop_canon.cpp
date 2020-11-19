@@ -194,7 +194,7 @@ void MeDoLoopCanon::Convert(MeFunction *func, BB *bb, BB *pred, MapleMap<Key, bo
 }
 
 AnalysisResult *MeDoLoopCanon::Run(MeFunction *func, MeFuncResultMgr *m) {
-  Dominance *dom = static_cast<Dominance *>(m->GetAnalysisResult(MeFuncPhase_DOMINANCE, func));
+  Dominance *dom = static_cast<Dominance *>(m->GetAnalysisResult(MeFuncPhase_DOMINANCE, func, !MeOption::quiet));
   CHECK_FATAL(dom != nullptr, "dom is null in MeDoLoopCanon::Run");
 
   // set MirCFG's hasDoWhile flag

@@ -22,6 +22,7 @@
 #include "dominance.h"
 #include "me_function.h"
 #include "me_cfg.h"
+#include "me_alias_class.h"
 
 /*
    This phase builds the SSA form of a function. Before this we have got the dominator tree
@@ -84,7 +85,7 @@ void MeSSA::InsertPhiNode() {
     for (BBId bbid : phibbs) {
       BB *phiBB = bbVec[bbid.idx];
       CHECK_FATAL(phiBB != nullptr, "MeSSA::InsertPhiNode: non-existent BB for definition");
-      phiBB->InsertPhi(&mirFunc->theCFG->cfgAlloc, vst);
+      phiBB->InsertPhi(&mirFunc->meSSATab->vers_alloc, vst);
     }
   }
 }
@@ -137,20 +138,23 @@ bool MeSSA::VerifySSA() {
 }
 
 AnalysisResult *MeDoSSA::Run(MeFunction *func, MeFuncResultMgr *m) {
-  MirCFG *cfg = static_cast<MirCFG *>(m->GetAnalysisResult(MeFuncPhase_CFGBUILD, func));
-  Dominance *dom = static_cast<Dominance *>(m->GetAnalysisResult(MeFuncPhase_DOMINANCE, func));
+  MirCFG *cfg = static_cast<MirCFG *>(m->GetAnalysisResult(MeFuncPhase_CFGBUILD, func, !MeOption::quiet));
+  ASSERT(cfg != nullptr, "cfgbuild phase has problem");
+  Dominance *dom = static_cast<Dominance *>(m->GetAnalysisResult(MeFuncPhase_DOMINANCE, func, !MeOption::quiet));
   ASSERT(dom != nullptr, "dominance phase has problem");
 
-  SSATab *ssaTab = static_cast<SSATab *>(m->GetAnalysisResult(MeFuncPhase_SSATAB, func));
-  ASSERT(ssaTab != nullptr, "ssaTab phase has problem");
+  SSATab *ssaTab = static_cast<SSATab *>(m->GetAnalysisResult(MeFuncPhase_SSATAB, func, !MeOption::quiet));
+  ASSERT(ssaTab != nullptr, "ssatab phase has problem");
+
+  MeAliasClass *aliasclass = static_cast<MeAliasClass *>(m->GetAnalysisResult(MeFuncPhase_ALIASCLASS, func, !MeOption::quiet));
+  ASSERT(aliasclass != nullptr, "aliasclass phase has problem");
 
   MemPool *ssamp = mempoolctrler.NewMemPool(PhaseName().c_str());
 
-  MeSSA ssa(func, func->meSSATab, dom, ssamp);
-  ssa.BuildSSA();
+  MeSSA *ssa = ssamp->New<MeSSA>(func, func->meSSATab, dom, ssamp);
+  ssa->BuildSSA();
 
-  mempoolctrler.DeleteMemPool(ssamp);
-  ssa.VerifySSA();
+  ssa->VerifySSA();
 
   if (DEBUGFUNC(func)) {
     ssaTab->versionStTable.Dump(&ssaTab->mirModule);
@@ -160,7 +164,7 @@ AnalysisResult *MeDoSSA::Run(MeFunction *func, MeFuncResultMgr *m) {
     func->DumpFunction();
   }
 
-  return nullptr;
+  return ssa;
 }
 
 }  // namespace maple

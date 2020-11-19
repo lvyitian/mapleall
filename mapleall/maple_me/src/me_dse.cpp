@@ -19,6 +19,7 @@
 #include "ver_symbol.h"
 #include "me_ssa.h"
 #include "me_cfg.h"
+#include "me_fsaa.h"
 
 // This phase do dead store elimination. This optimization is done on SSA
 // version basis.
@@ -324,11 +325,11 @@ void MeDSE::DseInit() {
 
 void MeDSE::VerifyPhi() {
   for (auto bb : cfg->bbVec) {
-    if (bb == nullptr || bb == cfg->commonExitBB || bb->phiList.empty()) {
+    if (bb == nullptr || bb == cfg->commonExitBB || bb->phiList->empty()) {
       continue;
     }
     uint32 predbbNums = bb->pred.size();
-    for (auto phiitem : bb->phiList) {
+    for (auto phiitem : *bb->phiList) {
       if (phiitem.second.result->IsLive()) {
         if (predbbNums <= 1) {
           OriginalSt *ost = phiitem.first;
@@ -363,24 +364,38 @@ void MeDSE::Dse() {
 }
 
 AnalysisResult *MeDoDSE::Run(MeFunction *func, MeFuncResultMgr *m) {
-  Dominance *pdom = static_cast<Dominance *>(m->GetAnalysisResult(MeFuncPhase_DOMINANCE, func));
-  ASSERT(pdom != nullptr, "dominance phase has problem");
+  {
+    MeSSA *ssa = static_cast<MeSSA *>(m->GetAnalysisResult(MeFuncPhase_SSA, func, !MeOption::quiet));
+    ASSERT(ssa != nullptr, "ssa phase has problem");
+    Dominance *pdom = static_cast<Dominance *>(m->GetAnalysisResult(MeFuncPhase_DOMINANCE, func, !MeOption::quiet));
+    ASSERT(pdom != nullptr, "dominance phase has problem");
 
-  SSATab *ssaTab = static_cast<SSATab *>(m->GetAnalysisResult(MeFuncPhase_SSATAB, func));
-  ASSERT(ssaTab != nullptr, "ssaTab phase has problem");
+    SSATab *ssaTab = static_cast<SSATab *>(m->GetAnalysisResult(MeFuncPhase_SSATAB, func, !MeOption::quiet));
+    ASSERT(ssaTab != nullptr, "ssaTab phase has problem");
 
-  MemPool *dsemp = mempoolctrler.NewMemPool(PhaseName().c_str());
+    MemPool *dsemp = mempoolctrler.NewMemPool(PhaseName().c_str());
 
-  MeDSE dse(func, pdom, dsemp);
-  dse.Dse();
-  func->Verify();
+    MeDSE dse(func, pdom, dsemp);
+    dse.Dse();
+    func->Verify();
 
-  /* cfg change , invalid results in MeFuncResultMgr */
-  if (dse.UpdatedCfg()) {
-    m->InvalidAnalysisResult(MeFuncPhase_DOMINANCE, func);
+    /* cfg change , invalid results in MeFuncResultMgr */
+    if (dse.UpdatedCfg()) {
+      m->InvalidAnalysisResult(MeFuncPhase_DOMINANCE, func);
+    }
+    /* this is a transform phase, delete mempool */
+    mempoolctrler.DeleteMemPool(dsemp);
   }
-  /* this is a transform phase, delete mempool */
-  mempoolctrler.DeleteMemPool(dsemp);
+
+  if (func->mirModule.IsCModule()) {
+    /* invoke FSAA */
+    MeDoFSAA doFSAA(MeFuncPhase_FSAA);
+    if (!MeOption::quiet) {
+      LogInfo::MapleLogger() << "  == " << PhaseName() << " invokes [ " << doFSAA.PhaseName() << " ] ==\n";
+    }
+    doFSAA.Run(func, m);
+  }
+
   return nullptr;
 }
 

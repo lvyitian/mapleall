@@ -221,7 +221,7 @@ bool MeCfgOpt::Run(MeFunction *func) {
 
 void MeDoCfgOpt::EmitMapleir(MeFunction *func, MeFuncResultMgr *m) {
   if (func->theCFG->NumBBs() > 0) {
-    BBLayout *layoutbbs = static_cast<BBLayout *>(m->GetAnalysisResult(MeFuncPhase_BBLAYOUT, func));
+    BBLayout *layoutbbs = static_cast<BBLayout *>(m->GetAnalysisResult(MeFuncPhase_BBLAYOUT, func, !MeOption::quiet));
     CHECK_FATAL(func->irMap != nullptr, "");
     MIRFunction *mirfunction = func->mirFunc;
     if (mirfunction->codeMemPool != nullptr) {
@@ -245,13 +245,15 @@ void MeDoCfgOpt::EmitMapleir(MeFunction *func, MeFuncResultMgr *m) {
 
 AnalysisResult *MeDoCfgOpt::Run(MeFunction *func, MeFuncResultMgr *m) {
   MIRFunction *mirfunction = func->mirFunc;
-  MeIRMap *irMap = static_cast<MeIRMap *>(m->GetAnalysisResult(MeFuncPhase_IRMAPBUILD, func));
+  MeIRMap *irMap = static_cast<MeIRMap *>(m->GetAnalysisResult(MeFuncPhase_IRMAPBUILD, func, !MeOption::quiet));
   ASSERT(irMap != nullptr, "");
 
   MeCfgOpt cfgopt(irMap);
   if (cfgopt.Run(func)) {
-    SetChangeCFG();
     EmitMapleir(func, m);
+    m->InvalidAllResults();
+    func->meSSATab = nullptr;
+    func->irMap = nullptr;
     return nullptr;
   }
 

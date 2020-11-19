@@ -340,6 +340,9 @@ void SSARename2Preg::PromoteEmptyFunction() {
 }
 
 AnalysisResult *MeDoSSARename2Preg::Run(MeFunction *func, MeFuncResultMgr *m) {
+  MeIRMap *irMap = static_cast<MeIRMap *>(m->GetAnalysisResult(MeFuncPhase_IRMAPBUILD, func));
+  ASSERT(irMap != nullptr, "");
+
   MemPool *renamemp = mempoolctrler.NewMemPool(PhaseName().c_str());
   if (func->theCFG->bbVec.size() == 0) {
     // empty function, we only promote the parameter
@@ -348,9 +351,6 @@ AnalysisResult *MeDoSSARename2Preg::Run(MeFunction *func, MeFuncResultMgr *m) {
     mempoolctrler.DeleteMemPool(renamemp);
     return nullptr;
   }
-
-  MeIRMap *irMap = static_cast<MeIRMap *>(m->GetAnalysisResult(MeFuncPhase_IRMAPBUILD, func));
-  ASSERT(irMap != nullptr, "");
 
   AliasClass *aliasclass = static_cast<AliasClass *>(m->GetAnalysisResult(MeFuncPhase_ALIASCLASS, func));
   ASSERT(aliasclass != nullptr, "");

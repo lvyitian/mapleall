@@ -684,7 +684,7 @@ void DelegateRC::RenameDelegatedRefVarUses(MeStmt *mestmt, MeExpr *meexpr) {
 
 AnalysisResult *MeDoDelegateRC::Run(MeFunction *func, MeFuncResultMgr *m) {
   static uint32 pUcount = 0;
-  Dominance *dom = static_cast<Dominance *>(m->GetAnalysisResult(MeFuncPhase_DOMINANCE, func));
+  Dominance *dom = static_cast<Dominance *>(m->GetAnalysisResult(MeFuncPhase_DOMINANCE, func, !MeOption::quiet));
   ASSERT(dom != nullptr, "dominance phase has problem");
 
   { // scope needed for mempool release

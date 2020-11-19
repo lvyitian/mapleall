@@ -1135,7 +1135,10 @@ void RCLowering::FastRCLower(BB *bb) {
 }
 
 AnalysisResult *MeDoRCLowering::Run(MeFunction *func, MeFuncResultMgr *m, ModuleResultMgr *mrm) {
-  KlassHierarchy *kh = static_cast<KlassHierarchy *>(mrm->GetAnalysisResult(MoPhase_CHA, &func->mirModule));
+  MeIRMap *irMap = static_cast<MeIRMap *>(m->GetAnalysisResult(MeFuncPhase_IRMAPBUILD, func, !MeOption::quiet));
+  ASSERT(irMap != nullptr, "irmapbuild phase has problem");
+
+  KlassHierarchy *kh = static_cast<KlassHierarchy *>(mrm->GetAnalysisResult(MoPhase_CHA, &func->mirModule, !MeOption::quiet));
   RCLowering rcLowering(func, kh);
   func->mirModule.hints |= kRcLowered;
 

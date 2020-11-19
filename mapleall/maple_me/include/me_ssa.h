@@ -23,7 +23,7 @@ namespace maple {
 
 class Dominance;
 
-class MeSSA : public maple::SSA, public AnalysisResult {
+class MeSSA : public maple::SSA {
  public:
   MeFunction *mirFunc;
 
@@ -32,7 +32,7 @@ class MeSSA : public maple::SSA, public AnalysisResult {
 
  public:
   explicit MeSSA(MeFunction *func, SSATab *stab, Dominance *dom, MemPool *mp) :
-      SSA(mp, stab, dom, func->theCFG->bbVec), AnalysisResult(mp), mirFunc(func) {}
+      SSA(mp, stab, dom, func->theCFG->bbVec), mirFunc(func) {}
 
   ~MeSSA() {}
 

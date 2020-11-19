@@ -42,7 +42,6 @@ class MeFuncPhase : public Phase {
  public:
   MeFuncPhase(MePhaseID id) : Phase() {
     phaseID = id;
-    isCFGChanged = false;
   }
 
   /* if phase is analysis phase, return analysis result
@@ -73,22 +72,10 @@ class MeFuncPhase : public Phase {
   virtual std::string PhaseName() const = 0;
 
   virtual ~MeFuncPhase(){};
-  void SetChangeCFG() {
-    isCFGChanged = true;
-  }
-
-  bool IsChangedCFG() const {
-    return isCFGChanged;
-  }
-
-  void ClearChangeCFG() {
-    isCFGChanged = false;
-  }
 
  private:
   MePhaseID phaseID;
   std::string prevPhaseName; /* used in filename for emit */
-  bool isCFGChanged;        // is this phase changed CFG
 };
 }  // namespace maple
 #endif  // MAPLE_ME_IMCLUDE_ME_PHASE_H

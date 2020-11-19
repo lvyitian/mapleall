@@ -767,14 +767,14 @@ void AnalyzeRC::RemoveUnneededCleanups() {
 }
 
 AnalysisResult *MeDoAnalyzeRC::Run(MeFunction *func, MeFuncResultMgr *m) {
-  Dominance *dom = static_cast<Dominance *>(m->GetAnalysisResult(MeFuncPhase_DOMINANCE, func));
+  MeIRMap *hmap = static_cast<MeIRMap *>(m->GetAnalysisResult(MeFuncPhase_IRMAPBUILD, func, !MeOption::quiet));
+  ASSERT(hmap != nullptr, "irmapbuild phase has problem");
+
+  Dominance *dom = static_cast<Dominance *>(m->GetAnalysisResult(MeFuncPhase_DOMINANCE, func, !MeOption::quiet));
   ASSERT(dom != nullptr, "dominance phase has problem");
 
-  AliasClass *aliasclass = static_cast<AliasClass *>(m->GetAnalysisResult(MeFuncPhase_ALIASCLASS, func));
+  AliasClass *aliasclass = static_cast<AliasClass *>(m->GetAnalysisResult(MeFuncPhase_ALIASCLASS, func, !MeOption::quiet));
   ASSERT(aliasclass != nullptr, "aliasclass phase has problem");
-
-  MeIRMap *hmap = static_cast<MeIRMap *>(m->GetAnalysisResult(MeFuncPhase_IRMAPBUILD, func));
-  ASSERT(hmap != nullptr, "hssamap has problem");
 
   MIRFunction *mirfunction = func->mirFunc;
 
@@ -817,13 +817,15 @@ AnalysisResult *MeDoAnalyzeRC::Run(MeFunction *func, MeFuncResultMgr *m) {
   }  // end of analyzerc's scope
 
   if (!MeOption::nodelegaterc && !func->placementRCOn && MeOption::rcLowering && MeOption::optLevel > 0) {
-    m->GetAnalysisResult(MeFuncPhase_DELEGATERC, func);
+    m->GetAnalysisResult(MeFuncPhase_DELEGATERC, func, !MeOption::quiet);
   }
 
   if (!MeOption::nocondbasedrc && MeOption::rcLowering && MeOption::optLevel > 0) {
     MeDoCondBasedRC docondbasedrc(MeFuncPhase_CONDBASEDRC);
+    if (!MeOption::quiet) {
+      LogInfo::MapleLogger() << "  == " << PhaseName() << " invokes [ " << docondbasedrc.PhaseName() << " ] ==\n";
+    }
     docondbasedrc.Run(func, m);
-//  m->GetAnalysisResult(MeFuncPhase_CONDBASEDRC, func);
   }
 
   return nullptr;

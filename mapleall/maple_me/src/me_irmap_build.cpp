@@ -15,15 +15,26 @@
 
 #include "me_irmap_build.h"
 #include "irmap_build.h"
+#include "me_ssa.h"
 #include "me_prop.h"
+#include "me_alias_class.h"
 
 // This phase converts Maple IR to MeIR.
 
 namespace maple {
 
 AnalysisResult *MeDoIrMapBuild::Run(MeFunction *func, MeFuncResultMgr *m) {
-  Dominance *dom = static_cast<Dominance *>(m->GetAnalysisResult(MeFuncPhase_DOMINANCE, func));
+  MirCFG *cfg = static_cast<MirCFG *>(m->GetAnalysisResult(MeFuncPhase_CFGBUILD, func, !MeOption::quiet));
+  ASSERT(cfg != nullptr, "cfgbuild phase has problem");
+  SSATab *ssatab = static_cast<SSATab *>(m->GetAnalysisResult(MeFuncPhase_SSATAB, func, !MeOption::quiet));
+  CHECK_FATAL(ssatab, "ssatab phase has problem");
+  MeAliasClass *aliasclass = static_cast<MeAliasClass *>(m->GetAnalysisResult(MeFuncPhase_ALIASCLASS, func, !MeOption::quiet));
+  ASSERT(aliasclass != nullptr, "aliasclass phase has problem");
+  MeSSA *ssa = static_cast<MeSSA *>(m->GetAnalysisResult(MeFuncPhase_SSA, func, !MeOption::quiet));
+  CHECK_FATAL(ssa, "ssa phase has problem");
+  Dominance *dom = static_cast<Dominance *>(m->GetAnalysisResult(MeFuncPhase_DOMINANCE, func, !MeOption::quiet));
   CHECK_FATAL(dom, "dominance phase has problem");
+
   MemPool *irmapmp = mempoolctrler.NewMemPool(PhaseName().c_str());
   MemPool *tempmp = mempoolctrler.NewMemPool("meirmap temporaries");
 
@@ -49,6 +60,7 @@ AnalysisResult *MeDoIrMapBuild::Run(MeFunction *func, MeFuncResultMgr *m) {
   MIRFunction *mirFunc = func->mirFunc;
   mempoolctrler.DeleteMemPool(mirFunc->codeMemPool);
   mirFunc->codeMemPool = nullptr;
+
 // delete versionst_table
   // nullify all references to the versionst_table contents
   for (uint32 i = 0; i < func->meSSATab->versionStTable.versionStVector.size(); i++) {
@@ -59,9 +71,11 @@ AnalysisResult *MeDoIrMapBuild::Run(MeFunction *func, MeFuncResultMgr *m) {
     if (bb == nullptr) {
       continue;
     }
-    bb->phiList.clear();
+    bb->phiList->clear();
+    bb->phiList = nullptr;
     bb->stmtNodeList.clear();
   }
+  m->InvalidAnalysisResult(MeFuncPhase_SSA, func);
   mempoolctrler.DeleteMemPool(func->meSSATab->vers_mp);
   mempoolctrler.DeleteMemPool(propMp);
   return irMap;

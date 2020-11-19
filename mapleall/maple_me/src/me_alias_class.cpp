@@ -93,12 +93,17 @@ void MeAliasClass::PerformAliasClass() {
 }
 
 AnalysisResult *MeDoAliasClass::Run(MeFunction *func, MeFuncResultMgr *m, ModuleResultMgr *mrm) {
-  MirCFG *cfg = static_cast<MirCFG *>(m->GetAnalysisResult(MeFuncPhase_CFGBUILD, func));
-  SSATab *ssaTab = static_cast<SSATab *>(m->GetAnalysisResult(MeFuncPhase_SSATAB, func));
+  moduleResultMgr = mrm;  // later it can be called with only first 2 parameters
+
+  MirCFG *cfg = static_cast<MirCFG *>(m->GetAnalysisResult(MeFuncPhase_CFGBUILD, func, !MeOption::quiet));
+  SSATab *ssaTab = static_cast<SSATab *>(m->GetAnalysisResult(MeFuncPhase_SSATAB, func, !MeOption::quiet));
   ASSERT(ssaTab != nullptr, "ssatbb phase has problem");
   MemPool *aliasclassmp = mempoolctrler.NewMemPool(PhaseName().c_str());
 
-  KlassHierarchy *kh = static_cast<KlassHierarchy *>(mrm->GetAnalysisResult(MoPhase_CHA, &func->mirModule));
+  KlassHierarchy *kh = nullptr;
+  if (func->mirModule.IsJavaModule()) {
+    kh = static_cast<KlassHierarchy *>(mrm->GetAnalysisResult(MoPhase_CHA, &func->mirModule, !MeOption::quiet));
+  }
 
   MeAliasClass *aliasclass = aliasclassmp->New<MeAliasClass>(
     aliasclassmp, &func->mirModule, func->meSSATab, func, MeOption::lessThrowAlias, MeOption::finalFieldAlias,

@@ -37,26 +37,6 @@ MeIRMap *g_irmap = nullptr;
 SSATab *g_ssatab = nullptr;
 #endif
 
-void MeFunction::PartialInit(bool issecondpass) {
-  theCFG = nullptr;
-  irMap = nullptr;
-
-  regNum = 0;
-  hasEH = false;
-  secondPass = issecondpass;
-  maple::ConstantFold cf(&mirModule);
-  cf.Simplify(mirModule.CurFunction()->body);
-  if (JAVALANG && (mirFunc->info.size() > 0)) {
-    std::string string("INFO_registers");
-    GStrIdx strIdx = GlobalTables::GetStrTable().GetOrCreateStrIdxFromName(string);
-    regNum = mirModule.CurFunction()->GetInfo(strIdx);
-    std::string trynum("INFO_tries_size");
-    strIdx = GlobalTables::GetStrTable().GetOrCreateStrIdxFromName(trynum);
-    uint32 num = mirModule.CurFunction()->GetInfo(strIdx);
-    hasEH = (num != 0);
-  }
-}
-
 void MeFunction::DumpFunction() {
   for (BB *bb : theCFG->bbVec) {
     if (bb == nullptr) {
@@ -65,7 +45,7 @@ void MeFunction::DumpFunction() {
     bb->DumpHeader(&mirModule);
 
     MapleMap<OriginalSt *, PhiNode>::iterator phiIt;
-    for (phiIt = bb->phiList.begin(); phiIt != bb->phiList.end(); phiIt++) {
+    for (phiIt = bb->phiList->begin(); phiIt != bb->phiList->end(); phiIt++) {
       (*phiIt).second.Dump(&mirModule);
     }
 
@@ -83,7 +63,7 @@ void MeFunction::DumpFunctionNoSSA() {
     bb->DumpHeader(&mirModule);
 
     MapleMap<OriginalSt *, PhiNode>::iterator phiIt;
-    for (phiIt = bb->phiList.begin(); phiIt != bb->phiList.end(); phiIt++) {
+    for (phiIt = bb->phiList->begin(); phiIt != bb->phiList->end(); phiIt++) {
       (*phiIt).second.Dump(&mirModule);
     }
 
@@ -505,25 +485,13 @@ void MeFunction::CreateBasicBlocks(MirCFG *cfg) {
   return;
 }
 
-void MeFunction::Prepare(unsigned long rangeNum) {
-  if (!MeOption::quiet)
-    LogInfo::MapleLogger() << "---Preparing Function  < " << mirModule.CurFunction()->GetName() << " > [" << rangeNum << "] ---\n";
-  /* lower first */
-  if (!isLfo) {
-    MIRLower mirlowerer(mirModule, mirModule.CurFunction());
-    mirlowerer.SetLowerME();
-    mirlowerer.SetLowerExpandArray();
-    mirlowerer.LowerFunc(mirModule.CurFunction());
-  }
-}
-
 void MeFunction::Verify() {
   theCFG->Verify();
   theCFG->VerifyLabels();
 }
 
 BB *MeFunction::NewBasicBlock() {
-  BB *newbb = theCFG->cfgAlloc.mp->New<BB>(&theCFG->cfgAlloc, &versAlloc, BBId(theCFG->nextBBId++));
+  BB *newbb = theCFG->cfgAlloc.mp->New<BB>(&theCFG->cfgAlloc, BBId(theCFG->nextBBId++));
   theCFG->bbVec.push_back(newbb);
   return newbb;
 }

@@ -20,16 +20,16 @@
 namespace maple {
 
 AnalysisResult *MeDoSSADevirtual::Run(MeFunction *func, MeFuncResultMgr *frm, ModuleResultMgr *mrm) {
-  Dominance *dom = static_cast<Dominance *>(frm->GetAnalysisResult(MeFuncPhase_DOMINANCE, func));
+  Dominance *dom = static_cast<Dominance *>(frm->GetAnalysisResult(MeFuncPhase_DOMINANCE, func, !MeOption::quiet));
   ASSERT(dom, "dominance phase has problem");
-  MeIRMap *hmap = static_cast<MeIRMap *>(frm->GetAnalysisResult(MeFuncPhase_IRMAPBUILD, func));
+  MeIRMap *hmap = static_cast<MeIRMap *>(frm->GetAnalysisResult(MeFuncPhase_IRMAPBUILD, func, !MeOption::quiet));
   ASSERT(hmap, "hssamap has problem");
   CHECK_FATAL(mrm != nullptr, "Needs module result manager for ipa");
-  KlassHierarchy *kh = static_cast<KlassHierarchy *>(mrm->GetAnalysisResult(MoPhase_CHA, &func->mirModule));
+  KlassHierarchy *kh = static_cast<KlassHierarchy *>(mrm->GetAnalysisResult(MoPhase_CHA, &func->mirModule, !MeOption::quiet));
   ASSERT(kh != nullptr, "");
   Clone *clone = nullptr;
   if (Options::O2) {
-    clone = static_cast<Clone *>(mrm->GetAnalysisResult(MoPhase_CLONE, &func->mirModule));
+    clone = static_cast<Clone *>(mrm->GetAnalysisResult(MoPhase_CLONE, &func->mirModule, !MeOption::quiet));
   }
   MemPool *ssadevirtualmp = mempoolctrler.NewMemPool(PhaseName().c_str());
   MeSSADevirtual *messadevirtual =

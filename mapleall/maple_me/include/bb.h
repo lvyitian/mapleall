@@ -101,7 +101,7 @@ class BB {
   LabelIdx bbLabel;  // the BB's label
   MapleVector<BB*> pred;  // predecessor list
   MapleVector<BB*> succ;  // successor list
-  MapleMap<OriginalSt *, PhiNode> phiList;
+  MapleMap<OriginalSt *, PhiNode> *phiList;
   MapleMap<OStIdx, MePhiNode *> mePhiList;
   StmtNodes stmtNodeList;
   MeStmts meStmtList;
@@ -121,12 +121,12 @@ class BB {
   bool isInLoop : 1;   // Is bb in a loop body
 
  public:
-  BB(MapleAllocator *alloc, MapleAllocator *versAlloc, BBId id)
+  BB(MapleAllocator *alloc, BBId id)
     : id(id),
       bbLabel(0),
       pred(2, nullptr, alloc->Adapter()),
       succ(2, nullptr, alloc->Adapter()),
-      phiList(versAlloc->Adapter()),
+      phiList(nullptr),
       mePhiList(alloc->Adapter()),
       frequency(0),
       kind(kBBUnknown),
@@ -147,12 +147,12 @@ class BB {
     succ.pop_back();
   }
 
-  BB(MapleAllocator *alloc, MapleAllocator *versAlloc, BBId id, StmtNode *fstmt, StmtNode *lstmt)
+  BB(MapleAllocator *alloc, BBId id, StmtNode *fstmt, StmtNode *lstmt)
     : id(id),
       bbLabel(0),
       pred(2, nullptr, alloc->Adapter()),
       succ(2, nullptr, alloc->Adapter()),
-      phiList(versAlloc->Adapter()),
+      phiList(nullptr),
       mePhiList(alloc->Adapter()),
       stmtNodeList(fstmt, lstmt),
       frequency(0) {

@@ -64,7 +64,7 @@ VersionSt *SSA::CreateNewVersion(VersionSt *vsym, BB *defBb) {
 
 void SSA::RenamePhi(BB *bb) {
   MapleMap<OriginalSt *, PhiNode>::iterator phiIt;
-  for (phiIt = bb->phiList.begin(); phiIt != bb->phiList.end(); phiIt++) {
+  for (phiIt = bb->phiList->begin(); phiIt != bb->phiList->end(); phiIt++) {
     VersionSt *vsym = (*phiIt).second.result;
 
     VersionSt *newVsym = CreateNewVersion(vsym, bb);
@@ -345,7 +345,7 @@ void SSA::RenamePhiUseInSucc(BB *bb) {
     }
     ASSERT(index < succBb->pred.size(), "RenamePhiUseInSucc: cannot find corresponding pred");
     // rename the phiOpnds[index] in all the phis in succ_bb
-    for (MapleMap<OriginalSt *, PhiNode>::iterator phiIt = succBb->phiList.begin(); phiIt != succBb->phiList.end();
+    for (MapleMap<OriginalSt *, PhiNode>::iterator phiIt = succBb->phiList->begin(); phiIt != succBb->phiList->end();
          phiIt++)
       phiIt->second.phiOpnds[index] = vstStacks[phiIt->second.phiOpnds[index]->GetOrigIdx().idx]->top();
   }

@@ -374,13 +374,14 @@ AnalysisResult *MeDoSSALPre::Run(MeFunction *func, MeFuncResultMgr *m) {
     pUcount++;
     return nullptr;
   }
-  Dominance *dom = static_cast<Dominance *>(m->GetAnalysisResult(MeFuncPhase_DOMINANCE, func));
-  ASSERT(dom != nullptr, "");
 
-  MeIRMap *irMap = static_cast<MeIRMap *>(m->GetAnalysisResult(MeFuncPhase_IRMAPBUILD, func));
-  ASSERT(irMap != nullptr, "");
+  MeIRMap *irMap = static_cast<MeIRMap *>(m->GetAnalysisResult(MeFuncPhase_IRMAPBUILD, func, !MeOption::quiet));
+  ASSERT(irMap != nullptr, "irmapbuild phase has problem");
 
-  IdentifyLoops *identloops = static_cast<IdentifyLoops *>(m->GetAnalysisResult(MeFuncPhase_MELOOP, func));
+  Dominance *dom = static_cast<Dominance *>(m->GetAnalysisResult(MeFuncPhase_DOMINANCE, func, !MeOption::quiet));
+  ASSERT(dom != nullptr, "dominance phase has problem");
+
+  IdentifyLoops *identloops = static_cast<IdentifyLoops *>(m->GetAnalysisResult(MeFuncPhase_MELOOP, func, !MeOption::quiet));
   CHECK_FATAL(identloops != nullptr, "meloop has problem");
 
   bool lprePuLimitSpecified = MeOption::lprePULimit != UINT32_MAX;
