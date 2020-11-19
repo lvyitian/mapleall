@@ -674,6 +674,8 @@ class Riscv64CGFunc : public CGFunc {
 
   void GeneratePopRegs();
 
+  Operand *FixLargeStackOffset(ImmOperand *iopnd);
+
   Riscv64MemOperand *CreateStkTopOpnd(int32 offset, int32 size);
 
   // if offset < 0, allocation; otherwise, deallocation

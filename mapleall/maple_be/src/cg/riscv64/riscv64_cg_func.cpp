@@ -852,7 +852,11 @@ void Riscv64CGFunc::AppendInstructionDeallocateCallFrame(Riscv64reg_t reg0, Risc
     }
     Operand *spOpnd = GetOrCreatePhysicalRegisterOperand(RSP, 64, kRegTyInt);
     Operand *immopnd = CreateImmOperand(stackFrameSize, 32, true);
-    SelectAdd(spOpnd, spOpnd, immopnd, PTY_u64);
+    Operand *offset = FixLargeStackOffset(static_cast<ImmOperand *>(immopnd));
+    if (offset == nullptr) {
+      offset = immopnd;
+    }
+    SelectAdd(spOpnd, spOpnd, offset, PTY_u64);
   } else {
     Insn *deallocInsn = cg->BuildInstruction<Riscv64Insn>(mop, o0, o1, o2);
     curbb->AppendInsn(deallocInsn);
@@ -887,7 +891,11 @@ void Riscv64CGFunc::AppendInstructionDeallocateCallFrameDebug(Riscv64reg_t reg0,
       curbb->AppendInsn(cg->BuildInstruction<cfi::CfiInsn>(cfi::OP_CFI_restore, CreateCfiRegOperand(RRA, 64)));
       Operand *spOpnd = GetOrCreatePhysicalRegisterOperand(RSP, 64, kRegTyInt);
       Operand *immopnd = CreateImmOperand(stackFrameSize, 32, true);
-      SelectAdd(spOpnd, spOpnd, immopnd, PTY_u64);
+      Operand *offset = FixLargeStackOffset(static_cast<ImmOperand *>(immopnd));
+      if (offset == nullptr) {
+        offset = immopnd;
+      }
+      SelectAdd(spOpnd, spOpnd, offset, PTY_u64);
     } else {
       RegOperand *rsp = GetOrCreatePhysicalRegisterOperand(RSP, SIZEOFPTR * 8, kRegTyInt);
       Riscv64OfstOperand *ofopnd = GetOrCreateOfstOpnd(0, 32);
@@ -901,8 +909,15 @@ void Riscv64CGFunc::AppendInstructionDeallocateCallFrameDebug(Riscv64reg_t reg0,
       curbb->AppendInsn(deallocInsn);
       curbb->AppendInsn(cg->BuildInstruction<cfi::CfiInsn>(cfi::OP_CFI_restore, CreateCfiRegOperand(RRA, 64)));
       // Restore old sp
+      MOperator mop = MOP_xaddrri12;
       ImmOperand *iopnd = CreateImmOperand(stackFrameSize, 32, true);
-      Insn *spAdd = cg->BuildInstruction<Riscv64Insn>(MOP_xaddrri12, rsp, rsp, iopnd);
+      Operand *offset = FixLargeStackOffset(iopnd);
+      if (offset) {
+        mop = MOP_xaddrrr;
+      } else {
+        offset = iopnd;
+      }
+      Insn *spAdd = cg->BuildInstruction<Riscv64Insn>(mop, rsp, rsp, offset);
       curbb->AppendInsn(spAdd);
     }
 
@@ -960,7 +975,11 @@ void Riscv64CGFunc::AppendInstructionDeallocateCallFrameDebug(Riscv64reg_t reg0,
 
     Operand *spOpnd = GetOrCreatePhysicalRegisterOperand(RSP, 64, kRegTyInt);
     Operand *immopnd = CreateImmOperand(stackFrameSize, 32, true);
-    SelectAdd(spOpnd, spOpnd, immopnd, PTY_u64);
+    Operand *offset = FixLargeStackOffset(static_cast<ImmOperand *>(immopnd));
+    if (offset == nullptr) {
+      offset = immopnd;
+    }
+    SelectAdd(spOpnd, spOpnd, offset, PTY_u64);
   }
 }
 
@@ -1136,6 +1155,17 @@ void Riscv64CGFunc::GeneratePopRegs() {
   // so that we generate a load-into-base-register instruction
   // for the next function, maybe? (seems not necessary, but...)
   split_stpldp_base_offset = 0;
+}
+
+Operand *Riscv64CGFunc::FixLargeStackOffset(ImmOperand *iopnd) {
+  if (static_cast<Riscv64ImmOperand *>(iopnd)->IsInSimmBitSize(11) == false) {
+    // Cannot use kIntSpareReg here since all registers have been restored in epilog
+    Riscv64RegOperand *dst = GetOrCreatePhysicalRegisterOperand(R31, 64, kRegTyInt);
+    Insn *li = cg->BuildInstruction<Riscv64Insn>(MOP_xmovri64, dst, CreateImmOperand(iopnd->GetValue(), 64, false));
+    curbb->AppendInsn(li);
+    return dst;
+  }
+  return nullptr;
 }
 
 void Riscv64CGFunc::Genstackguard(BB *bb) {
