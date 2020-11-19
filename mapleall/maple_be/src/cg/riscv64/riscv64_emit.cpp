@@ -226,14 +226,14 @@ void Riscv64Insn::EmitAdrpLabel(CG &cg, Emitter &emitter) {
   //GStrIdx strIdx = CG::curCgFunc->mirModule.CurFunction()->labelTab->labelTable[lidx];
   //string labelStr = GlobalTables::GetStrTable().GetStringFromStrIdx(strIdx);
 
-  // adrp    xd, label
+  // lui    xd, %hi(label)
   emitter.Emit("\t").Emit("lui").Emit("\t");
   opnd0->Emit(emitter, prop0);
   emitter.Emit(", ");
   const char *idx = std::to_string(CG::curPuIdx).c_str();
   emitter.Emit("%hi(").Emit(".label.").Emit(idx).Emit("__").Emit(lidx).Emit(")\n");
 
-  // add     xd, xd, #lo12:label
+  // addi   xd, xd, %lo(label)
   emitter.Emit("\taddi\t");
   opnd0->Emit(emitter, prop0);
   emitter.Emit(", ");

@@ -4406,7 +4406,7 @@ MemOperand *Riscv64CGFunc::GetOrCreateMemOpnd(MIRSymbol * symbol, int32 offset, 
        there is no need to repeat the offset in the actual mem opnd.
      */
     return memPool->New<Riscv64MemOperand>(size, staddropnd,
-                                       static_cast<Riscv64RegOperand *>(nullptr), GetOrCreateOfstOpnd(0, 32), symbol);
+                                       static_cast<Riscv64RegOperand *>(nullptr), GetOrCreateOfstOpnd(0, 32), nullptr);
   } else {
     CG_ASSERT(false, "NYI");
   }

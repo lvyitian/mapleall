@@ -807,6 +807,7 @@ Insn *Riscv64Peep::DefInsnOfOperandInBB(BB *bb, Insn *startinsn, Insn *checkinsn
 void Riscv64Peep::PrePeepholeOpt() {
   RemoveSext();
   ReplaceInstruction();
+  ComplexMemOperandOpt();
 }
 
 void Riscv64Peep::PrePeepholeOpt1() {
@@ -843,6 +844,130 @@ void Riscv64Peep::ReplaceInstruction() {
         }
         default:
           break;
+      }
+    }
+  }
+}
+
+/* Check if a regOpnd is live after insn. True if live, otherwise false.
+ */
+bool Riscv64Peep::IfOperandIsLiveAfterInsn(RegOperand *regOpnd, Insn *insn) {
+  CG_ASSERT(insn, "insn should not be nullptr.");
+
+  for (Insn *nextInsn = insn->next;
+       nextInsn && nextInsn != insn->bb->lastinsn->next;
+       nextInsn = nextInsn->next) {
+    if (!nextInsn->IsMachineInstruction()) {
+      continue;
+    }
+
+    for (int i = Insn::kMaxOperandNum - 1; i >= 0; i--) {
+      Operand *opnd = nextInsn->opnds[i];
+      if (opnd == nullptr) {
+        continue;
+      }
+
+      if (opnd->IsMemoryAccessOperand()) {
+        MemOperand *mem = static_cast<MemOperand *>(opnd);
+        Operand *base = mem->GetBaseRegister();
+        Operand *offset = mem->GetOffset();
+
+        if (base && base->IsRegister()) {
+          RegOperand *tmpRegOpnd = static_cast<RegOperand *>(base);
+          if (tmpRegOpnd->GetRegisterNumber() == regOpnd->GetRegisterNumber()) {
+            return true;
+          }
+        }
+        if (offset && offset->IsRegister()) {
+          RegOperand *tmpRegOpnd = static_cast<RegOperand *>(offset);
+          if (tmpRegOpnd->GetRegisterNumber() == regOpnd->GetRegisterNumber()) {
+            return true;
+          }
+        }
+      }
+
+      if (opnd->IsRegister()) {
+        RegOperand *tmpRegOpnd = static_cast<RegOperand *>(opnd);
+        if (tmpRegOpnd->GetRegisterNumber() == regOpnd->GetRegisterNumber()) {
+          const Riscv64MD *md =
+              &Riscv64CG::kMd[static_cast<Riscv64Insn *>(nextInsn)->mop_];
+          Riscv64OpndProp *regprop =
+              static_cast<Riscv64OpndProp *>(md->operand_[i]);
+          bool isUse = regprop->IsUse();
+          if (isUse) {
+            return true;
+          } else {
+            // Redefined, no need to check live-out.
+            return false;
+          }
+        }
+      }
+    }
+  }
+
+  // Check if it is live-out.
+  if (insn->bb->liveout_regno.find(regOpnd->GetRegisterNumber()) !=
+      insn->bb->liveout_regno.end()) {
+    return true;
+  }
+
+  return false;
+}
+
+/* addi    rY, rX, %lo(a)
+   ld      rZ, (rY)
+   ==>
+   ld      rZ, %lo(a)(rX)
+ */
+void Riscv64Peep::ComplexMemOperandOpt() {
+  Riscv64CGFunc *acgfunc = static_cast<Riscv64CGFunc *>(cgfunc);
+  FOR_ALL_BB(bb, acgfunc) {
+    Insn *nextInsn = nullptr;
+
+    for (Insn *insn = bb->firstinsn; insn; insn = nextInsn) {
+      nextInsn = insn->GetNextMachineInsn();
+      if (nextInsn == nullptr) {
+        continue;
+      }
+      MOperator thisMop = insn->GetMachineOpcode();
+      if (thisMop == MOP_adrpl12) {
+        MOperator nextMop = nextInsn->GetMachineOpcode();
+        if (nextMop && ((nextMop >= MOP_wldrsb && nextMop <= MOP_dldr) ||
+                        (nextMop >= MOP_wstrb && nextMop <= MOP_dstr))) {
+          // Check if base register of nextInsn and the dest operand of insn are
+          // identical.
+          Riscv64MemOperand *memOpnd =
+              static_cast<Riscv64MemOperand *>(nextInsn->GetMemOpnd());
+          CG_ASSERT(memOpnd != nullptr,
+                    "memOpnd is null in Riscv64Peep::ComplexMemOperandOpt");
+
+          RegOperand *regOpnd = static_cast<RegOperand *>(insn->GetOperand(0));
+
+          // Check if dest operand of add insn is identical with base register
+          // of nextInsn.
+          if (memOpnd->GetBaseRegister() != regOpnd) {
+            continue;
+          }
+
+          // Check if rY is used after ldr insn or if it is in live-out.
+          if (IfOperandIsLiveAfterInsn(regOpnd, nextInsn)) {
+            continue;
+          }
+
+          StImmOperand *stImmOpnd =
+              static_cast<StImmOperand *>(insn->GetOperand(2));
+          Riscv64OfstOperand *offopnd = acgfunc->GetOrCreateOfstOpnd(
+              stImmOpnd->GetOffset() +
+                  memOpnd->GetOffsetImmediate()->GetOffsetValue(),
+              32);
+          RegOperand *newBaseOpnd =
+              static_cast<RegOperand *>(insn->GetOperand(1));
+          Riscv64MemOperand *newMemOpnd = acgfunc->GetOrCreateMemOpnd(
+              memOpnd->GetSize(), newBaseOpnd, nullptr, offopnd,
+              stImmOpnd->GetSymbol());
+          nextInsn->SetOperand(1, newMemOpnd);
+          bb->RemoveInsn(insn);
+        }
       }
     }
   }
