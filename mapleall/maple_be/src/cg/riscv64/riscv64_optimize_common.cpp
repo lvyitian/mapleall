@@ -141,7 +141,14 @@ Insn *Riscv64InsnVisitor::CloneInsn(Insn *originalInsn) {
     Riscv64Insn *tobeCloned = static_cast<Riscv64Insn *>(originalInsn);
     Insn *newInsn = mp->Clone<Riscv64Insn>(*tobeCloned);
     for (uint32 i = 0; i < Insn::kMaxOperandNum; i++) {
-      newInsn->opnds[i] = originalInsn->opnds[i];
+      ImmOperand *iopnd = dynamic_cast<ImmOperand *>(originalInsn->opnds[i]);
+      if (iopnd && iopnd->IsVary()) {
+        Riscv64ImmOperand *cloneImm = static_cast<Riscv64ImmOperand *>(originalInsn->opnds[i]);
+        ImmOperand *newIopnd = mp->Clone<Riscv64ImmOperand>(*cloneImm);
+        newInsn->opnds[i] = newIopnd;
+      } else {
+        newInsn->opnds[i] = originalInsn->opnds[i];
+      }
     }
     return newInsn;
   } else if (dynamic_cast<mpldbg::DbgInsn *>(originalInsn)) {
