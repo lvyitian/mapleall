@@ -20,7 +20,7 @@
 #include "dominance.h"
 
 namespace maple {
-class DSE {
+class DSE : public AnalysisResult {
  public:
   MIRModule *mirModule;
   StmtsSSAPart *stmtsSSAPart;
@@ -30,7 +30,8 @@ class DSE {
   MapleUnorderedSet<uint32> stmt_required;  // key is stmtID; required if in set
   std::forward_list<VersionSt *> worklist;
   explicit DSE(MIRModule *mod, StmtsSSAPart *ssapart, Dominance *dom, MemPool *mp)
-    : mirModule(mod),
+    : AnalysisResult(mp),
+      mirModule(mod),
       stmtsSSAPart(ssapart),
       pdom(dom),
       dse_allocator(mp),

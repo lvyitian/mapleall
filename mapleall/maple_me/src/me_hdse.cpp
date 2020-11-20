@@ -350,6 +350,7 @@ AnalysisResult *MeDohDSE::Run(MeFunction *func, MeFuncResultMgr *m) {
   func->theCFG->UnreachCodeAnalysis(/* update_phi = */ true);
   func->theCFG->WontExitAnalysis();
   m->InvalidAnalysisResult(MeFuncPhase_DOMINANCE, func);
+  m->InvalidAnalysisResult(MeFuncPhase_MELOOP, func);
   if (DEBUGFUNC(func)) {
     LogInfo::MapleLogger() << "\n============== HDSE =============" << std::endl;
     hmap->Dump();

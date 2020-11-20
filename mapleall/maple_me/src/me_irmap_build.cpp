@@ -18,6 +18,7 @@
 #include "me_ssa.h"
 #include "me_prop.h"
 #include "me_alias_class.h"
+#include "me_dse.h"
 
 // This phase converts Maple IR to MeIR.
 
@@ -32,6 +33,8 @@ AnalysisResult *MeDoIrMapBuild::Run(MeFunction *func, MeFuncResultMgr *m) {
   ASSERT(aliasclass != nullptr, "aliasclass phase has problem");
   MeSSA *ssa = static_cast<MeSSA *>(m->GetAnalysisResult(MeFuncPhase_SSA, func, !MeOption::quiet));
   CHECK_FATAL(ssa, "ssa phase has problem");
+  MeDSE *dse = static_cast<MeDSE *>(m->GetAnalysisResult(MeFuncPhase_DSE, func, !MeOption::quiet));
+  CHECK_FATAL(dse, "dse phase has problem");
   Dominance *dom = static_cast<Dominance *>(m->GetAnalysisResult(MeFuncPhase_DOMINANCE, func, !MeOption::quiet));
   CHECK_FATAL(dom, "dominance phase has problem");
 
@@ -76,6 +79,7 @@ AnalysisResult *MeDoIrMapBuild::Run(MeFunction *func, MeFuncResultMgr *m) {
     bb->stmtNodeList.clear();
   }
   m->InvalidAnalysisResult(MeFuncPhase_SSA, func);
+  m->InvalidAnalysisResult(MeFuncPhase_DSE, func);
   mempoolctrler.DeleteMemPool(func->meSSATab->vers_mp);
   mempoolctrler.DeleteMemPool(propMp);
   return irMap;

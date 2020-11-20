@@ -817,7 +817,11 @@ AnalysisResult *MeDoAnalyzeRC::Run(MeFunction *func, MeFuncResultMgr *m) {
   }  // end of analyzerc's scope
 
   if (!MeOption::nodelegaterc && !func->placementRCOn && MeOption::rcLowering && MeOption::optLevel > 0) {
-    m->GetAnalysisResult(MeFuncPhase_DELEGATERC, func, !MeOption::quiet);
+    MeDoDelegateRC dodelegaterc(MeFuncPhase_DELEGATERC);
+    if (!MeOption::quiet) {
+      LogInfo::MapleLogger() << "  == " << PhaseName() << " invokes [ " << dodelegaterc.PhaseName() << " ] ==\n";
+    }
+    dodelegaterc.Run(func, m);
   }
 
   if (!MeOption::nocondbasedrc && MeOption::rcLowering && MeOption::optLevel > 0) {

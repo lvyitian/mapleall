@@ -20,7 +20,7 @@
 #include "me_irmap.h"
 
 namespace maple {
-class DelegateRC : public AnalysisResult {
+class DelegateRC {
  private:
   MeFunction *func;
   IRMap *irMap;
@@ -35,9 +35,8 @@ class DelegateRC : public AnalysisResult {
   MapleVector<bool> verst_derefedcopied;    // true if it is dereferenced or copied
   MapleVector<bool> verst_cantdecrefearly;  // true if it is unsafe to insert early decref in form B1 delegation
 
-  DelegateRC(MeFunction *f, Dominance *dom, MemPool *mp, MemPool *tempmp)
-    : AnalysisResult(mp),
-      func(f),
+  DelegateRC(MeFunction *f, Dominance *dom, MemPool *tempmp)
+    : func(f),
       irMap(func->irMap),
       ssaTab(f->meSSATab),
       dominance(dom),

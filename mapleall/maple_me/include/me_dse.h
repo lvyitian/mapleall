@@ -27,7 +27,7 @@
 
 namespace maple {
 
-class MeDSE : private DSE {
+class MeDSE : public DSE {
  public:
   explicit MeDSE(MeFunction *f, Dominance *dom, MemPool *mp)
     : DSE(&f->mirModule, &f->meSSATab->stmtsSSAPart, dom, mp), func(f), cfg(f->theCFG), cfg_updated(false) {}

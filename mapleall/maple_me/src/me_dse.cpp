@@ -364,27 +364,23 @@ void MeDSE::Dse() {
 }
 
 AnalysisResult *MeDoDSE::Run(MeFunction *func, MeFuncResultMgr *m) {
-  {
-    MeSSA *ssa = static_cast<MeSSA *>(m->GetAnalysisResult(MeFuncPhase_SSA, func, !MeOption::quiet));
-    ASSERT(ssa != nullptr, "ssa phase has problem");
-    Dominance *pdom = static_cast<Dominance *>(m->GetAnalysisResult(MeFuncPhase_DOMINANCE, func, !MeOption::quiet));
-    ASSERT(pdom != nullptr, "dominance phase has problem");
+  MeSSA *ssa = static_cast<MeSSA *>(m->GetAnalysisResult(MeFuncPhase_SSA, func, !MeOption::quiet));
+  ASSERT(ssa != nullptr, "ssa phase has problem");
+  Dominance *pdom = static_cast<Dominance *>(m->GetAnalysisResult(MeFuncPhase_DOMINANCE, func, !MeOption::quiet));
+  ASSERT(pdom != nullptr, "dominance phase has problem");
 
-    SSATab *ssaTab = static_cast<SSATab *>(m->GetAnalysisResult(MeFuncPhase_SSATAB, func, !MeOption::quiet));
-    ASSERT(ssaTab != nullptr, "ssaTab phase has problem");
+  SSATab *ssaTab = static_cast<SSATab *>(m->GetAnalysisResult(MeFuncPhase_SSATAB, func, !MeOption::quiet));
+  ASSERT(ssaTab != nullptr, "ssaTab phase has problem");
 
-    MemPool *dsemp = mempoolctrler.NewMemPool(PhaseName().c_str());
+  MemPool *dsemp = mempoolctrler.NewMemPool(PhaseName().c_str());
 
-    MeDSE dse(func, pdom, dsemp);
-    dse.Dse();
-    func->Verify();
+  MeDSE *dse = dsemp->New<MeDSE>(func, pdom, dsemp);
+  dse->Dse();
+  func->Verify();
 
-    /* cfg change , invalid results in MeFuncResultMgr */
-    if (dse.UpdatedCfg()) {
-      m->InvalidAnalysisResult(MeFuncPhase_DOMINANCE, func);
-    }
-    /* this is a transform phase, delete mempool */
-    mempoolctrler.DeleteMemPool(dsemp);
+  /* cfg change , invalid results in MeFuncResultMgr */
+  if (dse->UpdatedCfg()) {
+    m->InvalidAnalysisResult(MeFuncPhase_DOMINANCE, func);
   }
 
   if (func->mirModule.IsCModule()) {
@@ -396,7 +392,7 @@ AnalysisResult *MeDoDSE::Run(MeFunction *func, MeFuncResultMgr *m) {
     doFSAA.Run(func, m);
   }
 
-  return nullptr;
+  return dse;
 }
 
 }  // namespace maple

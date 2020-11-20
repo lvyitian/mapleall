@@ -701,12 +701,11 @@ AnalysisResult *MeDoDelegateRC::Run(MeFunction *func, MeFuncResultMgr *m) {
   }
 
   MemPool *tempmp = mempoolctrler.NewMemPool("delegaterc temps");
-  MemPool *mp = mempoolctrler.NewMemPool(PhaseName().c_str());
-  DelegateRC *delegaterc = mp->New<DelegateRC>(func, dom, mp, tempmp);
+  DelegateRC delegaterc(func, dom, tempmp);
 
   if (pUcount > MeOption::delrcPULimit) {
     pUcount++;
-    return delegaterc;
+    return nullptr;
   }
   if (pUcount == MeOption::delrcPULimit) {
     LogInfo::MapleLogger() << func->mirFunc->GetName() << " is last PU optimized by delegaterc under -delrcpulimit option" << endl;
@@ -717,7 +716,7 @@ AnalysisResult *MeDoDelegateRC::Run(MeFunction *func, MeFuncResultMgr *m) {
     if (bb == nullptr) {
       continue;
     }
-    delegaterc->SetCantDelegate(bb->mePhiList);
+    delegaterc.SetCantDelegate(bb->mePhiList);
     for (auto stmt : bb->meStmtList) {
       if (stmt->op == OP_decref &&  // do not count decref operands
           static_cast<UnaryMeStmt *>(stmt)->opnd->meOp == kMeOpVar) {
@@ -731,7 +730,7 @@ AnalysisResult *MeDoDelegateRC::Run(MeFunction *func, MeFuncResultMgr *m) {
         }
       }
       for (int32 i = 0; i < stmt->NumMeStmtOpnds(); i++) {
-        delegaterc->CollectUsesInfo(stmt->GetMeStmtOpnd(i));
+        delegaterc.CollectUsesInfo(stmt->GetMeStmtOpnd(i));
       }
 
       if (stmt->op == OP_dassign || stmt->op == OP_maydassign || stmt->op == OP_regassign || stmt->op == OP_syncenter ||
@@ -743,7 +742,7 @@ AnalysisResult *MeDoDelegateRC::Run(MeFunction *func, MeFuncResultMgr *m) {
         }
         VarMeExpr *copiedvar = dynamic_cast<VarMeExpr *>(curopnd);
         if (copiedvar) {
-          delegaterc->verst_derefedcopied[copiedvar->vstIdx] = true;
+          delegaterc.verst_derefedcopied[copiedvar->vstIdx] = true;
         }
       } else if (stmt->op == OP_iassign) {
         // look at copied rhs
@@ -754,13 +753,13 @@ AnalysisResult *MeDoDelegateRC::Run(MeFunction *func, MeFuncResultMgr *m) {
         }
         VarMeExpr *copiedvar = dynamic_cast<VarMeExpr *>(curopnd);
         if (copiedvar) {
-          delegaterc->verst_derefedcopied[copiedvar->vstIdx] = true;
+          delegaterc.verst_derefedcopied[copiedvar->vstIdx] = true;
         }
         // check dereferencing
         IvarMeExpr *lhsivar = iass->lhsVar;
         if (lhsivar->base->meOp == kMeOpVar) {
           VarMeExpr *basevar = static_cast<VarMeExpr *>(lhsivar->base);
-          delegaterc->verst_derefedcopied[basevar->vstIdx] = true;
+          delegaterc.verst_derefedcopied[basevar->vstIdx] = true;
         }
       } else if (kOpcodeInfo.IsCall(stmt->op)) {
         // processsed passed operands
@@ -771,7 +770,7 @@ AnalysisResult *MeDoDelegateRC::Run(MeFunction *func, MeFuncResultMgr *m) {
           }
           VarMeExpr *passedvar = dynamic_cast<VarMeExpr *>(curopnd);
           if (passedvar) {
-            delegaterc->verst_derefedcopied[passedvar->vstIdx] = true;
+            delegaterc.verst_derefedcopied[passedvar->vstIdx] = true;
           }
         }
       }
@@ -785,10 +784,10 @@ AnalysisResult *MeDoDelegateRC::Run(MeFunction *func, MeFuncResultMgr *m) {
     }
     for (auto stmt : bb->meStmtList) {
       bool withDecref = false;
-      if (delegaterc->CanOmitRC4LHSVar(stmt, withDecref)) {
-        delegaterc->DelegateHandleNoRCStmt(stmt, withDecref);  // Form B
+      if (delegaterc.CanOmitRC4LHSVar(stmt, withDecref)) {
+        delegaterc.DelegateHandleNoRCStmt(stmt, withDecref);  // Form B
       } else {
-        delegaterc->DelegateRCTemp(stmt);  // Form A
+        delegaterc.DelegateRCTemp(stmt);  // Form A
       }
     }
   }
@@ -812,7 +811,7 @@ AnalysisResult *MeDoDelegateRC::Run(MeFunction *func, MeFuncResultMgr *m) {
         }
       }
       for (int32 i = 0; i < stmt->NumMeStmtOpnds(); i++) {
-        delegaterc->RenameDelegatedRefVarUses(stmt, stmt->GetMeStmtOpnd(i));
+        delegaterc.RenameDelegatedRefVarUses(stmt, stmt->GetMeStmtOpnd(i));
       }
       // for live_localrefvars
       if (stmt->op == OP_dassign || stmt->op == OP_maydassign) {
@@ -907,7 +906,7 @@ AnalysisResult *MeDoDelegateRC::Run(MeFunction *func, MeFuncResultMgr *m) {
   mempoolctrler.DeleteMemPool(tempmp);
 
   pUcount++;
-  return delegaterc;
+  return nullptr;
 }
 
 }  // namespace maple

@@ -694,7 +694,6 @@ AnalysisResult *MeDoPredict::Run(MeFunction *func, MeFuncResultMgr *m) {
   Dominance *dom = static_cast<Dominance *>(m->GetAnalysisResult(MeFuncPhase_DOMINANCE, func, !MeOption::quiet));
   CHECK_FATAL(dom, "dominance phase has problem");
 
-  m->InvalidAnalysisResult(MeFuncPhase_MELOOP, func);
   IdentifyLoops *meloop = static_cast<IdentifyLoops *>(m->GetAnalysisResult(MeFuncPhase_MELOOP, func, !MeOption::quiet));
   CHECK_FATAL(meloop != NULL, "meloop has problem");
 

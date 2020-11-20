@@ -168,8 +168,8 @@ void MeFuncPhaseManager::AddPhases(const std::unordered_set<std::string> &skipPh
   addPhase("dse");
   addPhase("irmapbuild");
   if (JAVALANG) {
-    // addPhase("bdcopt");
-    // addPhase("syncselect");
+    addPhase("bdcopt");
+    addPhase("syncselect");
     // addPhase("ssadevirt");
     // addPhase("ea");
   }
