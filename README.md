@@ -38,6 +38,10 @@ The directory structure as follows:
             out          : created during make
 ```
 
+### Branches
+1. master branch: for stable versions
+2. dev branch: for daily development
+
 ### Set up tools
 1. `cd $MAPLE_ROOT`
 2. `cd tools`
