@@ -98,8 +98,36 @@ void Riscv64Peep::RemoveIdenticalLoadAndStore() {
 }
 
 void Riscv64Peep::Peephole0() {
+  RemoveSingleInstruction();
   RemoveIdenticalLoadAndStore();
   DeleteMovAfterCbzOrCbnz();
+}
+
+void Riscv64Peep::RemoveSingleInstruction() {
+  FOR_ALL_BB(bb, cgfunc) {
+    FOR_BB_INSNS_SAFE(insn, bb, ninsn) {
+      MOperator mop = insn->GetMachineOpcode();
+      switch (mop) {
+      case MOP_wmovrr:
+      case MOP_xmovrr:
+        if (IsSameReg(insn->opnds[0], insn->opnds[1])) {
+          // mov r1, r1
+          bb->RemoveInsn(insn);
+        }
+        break;
+      case MOP_waddrri12:
+      case MOP_xaddrri12:
+        if (IsSameReg(insn->opnds[0], insn->opnds[1]) &&
+            static_cast<ImmOperand *>(insn->opnds[2])->GetValue() == 0) {
+          // add r1, r1, 0
+          bb->RemoveInsn(insn);
+        }
+        break;
+      default:
+        break;
+      }
+    }
+  }
 }
 
 /* We optimize the following pattern in this function:
@@ -132,10 +160,9 @@ void Riscv64Peep::Peephole0() {
  */
 void Riscv64Peep::Peephole() {
   RemoveIdenticalLoadAndStore();
-  Riscv64CGFunc *acgfunc = static_cast<Riscv64CGFunc *>(cgfunc);
 
   // Delete insn moving the same register, this will simplify the following two passes.
-  FOR_ALL_BB(bb, acgfunc) {
+  FOR_ALL_BB(bb, cgfunc) {
     FOR_BB_INSNS_SAFE(insn, bb, ninsn) {
       if (!insn->IsMachineInstruction()) {
         continue;
@@ -394,8 +421,7 @@ void Riscv64Peep::Peephole() {
 }
 
 void Riscv64Peep::PostRemoveSext() {
-  Riscv64CGFunc *acgfunc = static_cast<Riscv64CGFunc *>(cgfunc);
-  FOR_ALL_BB(bb, acgfunc) {
+  FOR_ALL_BB(bb, cgfunc) {
     if (bb->firstinsn && bb->firstinsn->GetMachineOpcode() == MOP_wmovrr) {
       RegOperand *reg1 = static_cast<RegOperand *>(bb->firstinsn->opnds[1]);
       if (reg1->GetRegisterNumber() == R10 &&
@@ -420,8 +446,7 @@ void Riscv64Peep::PostRemoveSext() {
 }
 
 void Riscv64Peep::RemoveSext() {
-  Riscv64CGFunc *acgfunc = static_cast<Riscv64CGFunc *>(cgfunc);
-  FOR_ALL_BB(bb, acgfunc) {
+  FOR_ALL_BB(bb, cgfunc) {
     FOR_BB_INSNS_REV_SAFE(insn, bb, ninsn) {
       if (!insn->IsMachineInstruction()) {
         continue;
@@ -816,8 +841,7 @@ void Riscv64Peep::PrePeepholeOpt1() {
    orr  w21, #0, w0  ====> mov  w21, w0
  */
 void Riscv64Peep::ReplaceInstruction() {
-  Riscv64CGFunc *acgfunc = static_cast<Riscv64CGFunc *>(cgfunc);
-  FOR_ALL_BB(bb, acgfunc) {
+  FOR_ALL_BB(bb, cgfunc) {
     FOR_BB_INSNS(insn, bb) {
       if (!insn->IsMachineInstruction()) {
         continue;

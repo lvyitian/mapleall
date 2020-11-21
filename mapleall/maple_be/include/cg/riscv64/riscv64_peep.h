@@ -45,6 +45,7 @@ class Riscv64Peep {
   }
 
   ~Riscv64Peep(){};
+  void RemoveSingleInstruction();
   void RemoveIdenticalLoadAndStore();
   void Peephole0();
   void Peephole();
