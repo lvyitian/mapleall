@@ -231,7 +231,7 @@ void AArch64Insn::EmitAdrpLabel(CG &cg, Emitter &emitter) {
   emitter.Emit("\t").Emit("adrp").Emit("\t");
   opnd0->Emit(emitter, prop0);
   emitter.Emit(", ");
-  const char *idx = std::to_string(CG::curPuIdx).c_str();
+  const char *idx = strdup(std::to_string(CG::curPuIdx).c_str());
   emitter.Emit(".label.").Emit(idx).Emit("__").Emit(lidx).Emit("\n");
 
   // add     xd, xd, #lo12:label
@@ -586,7 +586,7 @@ void AArch64CGFunc::Emit() {
       LSDAHeader *lsdaheader = ehfunc->lsda_header;
       const char *funcname = funcSt->GetName().c_str();
       //  .word .label.lsda_label-func_start_label
-      const char *idx = std::to_string(CG::curPuIdx).c_str();
+      const char *idx = strdup(std::to_string(CG::curPuIdx).c_str());
       emitter.Emit("\t.word ")
         .Emit(".label.")
         .Emit(idx)
@@ -668,7 +668,7 @@ void AArch64CGFunc::Emit() {
       MIRLblConst *lblconst = static_cast<MIRLblConst *>(arrayConst->constVec[i]);
       CHECK_FATAL(lblconst, "null ptr check");
       emitter.Emit("\t.quad\t");
-      const char *idx = std::to_string(CG::curPuIdx).c_str();
+      const char *idx = strdup(std::to_string(CG::curPuIdx).c_str());
       emitter.Emit(".label.").Emit(idx).Emit("__").Emit(lblconst->value);
       emitter.Emit(" - ").Emit(st->GetName().c_str());
       emitter.Emit("\n");
@@ -688,7 +688,7 @@ void AArch64CGFunc::EmitFastLSDA()  // the fast_exception_handling lsda
   //  .word 0xFFFFFFFF
   //  .word .label.LTest_3B_7C_3Cinit_3E_7C_28_29V3-func_start_label
   emitter->Emit("\t.word 0xFFFFFFFF\n");
-  const char *idx = std::to_string(CG::curPuIdx).c_str();
+  const char *idx = strdup(std::to_string(CG::curPuIdx).c_str());
   if (NeedCleanup()) {
     emitter->Emit("\t.word ")
       .Emit(".label.")
@@ -775,7 +775,7 @@ void AArch64CGFunc::EmitFullLSDA()  // the normal gcc_except_table
         emitter->EmitLabelPair(funcname, cleaupCode);
       } else if (func->IsJava()) {
         CG_ASSERT(!exitbbsvec.empty(), "exitbbsvec is empty in AArch64CGFunc::EmitFullLSDA");
-        const char *idx = std::to_string(CG::curPuIdx).c_str();
+        const char *idx = strdup(std::to_string(CG::curPuIdx).c_str());
         emitter->Emit("\t.uleb128 ")
           .Emit(".label.")
           .Emit(idx)
@@ -823,7 +823,7 @@ void AArch64CGFunc::EmitFullLSDA()  // the normal gcc_except_table
       emitter->EmitLabelPair(funcname, cleaupCode);
     } else {
       CG_ASSERT(!exitbbsvec.empty(), "exitbbsvec is empty in AArch64CGFunc::EmitFullLSDA");
-      const char *idx = std::to_string(CG::curPuIdx).c_str();
+      const char *idx = strdup(std::to_string(CG::curPuIdx).c_str());
       emitter->Emit("\t.uleb128 ")
         .Emit(".label.")
         .Emit(idx)
@@ -1043,7 +1043,7 @@ void AArch64CGFunc::EmitOperand(Operand *opnd, OpndProp *prop) {
       outf << stopnd->GetName();
     }
   } else if (LabelOperand *lblopnd = dynamic_cast<LabelOperand *>(opnd)) {
-    const char *idx = std::to_string(CG::curPuIdx).c_str();
+    const char *idx = strdup(std::to_string(CG::curPuIdx).c_str());
     outf << ".label." << idx << "__" << lblopnd->labidx_;
   } else if (FuncNameOperand *fn = dynamic_cast<FuncNameOperand *>(opnd)) {
     outf << fn->GetName();
