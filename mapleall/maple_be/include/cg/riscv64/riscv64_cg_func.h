@@ -820,7 +820,7 @@ class Riscv64CGFunc : public CGFunc {
 
   MemOperand *LoadStructCopyBase(MIRSymbol *symbol, int32 offset, int datasize) override;
 
-  void ReplaceLargeStackOffsetImm(Insn *insn);
+  bool ReplaceLargeStackOffsetImm(Insn *insn);
 };
 
 }  // namespace maplebe

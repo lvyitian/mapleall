@@ -4908,8 +4908,9 @@ void Riscv64CGFunc::OffsetAdjustmentForFPLR() {
                   imo->Add(static_cast<Riscv64MemLayout *>(memlayout)->RealStackFrameSize() - argsToStkpassSize);
                   if (insn->GetMachineOpcode() != MOP_xmovri64 &&
                       !static_cast<Riscv64ImmOperand*>(imo)->IsInBitSize(11)) {
-                    ReplaceLargeStackOffsetImm(insn);
-                    bb->RemoveInsn(insn);
+                    if (ReplaceLargeStackOffsetImm(insn)) {
+                      bb->RemoveInsn(insn);
+                    }
                   }
                 }
               }
@@ -5287,7 +5288,8 @@ MemOperand *Riscv64CGFunc::LoadStructCopyBase(MIRSymbol *symbol, int32 offset, i
   return CreateMemOpnd(vreg2, offset, datasize);
 }
 
-void Riscv64CGFunc::ReplaceLargeStackOffsetImm(Insn *insn) {
+// Return true to remove insn
+bool Riscv64CGFunc::ReplaceLargeStackOffsetImm(Insn *insn) {
   MOperator opc = insn->GetMachineOpcode();
   switch (opc) {
   case MOP_xaddrri12: {
@@ -5296,11 +5298,12 @@ void Riscv64CGFunc::ReplaceLargeStackOffsetImm(Insn *insn) {
     insn->bb->InsertInsnBefore(insn, li);
     insn->SetOperand(2, dst);
     insn->SetMOP(MOP_xaddrrr);
-    break;
+    return false;
   }
   default:
     CHECK_FATAL(0, "FIX");
   }
+  return true;
 }
 
 }  // namespace maplebe
