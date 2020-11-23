@@ -51,7 +51,7 @@ void Emitter::EmitBBHeaderLabel(const char * funcName, const char * lineCommentH
     cgFunc.cg->label_order_cnt_++;
   }
 
-  const char *puIdx = std::to_string(CG::curPuIdx).c_str();
+  const char *puIdx = strdup(std::to_string(CG::curPuIdx).c_str());
   const std::string& labelName = cgFunc.func->labelTab->GetName(labelIdx);
 
   Emit(".label.").Emit(puIdx).Emit("__").Emit(labelIdx).Emit(":\t\t")
@@ -976,7 +976,6 @@ void Emitter::EmitConstantTable(MIRSymbol *st, MIRConst *ct, const std::map<GStr
         if (st->IsReflectionMethodInfoCompact() && i == static_cast<uint32>(METHOD_COMPACT::kMod)) {
           MIRAddroffuncConst *funcaddr = dynamic_cast<MIRAddroffuncConst *>(aggconst->constVec[METHOD_COMPACT::kAddr]);
           if (funcaddr) {
-            const char *idx = std::to_string(GlobalTables::GetFunctionTable().GetFunctionFromPuidx(funcaddr->GetValue())->puIdx).c_str();
             Emit(".label.name." + GlobalTables::GetFunctionTable().GetFunctionFromPuidx(funcaddr->GetValue())->GetName());
             Emit(":\n");
           }
