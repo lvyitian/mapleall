@@ -2530,7 +2530,7 @@ Operand *Riscv64CGFunc::SelectGCMalloc(GCMallocNode *node) {
 
   vector<Operand *> opndvec{ resopnd, opndSize, opndAlign };
 
-  const char *funcName = GetIntrinsicFuncName(INTRN_MCCNewObj).c_str();
+  const char *funcName = strdup(GetIntrinsicFuncName(INTRN_MCCNewObj).c_str());
   SelectLibCall(funcName, opndvec, PTY_u64, rettype);
 
   return resopnd;
@@ -2571,7 +2571,7 @@ Operand *Riscv64CGFunc::SelectJarrayMalloc(JarrayMallocNode *node, Operand *opnd
 
   vector<Operand *> opndvec{ resopnd, opndFixedSize, opndElemSize, opndNElems64, opndAlign };
 
-  const char *funcName = GetIntrinsicFuncName(INTRN_MCCNewObjFlexibleCname).c_str();
+  const char *funcName = strdup(GetIntrinsicFuncName(INTRN_MCCNewObjFlexibleCname).c_str());
   SelectLibCall(funcName, opndvec, PTY_u64, rettype);
 
   // Generate the store of the object length field

@@ -98,7 +98,7 @@ void StrOperand::dump() {
 }
 
 void LabelOperand::Emit(Emitter &emitter, OpndProp *opndprop) {
-  const char *idx = std::to_string(CG::curPuIdx).c_str();
+  const char *idx = strdup(std::to_string(CG::curPuIdx).c_str());
   emitter.Emit(".label.").Emit(idx).Emit("__").Emit(labidx_);
 }
 
