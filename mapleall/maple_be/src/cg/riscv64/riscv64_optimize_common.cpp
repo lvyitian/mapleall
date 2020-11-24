@@ -86,10 +86,20 @@ void Riscv64InsnVisitor::ModifyJumpTarget(Operand *targetOperand, BB *&bb) {
         ImmOperand *immopnd = static_cast<Riscv64CGFunc *>(GetCGFunc())->CreateImmOperand(labidx, 8, false);
         insn->SetOperand(1, immopnd);
         modified = true;
+        break;
       }
     }
     CHECK_FATAL(modified, "ModifyJumpTarget: Could not change jump target");
     return;
+  } else if (bb->GetKind() == BB::kBBGoto) {
+    for (Insn *insn = bb->lastinsn; insn != nullptr; insn = insn->prev) {
+      if (insn->GetMachineOpcode() == MOP_laddr) {
+        maple::LabelIdx labidx = static_cast<LabelOperand *>(targetOperand)->labidx_;
+        ImmOperand *immopnd = static_cast<Riscv64CGFunc *>(GetCGFunc())->CreateImmOperand(labidx, 8, false);
+        insn->SetOperand(1, immopnd);
+        break;
+      }
+    }
   }
   int targetIdx = bb->lastinsn->GetJumpTargetIdx();
   bb->lastinsn->SetOperand(targetIdx, targetOperand);
