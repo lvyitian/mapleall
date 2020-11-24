@@ -178,7 +178,8 @@ AliasElem *AliasClass::FindOrCreateAliasElem(OriginalSt *ost) {
     if (aelem->ost->isFormal && ost->indirectLev != -1) {
       aelem->nextLevNotAllDefsSeen = true;
     }
-    if (!mirModule->IsCModule() && ost->indirectLev > 1) {
+    if (ost->indirectLev > 1) {
+      aelem->notAllDefsSeen = true;
       aelem->nextLevNotAllDefsSeen = true;
     }
     id2Elem.push_back(aelem);
@@ -1190,7 +1191,9 @@ void AliasClass::CollectMayDefForDassign(const StmtNode *stmt, std::set<Original
         if (aliasAeType->HasFields()) {
           if (ostOfLhsAe->fieldID < ostOfAliasAe->fieldID ||
               ostOfLhsAe->fieldID > (ostOfAliasAe->fieldID + (int32)aliasAeType->NumberOfFieldIDs())) {
-            continue;
+            if (!lhsAeType->HasFields()) {
+              continue;
+            }
           }
         }
       }
