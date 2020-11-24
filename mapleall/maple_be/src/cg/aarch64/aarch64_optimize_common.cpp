@@ -119,6 +119,15 @@ void AArch64InsnVisitor::ModifyJumpTarget(Operand *targetOperand, BB *&bb) {
     }
     CHECK_FATAL(modified, "ModifyJumpTarget: Could not change jump target");
     return;
+  } else if (bb->GetKind() == BB::kBBGoto) {
+    for (Insn *insn = bb->lastinsn; insn != nullptr; insn = insn->prev) {
+      if (insn->GetMachineOpcode() == MOP_adrp_label) {
+        maple::LabelIdx labidx = static_cast<LabelOperand *>(targetOperand)->labidx_;
+        ImmOperand *immopnd = static_cast<AArch64CGFunc *>(GetCGFunc())->CreateImmOperand(labidx, 8, false);
+        insn->SetOperand(1, immopnd);
+        break;
+      }
+    }
   }
   int targetIdx = bb->lastinsn->GetJumpTargetIdx();
   bb->lastinsn->SetOperand(targetIdx, targetOperand);
