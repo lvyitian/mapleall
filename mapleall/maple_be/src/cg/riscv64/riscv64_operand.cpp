@@ -140,19 +140,37 @@ void Riscv64MemOperand::Emit(Emitter &emitter, OpndProp *prop) {
 #if DEBUG
   CG_ASSERT(isVector || is64bit || md->GetOperandSize() <= 32, "");
 #endif
+  MIRSymbol *symbol = GetSymbol();
   Riscv64OfstOperand *offset = GetOffsetImmediate();
-  if (offset) {
-      if (CGOptions::doPIC && offset->op_kind_ == Opd_StImmediate &&
-          (((StImmOperand *)offset)->GetSymbol()->GetStorageClass() == kScGlobal ||
-           ((StImmOperand *)offset)->GetSymbol()->GetStorageClass() == kScExtern)) {
-        emitter.Emit("#:got_lo12:");
-        emitter.Emit(((StImmOperand *)offset)->GetName());
-      } else {
-        CG_ASSERT(!IsPIMMOffsetOutOfRange(offset->GetOffsetValue(), size_), "");
-        if (!offset->IsZero()) {
-          offset->Emit(emitter, nullptr);
-        }
+  if (symbol && (symbol->IsGlobal() || symbol->storageClass == kScPstatic ||
+                 symbol->storageClass == kScFstatic)) {
+    emitter.Emit("%lo(");
+    // check for sKind since it might be created by cg. (i.eg. LB_*)
+    if (symbol->storageClass == kScPstatic && symbol->sKind != kStConst &&
+        symbol->IsLocal()) {
+      emitter.Emit(symbol->GetName() + to_string(CG::curPuIdx));
+    } else {
+      emitter.Emit(symbol->GetName());
+    }
+    if (offset && !offset->IsZero()) {
+      emitter.Emit("+");
+      offset->Emit(emitter, nullptr);
+    }
+    emitter.Emit(")");
+  } else if (offset) {
+    if (CGOptions::doPIC && offset->op_kind_ == Opd_StImmediate &&
+        (((StImmOperand *)offset)->GetSymbol()->GetStorageClass() ==
+             kScGlobal ||
+         ((StImmOperand *)offset)->GetSymbol()->GetStorageClass() ==
+             kScExtern)) {
+      emitter.Emit("#:got_lo12:");
+      emitter.Emit(((StImmOperand *)offset)->GetName());
+    } else {
+      CG_ASSERT(!IsPIMMOffsetOutOfRange(offset->GetOffsetValue(), size_), "");
+      if (!offset->IsZero()) {
+        offset->Emit(emitter, nullptr);
       }
+    }
   }
   emitter.Emit("(");
   Riscv64RegOperand *baseReg = static_cast<Riscv64RegOperand *>(GetBaseRegister());

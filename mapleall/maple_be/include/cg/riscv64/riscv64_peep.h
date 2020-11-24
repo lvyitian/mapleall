@@ -62,6 +62,7 @@ class Riscv64Peep {
   void PrePeepholeOpt();
   void PrePeepholeOpt1();
   void ReplaceInstruction();
+  bool IfOperandIsLiveAfterInsn(RegOperand *regOpnd, Insn *insn);
 
 };  // class Riscv64Peep
 
