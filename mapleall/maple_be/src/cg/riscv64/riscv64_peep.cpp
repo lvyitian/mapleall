@@ -691,8 +691,10 @@ void Riscv64Peep::DeleteMovAfterCbzOrCbnz() {
     MOperator condbrMop = condbr->GetMachineOpcode();
     if (condbrMop == MOP_bnez) {
       processBb = bb->next;
-    } else {
+    } else if (condbrMop == MOP_beqz) {
       processBb = cgfunc->theCFG->GetTargetSuc(bb);
+    } else {
+      continue;
     }
 
     CG_ASSERT(processBb != nullptr, "process_bb is null in Riscv64Peep::DeleteMovAfterCbzOrCbnz");
