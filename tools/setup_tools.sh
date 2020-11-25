@@ -14,6 +14,8 @@
 # See the MulanPSL - 2.0 for more details.
 #
 
+set -e
+
 if [ ! -f ../bin/ast2mpl ]; then
   cd ../bin/ast2mpl_files
   cat ast2mpl_aa ast2mpl_ab ast2mpl_ac ast2mpl_ad > ast2mpl.gz
