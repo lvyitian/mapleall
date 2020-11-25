@@ -95,11 +95,12 @@ void Riscv64InsnVisitor::ModifyJumpTarget(Operand *targetOperand, BB *&bb) {
     for (Insn *insn = bb->lastinsn; insn != nullptr; insn = insn->prev) {
       if (insn->GetMachineOpcode() == MOP_laddr) {
         maple::LabelIdx labidx = static_cast<LabelOperand *>(targetOperand)->labidx_;
-        ImmOperand *immopnd = static_cast<Riscv64CGFunc *>(GetCGFunc())->CreateImmOperand(labidx, 8, false);
-        insn->SetOperand(1, immopnd);
+        LabelOperand *label = static_cast<Riscv64CGFunc *>(GetCGFunc())->GetOrCreateLabelOperand(labidx);
+        insn->SetOperand(1, label);
         break;
       }
     }
+    // fallthru below to patch the branch insn
   }
   int targetIdx = bb->lastinsn->GetJumpTargetIdx();
   bb->lastinsn->SetOperand(targetIdx, targetOperand);
