@@ -518,7 +518,7 @@ DEFINE_MOP(MOP_clinit_tail, {MOPD_Reg64IS,MOPD_Undef,MOPD_Undef,MOPD_Undef,MOPD_
 // MOP_tail_call_opt_xbl -- branch without link (call); this is a special definition
 DEFINE_MOP(MOP_tail_call_opt_xbl,  {MOPD_FuncName,MOPD_LISTS,MOPD_Undef,MOPD_Undef,MOPD_Undef},CANTHROW,kLtBranch,"tail","0", 0, 2)
 // MOP_tail_call_opt_xblr -- branch without link (call) to register; this is a special definition
-DEFINE_MOP(MOP_tail_call_opt_xblr, {MOPD_Reg64IS,MOPD_LISTS,MOPD_Undef,MOPD_Undef,MOPD_Undef},CANTHROW,kLtBranch,"br","0", 0, 2)
+DEFINE_MOP(MOP_tail_call_opt_xblr, {MOPD_Reg64IS,MOPD_LISTS,MOPD_Undef,MOPD_Undef,MOPD_Undef},CANTHROW,kLtBranch,"jr","0", 0, 2)
 
 
 // All pseudo instructons need to be inserted after this point and before MOP_pseudo_last
