@@ -1460,8 +1460,10 @@ void AArch64Peep::DeleteMovAfterCbzOrCbnz() {
     MOperator condbrMop = condbr->GetMachineOpcode();
     if (condbrMop == MOP_wcbnz || condbrMop == MOP_xcbnz) {
       processBb = bb->next;
-    } else {
+    } else if (condbrMop == MOP_wcbz || condbrMop == MOP_xcbz) {
       processBb = cgfunc->theCFG->GetTargetSuc(bb);
+    } else {
+      continue;
     }
 
     CG_ASSERT(processBb != nullptr, "process_bb is null in AArch64Peep::DeleteMovAfterCbzOrCbnz");
