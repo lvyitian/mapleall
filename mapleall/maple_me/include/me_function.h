@@ -27,6 +27,7 @@
 #include "ssa_tab.h"
 #include "func_emit.h"
 #include "me_ir.h"
+#include "lfo_function.h"
 
 namespace maple {
 
@@ -48,6 +49,7 @@ class MeFunction : public FuncEmit {
   SSATab *meSSATab;
   MeIRMap *irMap;
   std::string fileName;
+  LfoFunction *lfoFunc;
 
   uint32 regNum;   // count virtual registers
   bool hasEH;      /* current has try statement */
@@ -63,6 +65,7 @@ class MeFunction : public FuncEmit {
       meSSATab(nullptr),
       irMap(nullptr),
       fileName(fileName),
+      lfoFunc(nullptr),
       regNum(0),
       hasEH(false),
       secondPass(issecondpass),

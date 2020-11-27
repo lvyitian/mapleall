@@ -31,10 +31,14 @@ namespace maple {
 
 /* emit IR to specified file */
 AnalysisResult *MeDoEmission::Run(MeFunction *func, MeFuncResultMgr *m) {
+  std::string passName = GetPreviousPhaseName();  // get previous phase
+  if (passName == "lfopreemit" || passName == "cfgopt") {
+    return nullptr;
+  }
+
   MirCFG *cfg = static_cast<MirCFG *>(m->GetAnalysisResult(MeFuncPhase_CFGBUILD, func, !MeOption::quiet));
   ASSERT(cfg != nullptr, "cfgbuild phase has problem");
 
-  std::string passName = GetPreviousPhaseName();  // get previous phase
   bool emitHssaOrAfter = kHssaPhases.find(std::string(passName)) != kHssaPhases.end();
 
   if (func->theCFG->NumBBs() > 0) {

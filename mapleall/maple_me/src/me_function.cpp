@@ -45,8 +45,10 @@ void MeFunction::DumpFunction() {
     bb->DumpHeader(&mirModule);
 
     MapleMap<OriginalSt *, PhiNode>::iterator phiIt;
-    for (phiIt = bb->phiList->begin(); phiIt != bb->phiList->end(); phiIt++) {
-      (*phiIt).second.Dump(&mirModule);
+    if (bb->phiList) {
+      for (phiIt = bb->phiList->begin(); phiIt != bb->phiList->end(); phiIt++) {
+        (*phiIt).second.Dump(&mirModule);
+      }
     }
 
     for (auto stmt : bb->stmtNodeList) {
@@ -165,6 +167,10 @@ void MeFunction::CreateBasicBlocks(MirCFG *cfg) {
   StmtNode *nextstmt = mirFunc->body->GetFirst();
   ASSERT(nextstmt != nullptr, "function has no statement");
   BB *curbb = cfg->first_bb;
+  if (nextstmt->op == OP_label) {  // create empty BB before the entry label
+    curbb->kind = kBBFallthru;
+    curbb = NewBasicBlock();
+  }
   std::stack<StmtNode *> tryStmtStack;
   std::stack<BB *> tryBBStack;      // bb containing javatry_stmt
   do {

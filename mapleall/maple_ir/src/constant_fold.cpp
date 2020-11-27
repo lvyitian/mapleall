@@ -1967,7 +1967,8 @@ StmtNode *ConstantFold::SimplifyBlock(BlockNode *n) {
   StmtNode *prevstmt = nullptr;
   do {
     StmtNode *retval = Simplify(s);
-    if (retval != nullptr) {
+    if (retval != nullptr &&
+        !(retval->op == OP_block && static_cast<BlockNode *>(retval)->IsEmpty())) {
       if (retval->op == OP_block) {
         BlockNode *blk = static_cast<BlockNode *>(retval);
         n->ReplaceStmtWithBlock(s, blk);

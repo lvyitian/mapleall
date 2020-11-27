@@ -58,6 +58,8 @@
 #include "mpl_timer.h"
 #include "constant_fold.h"
 #include "mir_lower.h"
+#include "lfo_pre_emit.h"
+#include "lfo_mir_lower.h"
 
 using namespace std;
 
@@ -142,9 +144,10 @@ void MeFuncPhaseManager::AddPhases(const std::unordered_set<std::string> &skipPh
   };
 
   bool o2 = MeOption::optLevel >= 2;
-  bool o3 = MeOption::optLevel == 3;
+  bool o3 = MeOption::optLevel >= 3;
   /* default phase sequence */
   if (o3) {
+    addPhase("cfgbuild");
     addPhase("ssatab");
     addPhase("aliasclass");
     addPhase("ssa");
@@ -153,13 +156,15 @@ void MeFuncPhaseManager::AddPhases(const std::unordered_set<std::string> &skipPh
     //addPhase("loopivcan");
     addPhase("hprop");
     addPhase("hdse");
-    addPhase("lnoemit");
+    addPhase("lfopreemit");
+#if 0
     addPhase("loopinfo");
     if (JAVALANG) {
       addPhase("lfobdce");
     } else {
       addPhase("autosimd");
     }
+#endif
   }
   addPhase("cfgbuild");
   addPhase("ssatab");
@@ -220,6 +225,7 @@ void MeFuncPhaseManager::Run(MIRFunction *mirFunc, uint64 rangenum, const string
       LogInfo::MapleLogger() << "Function  < " << mirFunc->GetName() << "not optimized because it has setjmp\n";
     return;
   }
+  MemPool *lfomp = nullptr;
   MeFunction func(&module, mirFunc, meinput, false, MeOption::optLevel == 3);
 #if DEBUG
   g_mirmodule = &module;
@@ -231,7 +237,12 @@ void MeFuncPhaseManager::Run(MIRFunction *mirFunc, uint64 rangenum, const string
 
   if (!MeOption::quiet)
     LogInfo::MapleLogger() << "---Preparing Function  < " << module.CurFunction()->GetName() << " > [" << rangenum << "] ---\n";
-  if (MeOption::optLevel < 3) { // lower for mainopt
+  if (MeOption::optLevel >= 3) {
+    lfomp = mempoolctrler.NewMemPool("lfo");
+    func.lfoFunc = lfomp->New<LfoFunction>(lfomp, &func);
+    LFOMIRLower lfomirlowerer(module, &func);
+    lfomirlowerer.LowerFunc(mirFunc);
+  } else { // lower for mainopt
     MIRLower mirlowerer(module, mirFunc);
     mirlowerer.SetLowerME();
     mirlowerer.SetLowerExpandArray();
@@ -285,6 +296,9 @@ void MeFuncPhaseManager::Run(MIRFunction *mirFunc, uint64 rangenum, const string
     }
   }
   GetAnalysisResultManager()->InvalidAllResults();
+  if (MeOption::optLevel >= 3) {
+    mempoolctrler.DeleteMemPool(lfomp);
+  }
 }
 
 }  // namespace maple
