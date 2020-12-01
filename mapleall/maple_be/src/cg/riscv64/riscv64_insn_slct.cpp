@@ -814,8 +814,8 @@ void Riscv64CGFunc::SelectCmpOp(Operand *resopnd, Operand *opnd0, Operand *opnd1
   bool doZext0 = false;
   bool doZext1 = false;
 
-  if (!IsSignedInteger(operandType) && dsize < 64) {
-    if (opnd0->IsRegister()) { // only for unsigned
+  if (dsize < 64) {
+    if (opnd0->IsRegister()) {
       opnd0 = SelectZeroSignExt(opnd0, operandType);
     }
     if (opnd1->IsRegister()) {
