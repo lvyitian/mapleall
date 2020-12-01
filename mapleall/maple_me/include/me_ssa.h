@@ -17,6 +17,7 @@
 #define MAPLE_ME_INCLUDE_ME_SSA_H
 #include "me_function.h"
 #include "me_cfg.h"
+#include "me_ident_loops.h"
 #include "ssa.h"
 
 namespace maple {
@@ -25,20 +26,20 @@ class Dominance;
 
 class MeSSA : public maple::SSA {
  public:
-  MeFunction *mirFunc;
+  MeFunction *func;
 
  private:
   bool VerifySSAOpnd(BaseNode *node);
 
  public:
-  explicit MeSSA(MeFunction *func, SSATab *stab, Dominance *dom, MemPool *mp) :
-      SSA(mp, stab, dom, func->theCFG->bbVec), mirFunc(func) {}
+  explicit MeSSA(MeFunction *f, SSATab *stab, Dominance *dom, MemPool *mp) :
+      SSA(mp, stab, dom, f->theCFG->bbVec), func(f) {}
 
   ~MeSSA() {}
 
-  void BuildSSA();
   void InsertPhiNode();
   bool VerifySSA();
+  void InsertIdentifyAssignments(IdentifyLoops *identloops);
   std::string PhaseName() const {
     return "ssa";
   }

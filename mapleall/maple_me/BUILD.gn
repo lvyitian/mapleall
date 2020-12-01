@@ -76,7 +76,8 @@ static_library("libmplme"){
       "src/me_sym_rename.cpp",
       "src/me_predict.cpp",
       "src/lfo_mir_lower.cpp",
-      "src/lfo_pre_emit.cpp"
+      "src/lfo_pre_emit.cpp",
+      "src/lfo_inject_iv.cpp"
     ]
 
     include_dirs = include_directories

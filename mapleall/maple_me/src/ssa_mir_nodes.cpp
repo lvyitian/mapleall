@@ -35,17 +35,20 @@ void GenericSSAPrint(MIRModule *mod, BaseNode *x, int32 indent, StmtsSSAPart *st
       MayDefPartWithVersionSt *thessapart = static_cast<MayDefPartWithVersionSt *>(stmtsSsaprt->SsapartOf(y));
       thessapart->ssaVar->Dump(mod);
       thessapart->MayDefPart::Print(mod, indent);
+      LogInfo::MapleLogger() << endl;
       return;
     }
     case OP_regassign: {
       LogInfo::MapleLogger() << "  ";
       VersionSt *thessapart = static_cast<VersionSt *>(stmtsSsaprt->SsapartOf(y));
       thessapart->Dump(mod);
+      LogInfo::MapleLogger() << endl;
       return;
     }
     case OP_iassign: {
       MayDefPart *thessapart = static_cast<MayDefPart *>(stmtsSsaprt->SsapartOf(y));
       thessapart->MayDefPart::Print(mod, indent);
+      LogInfo::MapleLogger() << endl;
       return;
     }
     case OP_throw:
@@ -53,7 +56,7 @@ void GenericSSAPrint(MIRModule *mod, BaseNode *x, int32 indent, StmtsSSAPart *st
     case OP_return: {
       MayUsePart *thessapart = static_cast<MayUsePart *>(stmtsSsaprt->SsapartOf(y));
       thessapart->MayUsePart::Print(mod, indent);
-      LogInfo::MapleLogger() << std::endl;
+      LogInfo::MapleLogger() << endl;
       return;
     }
     case OP_syncenter:
@@ -74,6 +77,7 @@ void GenericSSAPrint(MIRModule *mod, BaseNode *x, int32 indent, StmtsSSAPart *st
       thessapart->MayUsePart::Print(mod, indent);
       LogInfo::MapleLogger() << std::endl;
       thessapart->MayDefPart::Print(mod, indent);
+      LogInfo::MapleLogger() << endl;
       return;
     }
     case OP_callassigned:
@@ -90,8 +94,11 @@ void GenericSSAPrint(MIRModule *mod, BaseNode *x, int32 indent, StmtsSSAPart *st
     case OP_intrinsiccallwithtypeassigned: {
       MayDefMayUseMustDefPart *thessapart = static_cast<MayDefMayUseMustDefPart *>(stmtsSsaprt->SsapartOf(y));
       thessapart->MayUsePart::Print(mod, indent);
+      LogInfo::MapleLogger() << endl;
       thessapart->MustDefPart::Print(mod, indent);
+      LogInfo::MapleLogger() << endl;
       thessapart->MayDefPart::Print(mod, indent);
+      LogInfo::MapleLogger() << endl;
       return;
     }
     default:

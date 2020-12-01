@@ -59,7 +59,7 @@ class MayDefNode {
     result->Dump(mod);
     LogInfo::MapleLogger() << " = MAYD(";
     opnd->Dump(mod);
-    LogInfo::MapleLogger() << ")" << std::endl;
+    LogInfo::MapleLogger() << ")";
   }
 };
 

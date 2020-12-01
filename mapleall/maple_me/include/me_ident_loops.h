@@ -45,8 +45,7 @@ class LoopDesc {
 // IdentifyLoop records all the loops in a MeFunction.
 class IdentifyLoops : public AnalysisResult {
  public:
-  MemPool *meloop_mp;
-  MapleAllocator meloop_alloc;
+  MapleAllocator alloc;
   MeFunction *func;
   Dominance *dominance;
   MapleVector<LoopDesc *> meloops;
@@ -54,12 +53,11 @@ class IdentifyLoops : public AnalysisResult {
 
   explicit IdentifyLoops(MemPool *mp, MeFunction *mf, Dominance *dm)
     : AnalysisResult(mp),
-      meloop_mp(mp),
-      meloop_alloc(mp),
+      alloc(mp),
       func(mf),
       dominance(dm),
-      meloops(meloop_alloc.Adapter()),
-      bbloopparent(func->theCFG->bbVec.size(), nullptr, meloop_alloc.Adapter()) {}
+      meloops(alloc.Adapter()),
+      bbloopparent(func->theCFG->bbVec.size(), nullptr, alloc.Adapter()) {}
 
   LoopDesc *CreateLoopDesc(BB *hd, BB *tail);
   void SetLoopParent4BB(const BB *bb, LoopDesc *aloop);
@@ -67,9 +65,9 @@ class IdentifyLoops : public AnalysisResult {
   void Dump();
 };
 
-class MeDoMeLoop : public MeFuncPhase {
+class MeDoIdentLoops : public MeFuncPhase {
  public:
-  explicit MeDoMeLoop(MePhaseID id) : MeFuncPhase(id) {}
+  explicit MeDoIdentLoops(MePhaseID id) : MeFuncPhase(id) {}
 
   AnalysisResult *Run(MeFunction *func, MeFuncResultMgr *m) override;
   std::string PhaseName() const override {

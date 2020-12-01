@@ -60,6 +60,7 @@
 #include "mir_lower.h"
 #include "lfo_pre_emit.h"
 #include "lfo_mir_lower.h"
+#include "lfo_inject_iv.h"
 
 using namespace std;
 
@@ -148,6 +149,7 @@ void MeFuncPhaseManager::AddPhases(const std::unordered_set<std::string> &skipPh
   /* default phase sequence */
   if (o3) {
     addPhase("cfgbuild");
+    addPhase("injectiv");
     addPhase("ssatab");
     addPhase("aliasclass");
     addPhase("ssa");

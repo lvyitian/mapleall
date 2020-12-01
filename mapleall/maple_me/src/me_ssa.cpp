@@ -23,6 +23,7 @@
 #include "me_function.h"
 #include "me_cfg.h"
 #include "me_alias_class.h"
+#include "mir_builder.h"
 
 /*
    This phase builds the SSA form of a function. Before this we have got the dominator tree
@@ -53,18 +54,6 @@ using namespace std;
 
 namespace maple {
 
-void MeSSA::BuildSSA() {
-  InsertPhiNode();
-
-  InitRenameStack(&mirFunc->meSSATab->originalStTable, mirFunc->theCFG->bbVec.size(), mirFunc->meSSATab->versionStTable);
-
-  // recurse down dominator tree in pre-order traversal
-  MapleSet<BBId> *children = &dom_->domChildren[mirFunc->theCFG->commonEntryBB->id.idx];
-  for (BBId child : *children) {
-    RenameBB(mirFunc->theCFG->bbVec[child.idx]);
-  }
-}
-
 void MeSSA::InsertPhiNode() {
   for (uint32 i = 1; i < ssaTab->originalStTable.Size(); i++) {
     OriginalSt *ost = ssaTab->GetOriginalStFromid(OStIdx(i));
@@ -85,14 +74,14 @@ void MeSSA::InsertPhiNode() {
     for (BBId bbid : phibbs) {
       BB *phiBB = bbVec[bbid.idx];
       CHECK_FATAL(phiBB != nullptr, "MeSSA::InsertPhiNode: non-existent BB for definition");
-      phiBB->InsertPhi(&mirFunc->meSSATab->vers_alloc, vst);
+      phiBB->InsertPhi(&func->meSSATab->vers_alloc, vst);
     }
   }
 }
 
 bool MeSSA::VerifySSAOpnd(BaseNode *node) {
   Opcode op = node->op;
-  uint32 vtableSize = mirFunc->meSSATab->versionStTable.Size();
+  uint32 vtableSize = func->meSSATab->versionStTable.Size();
   if (op == OP_dread || op == OP_addrof) {
     AddrofSSANode *addrofssanode = static_cast<AddrofSSANode *>(node);
     VersionSt *verSt = addrofssanode->ssaVar;
@@ -111,9 +100,9 @@ bool MeSSA::VerifySSAOpnd(BaseNode *node) {
 }
 
 bool MeSSA::VerifySSA() {
-  VersionStTable *versionsttable = &mirFunc->meSSATab->versionStTable;
-  uint32 vtableSize = mirFunc->meSSATab->versionStTable.Size();
-  for (BB *bb : mirFunc->theCFG->bbVec) {
+  VersionStTable *versionsttable = &func->meSSATab->versionStTable;
+  uint32 vtableSize = func->meSSATab->versionStTable.Size();
+  for (BB *bb : func->theCFG->bbVec) {
     if (bb == nullptr) {
       continue;
     }
@@ -122,11 +111,11 @@ bool MeSSA::VerifySSA() {
       opcode = stmt->op;
       if (opcode == OP_dassign) {
         MayDefPartWithVersionSt *thessapart =
-          static_cast<MayDefPartWithVersionSt *>(mirFunc->meSSATab->stmtsSSAPart.SsapartOf(stmt));
+          static_cast<MayDefPartWithVersionSt *>(func->meSSATab->stmtsSSAPart.SsapartOf(stmt));
         VersionSt *verSt = thessapart->ssaVar;
         ASSERT(verSt->index < vtableSize, "");
       } else if (opcode == OP_regassign) {
-        VersionSt *verSt = static_cast<VersionSt *>(mirFunc->meSSATab->stmtsSSAPart.SsapartOf(stmt));
+        VersionSt *verSt = static_cast<VersionSt *>(func->meSSATab->stmtsSSAPart.SsapartOf(stmt));
         ASSERT(verSt->index < vtableSize, "");
       }
       for (int32 i = 0; i < stmt->NumOpnds(); i++) {
@@ -137,9 +126,91 @@ bool MeSSA::VerifySSA() {
   return true;
 }
 
+void MeSSA::InsertIdentifyAssignments(IdentifyLoops *identloops) {
+  MIRBuilder *mirbuilder = func->mirModule.mirBuilder;
+  LfoFunction *lfoFunc = func->lfoFunc;
+  SSATab *ssatab = func->meSSATab;
+  MapleVector<BB *> &bbVec = func->theCFG->bbVec;
+
+  for (LoopDesc *aloop : identloops->meloops) {
+    BB *headbb = aloop->head;
+    // check if the label has associated LfoWhileInfo
+    if (headbb->bbLabel == 0) {
+      continue;
+    }
+    MapleMap<LabelIdx, LfoWhileInfo*>::iterator it = lfoFunc->label2WhileInfo.find(headbb->bbLabel);
+    if (it == lfoFunc->label2WhileInfo.end()) {
+      continue;
+    }
+    // collect the symbols for inserting identity assignments
+    std::set<OriginalSt *> ostSet;
+    for (std::pair<OriginalSt *, PhiNode> mapEntry: *(headbb->phiList)) {
+      OriginalSt *ost = mapEntry.first;
+      if (ost->indirectLev != 0 ||
+          (ost->IsSymbol() && ost->GetMIRSymbol()->GetName() == "__nads_dummysym__")) {
+        continue;
+      }
+      MIRType *mirtype = GlobalTables::GetTypeTable().GetTypeFromTyIdx(ost->tyIdx);
+      if (!IsPrimitiveInteger(mirtype->primType)) {
+        continue;
+      }
+      ostSet.insert(ost);
+    }
+    if (ostSet.empty()) {
+      continue;
+    }
+    // loop through all the loop body BBs and collect their succ BBs that are
+    // not member of this loop
+    std::set<BB *> exitBBSet;
+    for (BBId bbId : aloop->loop_bbs) {
+      BB *bb = bbVec[bbId.idx];
+      for (BB *succ : bb->succ) {
+        if (aloop->loop_bbs.count(succ->id) != 1) {
+          exitBBSet.insert(succ);
+        }
+      }
+    }
+    // for each exitBB, insert identify assignment for any var that has phi at
+    // headbb
+    for (BB *bb : exitBBSet) {
+      for (OriginalSt *ost : ostSet) {
+        MIRType *mirtype = GlobalTables::GetTypeTable().GetTypeFromTyIdx(ost->tyIdx);
+        if (ost->IsSymbol()) {
+          AddrofNode dread(OP_dread, mirtype->primType, ost->GetMIRSymbol()->stIdx, ost->fieldID);
+          AddrofSSANode *ssadread = func->mirFunc->codeMemPool->New<AddrofSSANode>(&dread);
+          ssadread->ssaVar = ssatab->versionStTable.GetZeroVersionSt(ost);
+
+          DassignNode *dass = mirbuilder->CreateStmtDassign(ost->GetMIRSymbol(), ost->fieldID, ssadread);
+          bb->PrependStmtNode(dass);
+
+          MayDefPartWithVersionSt *thessapart =
+              ssatab->stmtsSSAPart.ssaPartMp->New<MayDefPartWithVersionSt>(&ssatab->stmtsSSAPart.ssaPartAlloc);
+          ssatab->stmtsSSAPart.SetSsapartOf(dass, thessapart);
+          thessapart->ssaVar = ssatab->versionStTable.GetZeroVersionSt(ost);
+        } else {
+          RegreadNode regread(ost->GetPregIdx());
+          RegreadSSANode *ssaregread = func->mirFunc->codeMemPool->New<RegreadSSANode>(&regread);
+          ssaregread->ssaVar = ssatab->versionStTable.GetZeroVersionSt(ost);
+
+          RegassignNode *rass = mirbuilder->CreateStmtRegassign(mirtype->primType, ost->GetPregIdx(), ssaregread);
+          bb->PrependStmtNode(rass);
+
+          VersionSt *vst = ssatab->versionStTable.GetZeroVersionSt(ost);
+          ssatab->stmtsSSAPart.SetSsapartOf(rass, vst);
+        }
+        ssatab->AddDefBB4Ost(ost->index, bb->id);
+      }
+      if (DEBUGFUNC(func)) {
+        LogInfo::MapleLogger() << "****** Identity assignments inserted at loop exit BB " << bb->id.idx << std::endl;
+      }
+    }
+  }
+}
+
 AnalysisResult *MeDoSSA::Run(MeFunction *func, MeFuncResultMgr *m) {
   MirCFG *cfg = static_cast<MirCFG *>(m->GetAnalysisResult(MeFuncPhase_CFGBUILD, func, !MeOption::quiet));
   ASSERT(cfg != nullptr, "cfgbuild phase has problem");
+
   Dominance *dom = static_cast<Dominance *>(m->GetAnalysisResult(MeFuncPhase_DOMINANCE, func, !MeOption::quiet));
   ASSERT(dom != nullptr, "dominance phase has problem");
 
@@ -152,7 +223,22 @@ AnalysisResult *MeDoSSA::Run(MeFunction *func, MeFuncResultMgr *m) {
   MemPool *ssamp = mempoolctrler.NewMemPool(PhaseName().c_str());
 
   MeSSA *ssa = ssamp->New<MeSSA>(func, func->meSSATab, dom, ssamp);
-  ssa->BuildSSA();
+
+  ssa->InsertPhiNode();
+
+  if (func->isLfo) {
+    IdentifyLoops *identloops = static_cast<IdentifyLoops *>(m->GetAnalysisResult(MeFuncPhase_IDENTLOOPS, func, !MeOption::quiet));
+    CHECK_FATAL(identloops != nullptr, "identloops has problem");
+    ssa->InsertIdentifyAssignments(identloops);
+  }
+
+  ssa->InitRenameStack(&func->meSSATab->originalStTable, func->theCFG->bbVec.size(), func->meSSATab->versionStTable);
+
+  // recurse down dominator tree in pre-order traversal
+  MapleSet<BBId> *children = &dom->domChildren[func->theCFG->commonEntryBB->id.idx];
+  for (BBId child : *children) {
+    ssa->RenameBB(func->theCFG->bbVec[child.idx]);
+  }
 
   ssa->VerifySSA();
 

@@ -381,7 +381,7 @@ AnalysisResult *MeDoSSALPre::Run(MeFunction *func, MeFuncResultMgr *m) {
   Dominance *dom = static_cast<Dominance *>(m->GetAnalysisResult(MeFuncPhase_DOMINANCE, func, !MeOption::quiet));
   ASSERT(dom != nullptr, "dominance phase has problem");
 
-  IdentifyLoops *identloops = static_cast<IdentifyLoops *>(m->GetAnalysisResult(MeFuncPhase_MELOOP, func, !MeOption::quiet));
+  IdentifyLoops *identloops = static_cast<IdentifyLoops *>(m->GetAnalysisResult(MeFuncPhase_IDENTLOOPS, func, !MeOption::quiet));
   CHECK_FATAL(identloops != nullptr, "meloop has problem");
 
   bool lprePuLimitSpecified = MeOption::lprePULimit != UINT32_MAX;

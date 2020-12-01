@@ -23,6 +23,7 @@ class MeFunction;
 
 class LfoWhileInfo {
  public:
+  MIRSymbol *ivsym = nullptr;
   MeExpr *iv = nullptr;
   MeExpr *startmeexpr = nullptr;
   MeExpr *testmeexpr = nullptr;

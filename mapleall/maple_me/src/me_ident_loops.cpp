@@ -25,7 +25,7 @@
 namespace maple {
 
 LoopDesc *IdentifyLoops::CreateLoopDesc(BB *hd, BB *tail) {
-  LoopDesc *newloop = meloop_mp->New<LoopDesc>(&meloop_alloc, hd, tail);
+  LoopDesc *newloop = alloc.mp->New<LoopDesc>(&alloc, hd, tail);
   meloops.push_back(newloop);
   return newloop;
 }
@@ -91,7 +91,7 @@ void IdentifyLoops::Dump() {
   }
 }
 
-AnalysisResult *MeDoMeLoop::Run(MeFunction *func, MeFuncResultMgr *m) {
+AnalysisResult *MeDoIdentLoops::Run(MeFunction *func, MeFuncResultMgr *m) {
   Dominance *dom = static_cast<Dominance *>(m->GetAnalysisResult(MeFuncPhase_DOMINANCE, func, !MeOption::quiet));
   CHECK_FATAL(dom, "dominance phase has problem");
   MemPool *meloopmp = mempoolctrler.NewMemPool(PhaseName().c_str());

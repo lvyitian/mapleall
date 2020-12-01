@@ -32,6 +32,7 @@ ADD_MODPREPHASE("DeCouple", Options::buildApp)
 // mephase begin
 if (HasThisPhase(kMplMe)) {
 ADD_MEPHASE("cfgbuild", theModule->IsCModule() && MeOption::optLevel >= 3)
+ADD_MEPHASE("injectiv", theModule->IsCModule() && MeOption::optLevel >= 3)
 ADD_MEPHASE("ssatab", theModule->IsCModule() && MeOption::optLevel >= 3)
 ADD_MEPHASE("aliasclass", theModule->IsCModule() && MeOption::optLevel >= 3)
 ADD_MEPHASE("ssa", theModule->IsCModule() && MeOption::optLevel >= 3)

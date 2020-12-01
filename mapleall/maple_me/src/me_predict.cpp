@@ -694,8 +694,8 @@ AnalysisResult *MeDoPredict::Run(MeFunction *func, MeFuncResultMgr *m) {
   Dominance *dom = static_cast<Dominance *>(m->GetAnalysisResult(MeFuncPhase_DOMINANCE, func, !MeOption::quiet));
   CHECK_FATAL(dom, "dominance phase has problem");
 
-  IdentifyLoops *meloop = static_cast<IdentifyLoops *>(m->GetAnalysisResult(MeFuncPhase_MELOOP, func, !MeOption::quiet));
-  CHECK_FATAL(meloop != NULL, "meloop has problem");
+  IdentifyLoops *meloop = static_cast<IdentifyLoops *>(m->GetAnalysisResult(MeFuncPhase_IDENTLOOPS, func, !MeOption::quiet));
+  CHECK_FATAL(meloop != nullptr, "identloops has problem");
 
   std::string mePredPhaseName = PhaseName();
   MemPool *mePredMp = mempoolctrler.NewMemPool(mePredPhaseName.c_str());
