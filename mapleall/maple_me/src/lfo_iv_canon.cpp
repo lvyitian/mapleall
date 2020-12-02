@@ -27,8 +27,8 @@ using namespace std;
 
 namespace maple {
 
-// Resolve value of x; return false if result is not of induction expression 
-// form; goal is to resolve to an expression where the only non-constant is 
+// Resolve value of x; return false if result is not of induction expression
+// form; goal is to resolve to an expression where the only non-constant is
 // philhs
 bool IVCanon::ResolveExprValue(MeExpr *x, ScalarMeExpr *philhs) {
   switch (x->meOp) {
