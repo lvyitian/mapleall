@@ -154,6 +154,15 @@ class OriginalSt {
     return symRenamed || (indexRenamedFrom.idx != 0);
   }
 
+  bool IsIVCandidate() const {
+    if (indirectLev != 0 ||
+        (IsSymbol() && GetMIRSymbol()->GetName() == "__nads_dummysym__")) {
+      return false;
+    }
+    MIRType *mirtype = GlobalTables::GetTypeTable().GetTypeFromTyIdx(tyIdx);
+    return IsPrimitiveInteger(mirtype->primType);
+  }
+
   ~OriginalSt(){};
 };
 

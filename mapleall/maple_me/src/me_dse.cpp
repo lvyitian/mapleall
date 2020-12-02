@@ -116,7 +116,7 @@ void MeDSE::DseProcess() {
           DassignNode *dass = static_cast<DassignNode *>(stmt);
           // check lhs
           MIRSymbol *sym = mirModule->CurFunction()->GetLocalOrGlobalSymbol(dass->stIdx);
-          if (sym->IsVolatile()) {
+          if (sym->IsVolatile() || strncmp(sym->GetName().c_str(), "injected.iv", 11) == 0) {
             MarkStmt(stmt, bb);
             break;
           }

@@ -61,6 +61,7 @@
 #include "lfo_pre_emit.h"
 #include "lfo_mir_lower.h"
 #include "lfo_inject_iv.h"
+#include "lfo_iv_canon.h"
 
 using namespace std;
 
@@ -155,7 +156,7 @@ void MeFuncPhaseManager::AddPhases(const std::unordered_set<std::string> &skipPh
     addPhase("ssa");
     addPhase("dse");
     addPhase("irmapbuild");
-    //addPhase("loopivcan");
+    addPhase("ivcanon");
     addPhase("hprop");
     addPhase("hdse");
     addPhase("lfopreemit");

@@ -16,6 +16,7 @@
 #ifndef MAPLE_LFO_INCLUDE_LFO_FUNCTION_H
 #define MAPLE_LFO_INCLUDE_LFO_FUNCTION_H
 #include "lfo_mir_nodes.h"
+#include "me_ir.h"
 
 namespace maple {
 

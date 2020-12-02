@@ -142,19 +142,16 @@ void MeSSA::InsertIdentifyAssignments(IdentifyLoops *identloops) {
     if (it == lfoFunc->label2WhileInfo.end()) {
       continue;
     }
+    if (headbb->pred.size() != 2) {
+      continue;
+    }
     // collect the symbols for inserting identity assignments
     std::set<OriginalSt *> ostSet;
     for (std::pair<OriginalSt *, PhiNode> mapEntry: *(headbb->phiList)) {
       OriginalSt *ost = mapEntry.first;
-      if (ost->indirectLev != 0 ||
-          (ost->IsSymbol() && ost->GetMIRSymbol()->GetName() == "__nads_dummysym__")) {
-        continue;
+      if (ost->IsIVCandidate()) {
+        ostSet.insert(ost);
       }
-      MIRType *mirtype = GlobalTables::GetTypeTable().GetTypeFromTyIdx(ost->tyIdx);
-      if (!IsPrimitiveInteger(mirtype->primType)) {
-        continue;
-      }
-      ostSet.insert(ost);
     }
     if (ostSet.empty()) {
       continue;
