@@ -2636,11 +2636,11 @@ MemOperand *GraphColorRegAllocator::GetReuseMem(uint32 vregno, uint32 size, RegT
 }
 
 MemOperand *GraphColorRegAllocator::GetSpillMem(uint32 vregno, Insn *insn, Riscv64reg_t regno,
-                                                uint8 &isOutOfRange) {
+                                                uint8 &isOutOfRange, bool isDef) {
   Riscv64CGFunc *a64cgfunc = static_cast<Riscv64CGFunc *>(cgfunc_);
   MemOperand *memopnd;
   memopnd = a64cgfunc->GetOrCreatSpillMem(vregno);
-  return (a64cgfunc->AdjustMemOperandIfOffsetOutOfRange(memopnd, vregno, insn, regno, isOutOfRange));
+  return (a64cgfunc->AdjustMemOperandIfOffsetOutOfRange(memopnd, vregno, insn, regno, isOutOfRange, isDef));
 }
 
 void GraphColorRegAllocator::SpillOperandForSpillPre(Insn *insn, Operand *opnd, RegOperand *phyopnd, uint32 spillIdx,
@@ -2794,7 +2794,7 @@ MemOperand *GraphColorRegAllocator::GetSpillOrReuseMem(LiveRange *lr, uint32 reg
         baseRegNO = Riscv64Abi::kIntSpareReg;
       }
       ASSERT(baseRegNO != kRinvalid, "invalid base register number");
-      memopnd = GetSpillMem(lr->regno, insn, (Riscv64reg_t)(baseRegNO), isOutOfRange);
+      memopnd = GetSpillMem(lr->regno, insn, (Riscv64reg_t)(baseRegNO), isOutOfRange, isDef);
 #ifdef REUSE_SPILLMEM
       if (isOutOfRange == 0) {
         lr->spillMem = memopnd;
@@ -2843,7 +2843,11 @@ Insn *GraphColorRegAllocator::SpillOperand(Insn *insn, Operand *opnd, bool isDef
     if (insn->next && insn->next->GetMachineOpcode() == MOP_clinit_tail) {
       insn->bb->InsertInsnAfter(insn->next, spillDefInsn);
     } else {
-      insn->bb->InsertInsnAfter(insn, spillDefInsn);
+      if (isOutOfRange) {
+        insn->bb->InsertInsnAfter(insn->next->next, spillDefInsn);
+      } else {
+        insn->bb->InsertInsnAfter(insn, spillDefInsn);
+      }
     }
   } else {
     if (insn->GetMachineOpcode() == MOP_clinit_tail) {

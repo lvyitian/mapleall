@@ -814,7 +814,7 @@ class GraphColorRegAllocator : public RegAllocator {
   MemOperand *GetConsistentReuseMem(uint32 vregno, uint32 size, RegType regtype);
   MemOperand *GetCommonReuseMem(uint32 vregno, uint32 size, RegType regtype);
   MemOperand *GetReuseMem(uint32 vregno, uint32 size, RegType regtype);
-  MemOperand *GetSpillMem(uint32 vregno, Insn *insn, Riscv64reg_t regno, uint8 &isOutOfRange);
+  MemOperand *GetSpillMem(uint32 vregno, Insn *insn, Riscv64reg_t regno, uint8 &isOutOfRange, bool isDef);
   bool GetAvailableSpillReg(set<regno_t> &cannotUseReg, LiveRange *lr, uint64 &usedRegMask);
   void CollectCannotUseReg(set<regno_t> &cannotUseReg, LiveRange *lr, Insn *insn);
   bool PickRegForSpill(LiveRange *lr, Insn *insn, uint64 &usedRegMask, bool isDef);
