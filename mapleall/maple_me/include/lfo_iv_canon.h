@@ -40,18 +40,24 @@ class IVCanon {
   MemPool *mp;
   MapleAllocator alloc;
   MeFunction *func;
+  Dominance *dominance;
   SSATab *ssatab;
   LoopDesc *aloop;
   LfoWhileInfo *whileInfo;
   MapleVector<IVDesc *> ivvec;
+  int32 idxPrimaryIV = -1;      // the index in ivvec of the primary IV
+  MeExpr *tripCount = nullptr;
 
  public:
-  explicit IVCanon(MemPool *m, MeFunction *f, LoopDesc *ldesc, LfoWhileInfo *winfo) :
-        mp(m), alloc(m), func(f), ssatab(f->meSSATab), aloop(ldesc), whileInfo(winfo),
+  explicit IVCanon(MemPool *m, MeFunction *f, Dominance *dom, LoopDesc *ldesc, LfoWhileInfo *winfo) :
+        mp(m), alloc(m), func(f), dominance(dom), ssatab(f->meSSATab), aloop(ldesc), whileInfo(winfo),
         ivvec(alloc.Adapter()) {}
   bool ResolveExprValue(MeExpr *x, ScalarMeExpr *philhs);
   int32 ComputeIncrAmt(MeExpr *x, ScalarMeExpr *philhs, int32 *appearances);
   void CharacterizeIV(ScalarMeExpr *initversion, ScalarMeExpr *loopbackversion, ScalarMeExpr *philhs);
+  void FindPrimaryIV();
+  bool IsLoopInvariant(MeExpr *x);
+  void ComputeTripCount();
   void PerformIVCanon();
   std::string PhaseName() const { return "ivcanon"; }
 };

@@ -38,6 +38,9 @@ AnalysisResult *DoLfoInjectIV::Run(MeFunction *func, MeFuncResultMgr *m) {
     if (headbb->bbLabel == 0) {
       continue;
     }
+    if (headbb->pred.size() != 2) {
+      continue;  // won't insert IV for loops with > 1 tail bbs
+    }
     MapleMap<LabelIdx, LfoWhileInfo*>::iterator it = lfoFunc->label2WhileInfo.find(headbb->bbLabel);
     if (it == lfoFunc->label2WhileInfo.end()) {
       continue;
@@ -59,7 +62,7 @@ AnalysisResult *DoLfoInjectIV::Run(MeFunction *func, MeFuncResultMgr *m) {
     ivName.append(std::to_string(++ivCount));
     GStrIdx strIdx = GlobalTables::GetStrTable().GetOrCreateStrIdxFromName(ivName);
     MIRSymbol *st = mirbuilder->CreateSymbol((TyIdx)PTY_i64, strIdx, kStVar, kScAuto, kScopeLocal, func->mirFunc);
-    whileInfo->ivsym = st;
+    whileInfo->injectedIVSym = st;
     if (DEBUGFUNC(func)) {
       LogInfo::MapleLogger() << "****** Injected IV " << st->GetName() << " in while loop at label ";
       LogInfo::MapleLogger() << "@" << func->mirFunc->GetLabelName(headbb->bbLabel) << std::endl;

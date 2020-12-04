@@ -141,6 +141,9 @@ class IRMap : public AnalysisResult {
                                                          TyIdx tyidx = TyIdx());
   MeExpr *CreateAddrofMeExprFromNewSymbol(MIRSymbol *, PUIdx);
 
+  MeExpr *SimplifyOpMeExpr(OpMeExpr *opmeexpr);
+  MeExpr *SimplifyMeExpr(MeExpr *opmeexpr);
+
   template <class T, typename... Arguments>
   inline T *NewInPool(Arguments... args) {
     return irMapAlloc.GetMemPool()->New<T>(&irMapAlloc, args...);

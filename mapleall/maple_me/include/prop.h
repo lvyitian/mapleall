@@ -79,7 +79,6 @@ class Prop {
   void TraversalMeStmt(MeStmt *);
 
  public:
-  MeExpr *SimplifyMeExpr(OpMeExpr *);
   MeExpr *PropMeExpr(MeExpr *meexpr, bool &isproped, bool atParm);
   MeExpr *PropVar(VarMeExpr *varmeexpr, bool atParm, bool checkPhi);
   MeExpr *PropIvar(IvarMeExpr *ivarmeexpr);

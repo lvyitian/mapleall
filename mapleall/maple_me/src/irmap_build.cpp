@@ -187,7 +187,7 @@ MeExpr *IrMapBuild::BuildExpr(BaseNode *mirnode, bool atParm, bool noProp) {
         MeExpr *propedMeExpr = propagater->PropVar(varmeexpr, atParm, true);
         MeExpr *simplifiedMeexpr = nullptr;
         if (propedMeExpr->meOp == kMeOpOp) {
-           simplifiedMeexpr =propagater->SimplifyMeExpr(static_cast<OpMeExpr *>(propedMeExpr));
+           simplifiedMeexpr = irMap->SimplifyOpMeExpr(static_cast<OpMeExpr *>(propedMeExpr));
         }
         retmeexpr = simplifiedMeexpr ? simplifiedMeexpr : propedMeExpr;
       } else {
@@ -269,7 +269,7 @@ MeExpr *IrMapBuild::BuildExpr(BaseNode *mirnode, bool atParm, bool noProp) {
         MeExpr *propedMeExpr = propagater->PropIvar(canIvar);
         MeExpr *simplifiedMeexpr = nullptr;
         if (propedMeExpr->meOp == kMeOpOp) {
-           simplifiedMeexpr =propagater->SimplifyMeExpr(static_cast<OpMeExpr *>(propedMeExpr));
+           simplifiedMeexpr = irMap->SimplifyOpMeExpr(static_cast<OpMeExpr *>(propedMeExpr));
         }
         retmeexpr = simplifiedMeexpr ? simplifiedMeexpr : propedMeExpr;
       } else {
