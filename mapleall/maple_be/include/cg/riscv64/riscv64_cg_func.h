@@ -98,6 +98,7 @@ class Riscv64CGFunc : public CGFunc {
                                                // some caller-saved registers.
   unsigned int refCount;  // Ref count number. 0 if function don't have "bl MCC_InitializeLocalStackRef"
   int beginOffset;        // Begin offset based x29.
+  regno_t retRegType;     // scalar return register type
   Insn *yieldPointInsn;   // The insn of yield point at the entry of the func.
 
   static const uint32 kParmMemcpySize = 40;
@@ -190,6 +191,7 @@ class Riscv64CGFunc : public CGFunc {
       gen_memopnds_requiring_offset_adjustment_(mallocator->Adapter()),
       refCount(0),
       beginOffset(0),
+      retRegType(kRegTyUndef),
       yieldPointInsn(nullptr) {
     ujavaCatch.regno_javaCatch = 0;
     current_cfa_ = 0;
