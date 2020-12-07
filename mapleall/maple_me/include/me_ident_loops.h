@@ -30,12 +30,14 @@ class LoopDesc {
  public:
   BB *head;
   BB *tail;
+  LoopDesc *parent = nullptr;  // points to its closest nesting loop
+  BB *entry = nullptr;
   MapleSet<BBId> loop_bbs;
-  LoopDesc *parent;  // points to its closest nesting loop
-  uint32 nestdepth;  // the nesting depth
+  MapleSet<BBId> exitBBs;
+  uint32 nestdepth = 0;  // the nesting depth
 
   LoopDesc(MapleAllocator *alloc, BB *headbb, BB *tailbb)
-    : head(headbb), tail(tailbb), loop_bbs(alloc->Adapter()), parent(nullptr), nestdepth(0) {}
+    : head(headbb), tail(tailbb), loop_bbs(alloc->Adapter()), exitBBs(alloc->Adapter()) {}
 
   bool Has(const BB *bb) {
     return loop_bbs.find(bb->id) != loop_bbs.end();
@@ -59,8 +61,9 @@ class IdentifyLoops : public AnalysisResult {
       meloops(alloc.Adapter()),
       bbloopparent(func->theCFG->bbVec.size(), nullptr, alloc.Adapter()) {}
 
-  LoopDesc *CreateLoopDesc(BB *hd, BB *tail);
   void SetLoopParent4BB(const BB *bb, LoopDesc *aloop);
+  void SetLoopEntry(LoopDesc *aloop);
+  void SetExitBBs(LoopDesc *aloop);
   void ProcessBB(BB *bb);
   void Dump();
 };

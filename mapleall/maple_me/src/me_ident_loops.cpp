@@ -24,12 +24,6 @@
 
 namespace maple {
 
-LoopDesc *IdentifyLoops::CreateLoopDesc(BB *hd, BB *tail) {
-  LoopDesc *newloop = alloc.mp->New<LoopDesc>(&alloc, hd, tail);
-  meloops.push_back(newloop);
-  return newloop;
-}
-
 void IdentifyLoops::SetLoopParent4BB(const BB *bb, LoopDesc *aloop) {
   if (bbloopparent[bb->id.idx] != nullptr) {
     if (aloop->parent == nullptr) {
@@ -40,6 +34,34 @@ void IdentifyLoops::SetLoopParent4BB(const BB *bb, LoopDesc *aloop) {
   bbloopparent[bb->id.idx] = aloop;
 }
 
+void IdentifyLoops::SetLoopEntry(LoopDesc *aloop) {
+  BB *headBB = aloop->head;
+  // the entry BB is the predecessor of headBB that dominates headBB
+  MapleVector<BB*>::iterator predit = headBB->pred.begin();
+  for ( ; predit != headBB->pred.end(); predit++) {
+    if (dominance->Dominate(*predit, headBB))
+      break;
+  }
+  if (predit == headBB->pred.end()) {
+    return;  // not a well-formed loop
+  }
+  aloop->entry = *predit;
+}
+
+// loop through all the loop body BBs and collect their succ BBs that are not
+// member of this loop
+void IdentifyLoops::SetExitBBs(LoopDesc *aloop) {
+  MapleVector<BB *> &bbVec = func->theCFG->bbVec;
+  for (BBId bbId : aloop->loop_bbs) {
+    BB *bb = bbVec[bbId.idx];
+    for (BB *succ : bb->succ) {
+      if (aloop->loop_bbs.count(succ->id) != 1) {
+        aloop->exitBBs.insert(succ->id);
+      }
+    }
+  }
+}
+
 // process each BB in preorder traversal of dominator tree
 void IdentifyLoops::ProcessBB(BB *bb) {
   if (bb == nullptr || bb == func->theCFG->commonExitBB) {
@@ -48,7 +70,8 @@ void IdentifyLoops::ProcessBB(BB *bb) {
   for (BB *pred : bb->pred) {
     if (dominance->Dominate(bb, pred)) {
       // create a loop with bb as loop head and pred as loop tail
-      LoopDesc *aloop = CreateLoopDesc(bb, pred);
+      LoopDesc *aloop = alloc.mp->New<LoopDesc>(&alloc, bb, pred);
+      meloops.push_back(aloop);
       std::list<BB *> bodylist;
       bodylist.push_back(pred);
       while (!bodylist.empty()) {
@@ -66,6 +89,8 @@ void IdentifyLoops::ProcessBB(BB *bb) {
       }
       aloop->loop_bbs.insert(bb->id);
       SetLoopParent4BB(bb, aloop);
+      SetLoopEntry(aloop);
+      SetExitBBs(aloop);
     }
   }
 

@@ -156,20 +156,10 @@ void MeSSA::InsertIdentifyAssignments(IdentifyLoops *identloops) {
     if (ostSet.empty()) {
       continue;
     }
-    // loop through all the loop body BBs and collect their succ BBs that are
-    // not member of this loop
-    std::set<BB *> exitBBSet;
-    for (BBId bbId : aloop->loop_bbs) {
-      BB *bb = bbVec[bbId.idx];
-      for (BB *succ : bb->succ) {
-        if (aloop->loop_bbs.count(succ->id) != 1) {
-          exitBBSet.insert(succ);
-        }
-      }
-    }
     // for each exitBB, insert identify assignment for any var that has phi at
     // headbb
-    for (BB *bb : exitBBSet) {
+    for (BBId bbId : aloop->exitBBs) {
+      BB *bb = bbVec[bbId.idx];
       for (OriginalSt *ost : ostSet) {
         MIRType *mirtype = GlobalTables::GetTypeTable().GetTypeFromTyIdx(ost->tyIdx);
         if (ost->IsSymbol()) {

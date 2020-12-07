@@ -433,6 +433,16 @@ void MeFunction::CreateBasicBlocks(MirCFG *cfg) {
             }
           }
           curbb = newbb;
+        } else if (lfoFunc && lfoFunc->label2WhileInfo.find(labidx) != lfoFunc->label2WhileInfo.end()) {
+          curbb->kind = kBBFallthru;
+          BB *newbb = NewBasicBlock();
+          if (!tryStmtStack.empty()) {
+            newbb->isTry = true;
+            if (JAVALANG) {
+              cfg->bbTryNodeMap[newbb] = tryStmtStack.top();
+            }
+          }
+          curbb = newbb;
         }
         cfg->labelBBIdMap[labidx] = curbb;
         curbb->bbLabel = labidx;

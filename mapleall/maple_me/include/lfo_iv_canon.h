@@ -27,11 +27,15 @@ namespace maple {
 class IVDesc {
  public:
   OriginalSt *ost;
+  PrimType primType;
   int32 stepValue = 0;
   MeExpr *initExpr = nullptr;
 
  public:
-  explicit IVDesc(OriginalSt *o) : ost(o) {}
+  explicit IVDesc(OriginalSt *o) : ost(o) {
+    MIRType *mirtype = GlobalTables::GetTypeTable().GetTypeFromTyIdx(ost->tyIdx);
+    primType = mirtype->primType;
+  }
 };
 
 // this is for processing a single loop
@@ -58,6 +62,7 @@ class IVCanon {
   void FindPrimaryIV();
   bool IsLoopInvariant(MeExpr *x);
   void ComputeTripCount();
+  void CanonEntryValues();
   void PerformIVCanon();
   std::string PhaseName() const { return "ivcanon"; }
 };

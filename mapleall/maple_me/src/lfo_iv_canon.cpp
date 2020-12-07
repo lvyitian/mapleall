@@ -105,7 +105,14 @@ void IVCanon::CharacterizeIV(ScalarMeExpr *initversion, ScalarMeExpr *loopbackve
   IVDesc *ivdesc = mp->New<IVDesc>(initversion->ost);
   if (initversion->defBy == kDefByStmt) {
     AssignMeStmt *defstmt = initversion->def.defStmt;
-    ivdesc->initExpr = defstmt->rhs;
+    if (defstmt->rhs->meOp == kMeOpConst ||
+        defstmt->rhs->meOp == kMeOpAddrof ||
+        defstmt->rhs->meOp == kMeOpConststr ||
+        defstmt->rhs->meOp == kMeOpConststr16) {
+      ivdesc->initExpr = defstmt->rhs;
+    } else {
+      ivdesc->initExpr = initversion;
+    }
   } else {
     ivdesc->initExpr = initversion;
   }
@@ -259,6 +266,25 @@ void IVCanon::ComputeTripCount() {
   tripCount = irMap->SimplifyMeExpr(dynamic_cast<OpMeExpr *>(tripCount));
 }
 
+void IVCanon::CanonEntryValues() {
+  for (IVDesc *ivdesc : ivvec) {
+    if (ivdesc->initExpr->meOp == kMeOpVar || ivdesc->initExpr->meOp == kMeOpReg) {
+#if 1 // create temp var
+      std::string initName = ivdesc->ost->GetMIRSymbol()->GetName();
+      initName.append(std::to_string(ivdesc->ost->fieldID));
+      initName.append(".init");
+      GStrIdx strIdx = GlobalTables::GetStrTable().GetOrCreateStrIdxFromName(initName);
+      ScalarMeExpr *scalarmeexpr = func->irMap->CreateNewVar(strIdx, ivdesc->primType, false);
+#else // create preg
+      ScalarMeExpr *scalarmeexpr = func->irMap->CreateRegMeExpr(ivdesc->primType);
+#endif
+      AssignMeStmt *ass = func->irMap->CreateAssignMeStmt(scalarmeexpr, ivdesc->initExpr, aloop->entry);
+      aloop->entry->AddMeStmtLast(ass);
+      ivdesc->initExpr = scalarmeexpr;
+    }
+  }
+}
+
 void IVCanon::PerformIVCanon() {
   BB *headbb = aloop->head;
   uint32 phiOpndIdxOfInit = 1;
@@ -268,7 +294,7 @@ void IVCanon::PerformIVCanon() {
     phiOpndIdxOfLoopBack = 1;
   }
   CHECK_FATAL(aloop->tail == headbb->pred[phiOpndIdxOfLoopBack], "PerformIVCanon: tail BB inaccurate");
-  // go thru the list of phis at the loop head
+  // go thru the list of phis at the loop head to find all IVs
   for (std::pair<OStIdx, MePhiNode*> mapEntry: headbb->mePhiList) {
     OriginalSt *ost = ssatab->GetOriginalStFromid(mapEntry.first);
     if (!ost->IsIVCandidate()) {
@@ -302,6 +328,7 @@ void IVCanon::PerformIVCanon() {
     tripCount->Dump(func->irMap, 0);
     LogInfo::MapleLogger() << endl;
   }
+  CanonEntryValues();
 }
 
 AnalysisResult *DoLfoIVCanon::Run(MeFunction *func, MeFuncResultMgr *m) {
@@ -334,8 +361,14 @@ AnalysisResult *DoLfoIVCanon::Run(MeFunction *func, MeFuncResultMgr *m) {
     }
     MemPool *ivmp = mempoolctrler.NewMemPool(PhaseName().c_str());
     IVCanon ivCanon(ivmp, func, dom, aloop, whileInfo);
-    ivCanon.PerformIVCanon();
+    if (ivCanon.aloop->entry != nullptr) {
+      ivCanon.PerformIVCanon();
+    }
     mempoolctrler.DeleteMemPool(ivmp);
+  }
+  if (DEBUGFUNC(func)) {
+    LogInfo::MapleLogger() << "\n============== After IV Canonicalization  =============" << endl;
+    irmap->Dump();
   }
 
   return nullptr;
