@@ -1101,7 +1101,6 @@ MemOperand *GraphColorRegAllocator::CreateSpillMem(uint32 spillIdx) {
 bool GraphColorRegAllocator::IsLocalReg(regno_t regno) {
   LiveRange *lr = lrVec[regno];
   if (lr == nullptr) {
-    LogInfo::MapleLogger() << "unexpected regno " << regno << endl;
     return true;
   }
   if (lr->splitLr) {
@@ -2600,7 +2599,8 @@ MemOperand *GraphColorRegAllocator::GetCommonReuseMem(uint32 vregno, uint32 size
   END_FOREACH_REG_ARR_ELEM
 
   FOREACH_REG_ARR_ELEM_NOT_SET(conflict, regno) {
-    if (regno >= numVregs) {
+    if (regno >= numVregs || IsLocalReg(regno)) {
+      // conflict is for globals.  Cannot factor into locals.
       break;
     }
     LiveRange *noConflictLr = lrVec[regno];
