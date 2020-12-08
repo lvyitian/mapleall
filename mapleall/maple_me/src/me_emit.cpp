@@ -21,7 +21,7 @@
 #include "me_predict.h"
 
 static const std::set<std::string> kHssaPhases{
-  "irMap",  "hprop",      "hssa",        "hdse",        "ssadevirt",    "ea",          "epre",
+  "irmapbuild",  "hprop",      "hssa",        "hdse",        "ssadevirt",    "ea",          "epre",
   "lpre",   "stmtpre",    "rename2preg", "ti",          "analyzerc",
   "spre",   "rclowering", "delegaterc",  "condbasedrc", "condbasednpc", "may2dassign", "pregrename",
   "bdcopt", "syncselect", "cfgopt",      "ssadevirt",   "placementrc",  "symrename",

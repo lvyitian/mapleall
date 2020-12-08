@@ -331,6 +331,34 @@ MeExpr *Prop::CheckTruncation(MeExpr *lhs, MeExpr *rhs) {
       return irMap->HashMeExpr(&opmeexpr);
     }
   }
+  // if lhs is function pointer and rhs is not, insert a retype
+  if (lhsTy->typeKind == kTypePointer) {
+    MIRPtrType *lhsPtrType = static_cast<MIRPtrType *>(lhsTy);
+    if (lhsPtrType->GetPointedType()->typeKind == kTypeFunction) {
+      bool needRetype = true;
+      MIRType *rhsTy = nullptr;
+      if (rhs->meOp == kMeOpVar) {
+        VarMeExpr *rhsvarx = static_cast<VarMeExpr *>(rhs);
+        rhsTy = GlobalTables::GetTypeTable().GetTypeFromTyIdx(rhsvarx->ost->tyIdx);
+      } else if (rhs->meOp == kMeOpIvar) {
+        IvarMeExpr *rhsivarx = static_cast<IvarMeExpr *>(rhs);
+        MIRPtrType *rhsPtrType = static_cast<MIRPtrType *>(GlobalTables::GetTypeTable().GetTypeFromTyIdx(rhsivarx->tyIdx));
+        rhsTy = rhsPtrType->GetPointedType();
+        if (rhsivarx->fieldID != 0) {
+          rhsTy = static_cast<MIRStructType *>(rhsTy)->GetFieldType(rhsivarx->fieldID);
+        }
+      }
+      if (rhsTy != nullptr && rhsTy == lhsPtrType) {
+        needRetype = false;
+      }
+      if (needRetype) {
+        OpMeExpr opmeexpr(-1, OP_retype, lhsPtrType->primType, 1);
+        opmeexpr.tyIdx = lhsPtrType->tyIdx;
+        opmeexpr.SetOpnd(rhs, 0);
+        return irMap->HashMeExpr(&opmeexpr);
+      }
+    }
+  }
   return rhs;
 }
 
