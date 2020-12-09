@@ -674,6 +674,9 @@ MeExpr *IRMap::SimplifyOpMeExpr(OpMeExpr *opmeexpr) {
       }
       MeExpr *opnd0 = opmeexpr->GetOpnd(0);
       MeExpr *opnd1 = opmeexpr->GetOpnd(1);
+      if (opop == OP_sub && opnd0 == opnd1) {
+        return CreateIntConstMeExpr(0, opmeexpr->primType);
+      }
       if (opnd0->meOp != kMeOpConst || opnd1->meOp != kMeOpConst) {
         return nullptr;
       }

@@ -253,11 +253,20 @@ void IVCanon::ComputeTripCount() {
 
   // form the trip count expression
   PrimType primTypeUsed = testexp->GetOpnd(0)->primType;
+  PrimType divPrimType = primTypeUsed;
+  if (ivdesc->stepValue < 0 && !IsSignedInteger(divPrimType)) {
+    // need to use signed div
+    if (GetPrimTypeSize(divPrimType) == 8) {
+      divPrimType = PTY_i64;
+    } else {
+      divPrimType = PTY_i32;
+    }
+  }
   OpMeExpr subtract(-1, OP_sub, primTypeUsed, 2);
-  OpMeExpr divide(-1, OP_div, primTypeUsed, 2);
+  OpMeExpr divide(-1, OP_div, divPrimType, 2);
   OpMeExpr add(-1, OP_add, primTypeUsed, 2);
   add.SetOpnd(testexp->GetOpnd(1), 0); // IV bound
-  add.SetOpnd(irMap->CreateIntConstMeExpr(ivdesc->stepValue-1, primTypeUsed), 1);
+  add.SetOpnd(irMap->CreateIntConstMeExpr(ivdesc->stepValue > 0 ? ivdesc->stepValue-1 : ivdesc->stepValue+1, primTypeUsed), 1);
   subtract.SetOpnd(irMap->HashMeExpr(&add), 0);
   subtract.SetOpnd(ivdesc->initExpr, 1);
   divide.SetOpnd(irMap->HashMeExpr(&subtract), 0);
@@ -282,6 +291,39 @@ void IVCanon::CanonEntryValues() {
       aloop->entry->AddMeStmtLast(ass);
       ivdesc->initExpr = scalarmeexpr;
     }
+  }
+}
+
+void IVCanon::CanonExitValues() {
+  MapleVector<BB *> &bbVec = func->theCFG->bbVec;
+  for (IVDesc *ivdesc : ivvec) {
+    BB *exitBB = aloop->exitBB;
+    // look for the identity assignment
+    MeStmt *stmt = exitBB->meStmtList.first;
+    while (stmt) {
+      if (stmt->op == OP_dassign || stmt->op == OP_regassign) {
+        AssignMeStmt *ass = static_cast<AssignMeStmt *>(stmt);
+        if (ass->lhs->ost == ivdesc->ost) {
+          break;
+        }
+      }
+      stmt = stmt->next;
+    }
+    CHECK_FATAL(stmt != nullptr, "CanonExitValues: cannot find identity assignments at an exit node");
+    AssignMeStmt *ass = static_cast<AssignMeStmt *>(stmt);
+    CHECK_FATAL(ass->rhs->meOp == kMeOpVar || ass->rhs->meOp == kMeOpReg,
+                "CanonExitValues: assignment at exit node is not identity assignment");
+    ScalarMeExpr *rhsvar = static_cast<ScalarMeExpr *>(ass->rhs);
+    CHECK_FATAL(rhsvar->ost == ivdesc->ost,
+                "CanonExitValues: assignment at exit node is not identity assignment");
+    OpMeExpr mulmeexpr(-1, OP_mul, ivdesc->primType, 2);
+    mulmeexpr.SetOpnd(tripCount, 0);
+    mulmeexpr.SetOpnd(func->irMap->CreateIntConstMeExpr(ivdesc->stepValue, ivdesc->primType), 1);
+    MeExpr *mulx = func->irMap->HashMeExpr(&mulmeexpr);
+    OpMeExpr addmeexpr(-1, OP_add, ivdesc->primType, 2);
+    addmeexpr.SetOpnd(ivdesc->initExpr, 0);
+    addmeexpr.SetOpnd(mulx, 1);
+    ass->rhs = func->irMap->HashMeExpr(&addmeexpr);
   }
 }
 
@@ -322,13 +364,17 @@ void IVCanon::PerformIVCanon() {
       LogInfo::MapleLogger() << endl;
     }
   }
+  CanonEntryValues();
   ComputeTripCount();
-  if (DEBUGFUNC(func) && tripCount) {
+  if (tripCount == 0) {
+    return;
+  }
+  if (DEBUGFUNC(func)) {
     LogInfo::MapleLogger() << "****** trip count is: ";
     tripCount->Dump(func->irMap, 0);
     LogInfo::MapleLogger() << endl;
   }
-  CanonEntryValues();
+  CanonExitValues();
 }
 
 AnalysisResult *DoLfoIVCanon::Run(MeFunction *func, MeFuncResultMgr *m) {
@@ -349,6 +395,9 @@ AnalysisResult *DoLfoIVCanon::Run(MeFunction *func, MeFuncResultMgr *m) {
     BB *headbb = aloop->head;
     // check if the label has associated LfoWhileInfo
     if (headbb->bbLabel == 0) {
+      continue;
+    }
+    if (aloop->exitBB == nullptr) {
       continue;
     }
     MapleMap<LabelIdx, LfoWhileInfo*>::iterator it = lfoFunc->label2WhileInfo.find(headbb->bbLabel);

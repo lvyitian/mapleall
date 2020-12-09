@@ -138,6 +138,9 @@ void MeSSA::InsertIdentifyAssignments(IdentifyLoops *identloops) {
     if (headbb->bbLabel == 0) {
       continue;
     }
+    if (aloop->exitBB == nullptr) {
+      continue;
+    }
     MapleMap<LabelIdx, LfoWhileInfo*>::iterator it = lfoFunc->label2WhileInfo.find(headbb->bbLabel);
     if (it == lfoFunc->label2WhileInfo.end()) {
       continue;
@@ -156,40 +159,39 @@ void MeSSA::InsertIdentifyAssignments(IdentifyLoops *identloops) {
     if (ostSet.empty()) {
       continue;
     }
-    // for each exitBB, insert identify assignment for any var that has phi at
+    // for the exitBB, insert identify assignment for any var that has phi at
     // headbb
-    for (BBId bbId : aloop->exitBBs) {
-      BB *bb = bbVec[bbId.idx];
-      for (OriginalSt *ost : ostSet) {
-        MIRType *mirtype = GlobalTables::GetTypeTable().GetTypeFromTyIdx(ost->tyIdx);
-        if (ost->IsSymbol()) {
-          AddrofNode dread(OP_dread, mirtype->primType, ost->GetMIRSymbol()->stIdx, ost->fieldID);
-          AddrofSSANode *ssadread = func->mirFunc->codeMemPool->New<AddrofSSANode>(&dread);
-          ssadread->ssaVar = ssatab->versionStTable.GetZeroVersionSt(ost);
+    for (OriginalSt *ost : ostSet) {
+      MIRType *mirtype = GlobalTables::GetTypeTable().GetTypeFromTyIdx(ost->tyIdx);
+      if (ost->IsSymbol()) {
+        AddrofNode dread(OP_dread, mirtype->primType, ost->GetMIRSymbol()->stIdx, ost->fieldID);
+        AddrofSSANode *ssadread = func->mirFunc->codeMemPool->New<AddrofSSANode>(&dread);
+        ssadread->ssaVar = ssatab->versionStTable.GetZeroVersionSt(ost);
 
-          DassignNode *dass = mirbuilder->CreateStmtDassign(ost->GetMIRSymbol(), ost->fieldID, ssadread);
-          bb->PrependStmtNode(dass);
+        DassignNode *dass = mirbuilder->CreateStmtDassign(ost->GetMIRSymbol(), ost->fieldID, ssadread);
+        aloop->exitBB->PrependStmtNode(dass);
 
-          MayDefPartWithVersionSt *thessapart =
-              ssatab->stmtsSSAPart.ssaPartMp->New<MayDefPartWithVersionSt>(&ssatab->stmtsSSAPart.ssaPartAlloc);
-          ssatab->stmtsSSAPart.SetSsapartOf(dass, thessapart);
-          thessapart->ssaVar = ssatab->versionStTable.GetZeroVersionSt(ost);
-        } else {
-          RegreadNode regread(ost->GetPregIdx());
-          RegreadSSANode *ssaregread = func->mirFunc->codeMemPool->New<RegreadSSANode>(&regread);
-          ssaregread->ssaVar = ssatab->versionStTable.GetZeroVersionSt(ost);
+        MayDefPartWithVersionSt *thessapart =
+            ssatab->stmtsSSAPart.ssaPartMp->New<MayDefPartWithVersionSt>(&ssatab->stmtsSSAPart.ssaPartAlloc);
+        ssatab->stmtsSSAPart.SetSsapartOf(dass, thessapart);
+        thessapart->ssaVar = ssatab->versionStTable.GetZeroVersionSt(ost);
+      } else {
+        RegreadNode regread(ost->GetPregIdx());
+        MIRPreg *preg = func->mirFunc->pregTab->PregFromPregIdx(ost->GetPregIdx());
+        regread.primType = preg->primType;
+        RegreadSSANode *ssaregread = func->mirFunc->codeMemPool->New<RegreadSSANode>(&regread);
+        ssaregread->ssaVar = ssatab->versionStTable.GetZeroVersionSt(ost);
 
-          RegassignNode *rass = mirbuilder->CreateStmtRegassign(mirtype->primType, ost->GetPregIdx(), ssaregread);
-          bb->PrependStmtNode(rass);
+        RegassignNode *rass = mirbuilder->CreateStmtRegassign(mirtype->primType, ost->GetPregIdx(), ssaregread);
+        aloop->exitBB->PrependStmtNode(rass);
 
-          VersionSt *vst = ssatab->versionStTable.GetZeroVersionSt(ost);
-          ssatab->stmtsSSAPart.SetSsapartOf(rass, vst);
-        }
-        ssatab->AddDefBB4Ost(ost->index, bb->id);
+        VersionSt *vst = ssatab->versionStTable.GetZeroVersionSt(ost);
+        ssatab->stmtsSSAPart.SetSsapartOf(rass, vst);
       }
-      if (DEBUGFUNC(func)) {
-        LogInfo::MapleLogger() << "****** Identity assignments inserted at loop exit BB " << bb->id.idx << std::endl;
-      }
+      ssatab->AddDefBB4Ost(ost->index, aloop->exitBB->id);
+    }
+    if (DEBUGFUNC(func)) {
+      LogInfo::MapleLogger() << "****** Identity assignments inserted at loop exit BB " << aloop->exitBB->id.idx << std::endl;
     }
   }
 }

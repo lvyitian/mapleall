@@ -116,9 +116,19 @@ void MeDSE::DseProcess() {
           DassignNode *dass = static_cast<DassignNode *>(stmt);
           // check lhs
           MIRSymbol *sym = mirModule->CurFunction()->GetLocalOrGlobalSymbol(dass->stIdx);
-          if (sym->IsVolatile() || strncmp(sym->GetName().c_str(), "injected.iv", 11) == 0) {
+          if (sym->IsVolatile()) {
             MarkStmt(stmt, bb);
             break;
+          }
+          if (func->isLfo) {
+            if (strncmp(sym->GetName().c_str(), "injected.iv", 11) == 0) {
+              MarkStmt(stmt, bb);  // preserve injected IVs
+            } else if (dass->uOpnd->op == OP_dread) {
+              AddrofNode *dread = static_cast<AddrofNode *>(dass->uOpnd);
+              if (dass->stIdx == dread->stIdx && dass->fieldID == dread->fieldID) {
+                MarkStmt(stmt, bb); // preserve identify assignments
+              }
+            }
           }
           MIRType *ty = GlobalTables::GetTypeTable().GetTypeFromTyIdx(sym->tyIdx);
           bool typevolatile = false;
@@ -134,6 +144,14 @@ void MeDSE::DseProcess() {
         }
         case OP_regassign: {
           RegassignNode *rass = static_cast<RegassignNode *>(stmt);
+          if (func->isLfo) {
+            if (rass->uOpnd->op == OP_regread) {
+              RegreadNode *regread = static_cast<RegreadNode *>(rass->uOpnd);
+              if (rass->regIdx == regread->regIdx) {
+                MarkStmt(stmt, bb); // preserve identify assignments
+              }
+            }
+          }
           if (ExprNonDeletable(rass->Opnd(0))) {
             MarkStmt(stmt, bb);
           }

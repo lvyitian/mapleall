@@ -48,17 +48,16 @@ void IdentifyLoops::SetLoopEntry(LoopDesc *aloop) {
   aloop->entry = *predit;
 }
 
-// loop through all the loop body BBs and collect their succ BBs that are not
-// member of this loop
-void IdentifyLoops::SetExitBBs(LoopDesc *aloop) {
-  MapleVector<BB *> &bbVec = func->theCFG->bbVec;
-  for (BBId bbId : aloop->loop_bbs) {
-    BB *bb = bbVec[bbId.idx];
-    for (BB *succ : bb->succ) {
-      if (aloop->loop_bbs.count(succ->id) != 1) {
-        aloop->exitBBs.insert(succ->id);
-      }
-    }
+void IdentifyLoops::SetExitBB(LoopDesc *aloop) {
+  BB *tailBB = aloop->tail;
+  // the exit BB is the succeessor of tailBB that does not belong to the loop
+  if (tailBB->succ.size() != 2) {
+    return;
+  }
+  if (aloop->loop_bbs.count(tailBB->succ[0]->id) != 1) {
+    aloop->exitBB = tailBB->succ[0];
+  } else {
+    aloop->exitBB = tailBB->succ[1];
   }
 }
 
@@ -90,7 +89,7 @@ void IdentifyLoops::ProcessBB(BB *bb) {
       aloop->loop_bbs.insert(bb->id);
       SetLoopParent4BB(bb, aloop);
       SetLoopEntry(aloop);
-      SetExitBBs(aloop);
+      SetExitBB(aloop);
     }
   }
 

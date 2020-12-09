@@ -61,8 +61,9 @@ class IVCanon {
   void CharacterizeIV(ScalarMeExpr *initversion, ScalarMeExpr *loopbackversion, ScalarMeExpr *philhs);
   void FindPrimaryIV();
   bool IsLoopInvariant(MeExpr *x);
-  void ComputeTripCount();
   void CanonEntryValues();
+  void ComputeTripCount();
+  void CanonExitValues();
   void PerformIVCanon();
   std::string PhaseName() const { return "ivcanon"; }
 };
