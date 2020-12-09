@@ -314,9 +314,9 @@ bool Riscv64Ebo::DoConstProp(Insn *insn, int idx, Operand *opnd) {
   switch (mopcode) {
     case MOP_xiorrrr: {
       if (src->GetValue() == 0) {
-        insn->mop_ = MOP_xiorrri13;
-        src->SetSize(12);
-        insn->SetOperand(idx + 1, src);
+        Riscv64CGFunc *a64cgfunc = static_cast<Riscv64CGFunc *>(cgfunc);
+        RegOperand *zero = a64cgfunc->GetOrCreatePhysicalRegisterOperand((Riscv64reg_t)R0, 64, kRegTyInt);
+        insn->SetOperand(idx + 1, zero);
         return true;
       }
       break;
