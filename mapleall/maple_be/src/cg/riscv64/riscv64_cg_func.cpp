@@ -3564,6 +3564,12 @@ bool Riscv64CGFunc::CallIsVararg(StmtNode *narynode, uint32 &namedFormals, BB *b
       };
       varargFunc = fType->isVarArgs;
       namedFormals = fType->paramTypeList.size();
+    } else if (fNode->op == OP_retype) {
+      RetypeNode *rNode = static_cast<RetypeNode *>(fNode);
+      pType = static_cast<MIRPtrType*>(GlobalTables::GetTypeTable().GetTypeFromTyIdx(rNode->tyIdx));
+      fType = static_cast<MIRFuncType*>(pType->GetPointedType());
+      varargFunc = fType->isVarArgs;
+      namedFormals = fType->paramTypeList.size();
     } else {
       CG_ASSERT(0, "cannot process this icall");
     }

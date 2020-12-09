@@ -158,7 +158,7 @@ MOperator Riscv64CGFunc::PickMovInsn(PrimType primtype) {
 }
 
 MOperator Riscv64CGFunc::PickMovInsn(RegOperand *lhs, RegOperand *rhs) {
-  CG_ASSERT(lhs->GetSize() == rhs->GetSize(), "PickMovInsn: unequal size NYI");
+  //CG_ASSERT(lhs->GetSize() == rhs->GetSize(), "PickMovInsn: unequal size NYI");
   if (lhs->GetRegisterType() == kRegTyInt) {
     if (rhs->GetRegisterType() == kRegTyInt) {
       return ((lhs->GetSize() == 64) ? MOP_xmovrr : MOP_xmovrr);
@@ -383,7 +383,7 @@ void Riscv64CGFunc::SelectCopy(Operand *dest, PrimType dtype, Operand *src, Prim
   }
   Operand::OperandType opnd0ty = dest->op_kind_;
   Operand::OperandType opnd1ty = src->op_kind_;
-  CG_ASSERT((dsize >= ssize || opnd0ty == Operand::Opd_Mem), "NYI");
+  //CG_ASSERT((dsize >= ssize || opnd0ty == Operand::Opd_Mem), "NYI");
   CG_ASSERT((opnd0ty == Operand::Opd_Register || opnd1ty == Operand::Opd_Register),
             "either src or dest should be register");
 
