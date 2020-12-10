@@ -2314,6 +2314,16 @@ void AArch64CGFunc::GenerateProlog(BB * bb) {
 }
 
 void AArch64CGFunc::GenerateRet(BB * bb) {
+  MOperator mop;
+  AArch64reg_t preg;
+  if (retRegType == kRegTyInt) {
+    mop = MOP_pseudo_ret_int;
+    preg = R0;
+  } else {
+    mop = MOP_pseudo_ret_float;
+    preg = V0;
+  }
+  bb->AppendInsn(cg->BuildInstruction<AArch64Insn>(mop, GetOrCreatePhysicalRegisterOperand(preg, 64, kRegTyInt)));
   bb->AppendInsn(cg->BuildInstruction<AArch64Insn>(MOP_xret));
 }
 
@@ -4382,16 +4392,31 @@ void AArch64CGFunc::SelectReturn(NaryStmtNode * stmt, Operand * opnd0) {
   if (retmech.regcount > 0) {
     if (RegOperand *regopnd = dynamic_cast<RegOperand *>(opnd0)) {
       if (regopnd->GetRegisterNumber() != retmech.reg0) {
+        if (AArch64isa::IsGPRegister(retmech.reg0)) {
+          retRegType = kRegTyInt;
+        } else {
+          retRegType = kRegTyFloat;
+        }
         retopnd =
           GetOrCreatePhysicalRegisterOperand(retmech.reg0, regopnd->size_, GetRegTyFromPrimTyAarch64(retmech.ptype0));
         SelectCopy(retopnd, retmech.ptype0, regopnd, retmech.ptype0);
       }
     } else if (AArch64MemOperand *memopnd = dynamic_cast<AArch64MemOperand *>(opnd0)) {
+      if (IsPrimitivePureScalar(retmech.ptype0)) {
+        retRegType = kRegTyInt;
+      } else {
+        retRegType = kRegTyFloat;
+      }
       retopnd = GetOrCreatePhysicalRegisterOperand(retmech.reg0, GetPrimTypeBitSize(retmech.ptype0),
                                                    GetRegTyFromPrimTyAarch64(retmech.ptype0));
       MOperator mop = PickLdInsn(memopnd->size_, retmech.ptype0);
       curbb->AppendInsn(cg->BuildInstruction<AArch64Insn>(mop, retopnd, memopnd));
     } else if (opnd0->IsConstImmediate()) {
+      if (IsPrimitivePureScalar(retmech.ptype0)) {
+        retRegType = kRegTyInt;
+      } else {
+        retRegType = kRegTyFloat;
+      }
       ImmOperand *immopnd = static_cast<ImmOperand *>(opnd0);
       retopnd = GetOrCreatePhysicalRegisterOperand(retmech.reg0, GetPrimTypeBitSize(retmech.ptype0),
                                                    GetRegTyFromPrimTyAarch64(retmech.ptype0));
