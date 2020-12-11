@@ -850,18 +850,27 @@ void Riscv64Peep::ReplaceInstruction() {
         continue;
       }
       Operand *opndOfOrr = nullptr;
-      Operand *opnd1OfMov = nullptr;
-      Operand *opnd2OfMov = nullptr;
       ImmOperand *immOpnd = nullptr;
       Riscv64RegOperand *reg1 = nullptr;
       Riscv64RegOperand *reg2 = nullptr;
-      MOperator thisMop = insn->GetMachineOpcode();
-      switch (thisMop) {
-        case MOP_xiorrri13: {  // opnd1 is reg64 and opnd3 is immediate.
+      switch (insn->GetMachineOpcode()) {
+        case MOP_xiorrri13: {  // opnd2 is immediate.
           opndOfOrr = insn->opnds[2];
           CG_ASSERT(opndOfOrr->IsIntImmediate(), "expects immediate operand");
           immOpnd = static_cast<ImmOperand *>(opndOfOrr);
           if (0 == immOpnd->GetValue()) {
+            reg1 = static_cast<Riscv64RegOperand *>(insn->opnds[0]);
+            reg2 = static_cast<Riscv64RegOperand *>(insn->opnds[1]);
+            bb->ReplaceInsn(insn, cg->BuildInstruction<Riscv64Insn>(MOperator(MOP_xmovrr), reg1, reg2));
+          }
+          break;
+        }
+        case MOP_xiorrrr: {  // either opnd1 or opnd2 is r0
+          if (static_cast<RegOperand *>(insn->opnds[1])->GetRegisterNumber() == R0) {
+            reg1 = static_cast<Riscv64RegOperand *>(insn->opnds[0]);
+            reg2 = static_cast<Riscv64RegOperand *>(insn->opnds[2]);
+            bb->ReplaceInsn(insn, cg->BuildInstruction<Riscv64Insn>(MOperator(MOP_xmovrr), reg1, reg2));
+          } else if (static_cast<RegOperand *>(insn->opnds[2])->GetRegisterNumber() == R0) {
             reg1 = static_cast<Riscv64RegOperand *>(insn->opnds[0]);
             reg2 = static_cast<Riscv64RegOperand *>(insn->opnds[1]);
             bb->ReplaceInsn(insn, cg->BuildInstruction<Riscv64Insn>(MOperator(MOP_xmovrr), reg1, reg2));
