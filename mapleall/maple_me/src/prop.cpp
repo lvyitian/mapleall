@@ -157,9 +157,66 @@ bool Prop::IvarIsFinalField(const IvarMeExpr *ivarmeexpr) {
   return attrs.GetAttr(FLDATTR_final);
 }
 
-// check if the expression x can be legally forward-substitute the variable that
-// it was assigned to; x is from bb
-bool Prop::Propagatable(MeExpr *x, BB *frombb, bool atParm) {
+// if x contains operations that has no accurate inverse, return -1; also return
+// -1 if x contains any scalar other than x that is not current version;
+// otherwise, the return value is the number of occurrences of scalar.
+int32 Prop::InvertibleOccurrences(ScalarMeExpr *scalar, MeExpr *x) {
+  switch (x->meOp) {
+  case kMeOpConst: return 0;
+  case kMeOpReg: {
+    RegMeExpr *regreadx = static_cast<RegMeExpr *>(scalar);
+    if (regreadx->regIdx < 0) {
+      return -1;
+    }
+  }
+    // fall thru
+  case kMeOpVar:
+    if (x == scalar) {
+      return 1;
+    }
+    if (Propagatable(x, nullptr, false, false, nullptr) == kPropYes) {
+      return 0;
+    }
+    return -1;
+  case kMeOpOp:
+    if (!IsPrimitiveInteger(x->primType)) {
+      return -1;
+    }
+    if (x->op == OP_neg) {
+      return InvertibleOccurrences(scalar, x->GetOpnd(0));
+    }
+    if (x->op == OP_add || x->op == OP_sub) {
+      int32 invertibleOccs0 = InvertibleOccurrences(scalar, x->GetOpnd(0));
+      if (invertibleOccs0 == -1) {
+        return -1;
+      }
+      int32 invertibleOccs1 = InvertibleOccurrences(scalar, x->GetOpnd(1));
+      if (invertibleOccs1 == -1 || (invertibleOccs0 + invertibleOccs1 > 1)) {
+        return -1;
+      }
+      return invertibleOccs0 + invertibleOccs1;
+    }
+    // fall thru
+  default: return -1;
+  }
+}
+
+// return true if scalar can be expressed as a function of current version cur
+bool Prop::IsFunctionOfCurVersion(ScalarMeExpr *scalar, ScalarMeExpr *cur) {
+  if (cur == nullptr || cur->defBy != kDefByStmt) {
+    return false;
+  }
+  AssignMeStmt *ass = cur->def.defStmt;
+  return InvertibleOccurrences(scalar, ass->rhs) == 1;
+}
+
+// check if the expression x can legally forward-substitute the variable that it
+// was assigned to; x is from bb; if checkInverse is true and there is live range
+// overlap for a scalar within x, do the additional check of whether the scalar's
+// previous version can be expressed in terms of its current version.
+// propagatingScalar is used only if checkInverse is true; it gives the
+// propagating scalar so we can avoid doing the checkInverse checking for it.
+Propagatability Prop::Propagatable(MeExpr *x, BB *frombb, bool atParm, bool checkInverse, ScalarMeExpr *propagatingScalar) {
   MeExprOp meOp = x->meOp;
   switch (meOp) {
     case kMeOpAddrof:
@@ -169,101 +226,284 @@ bool Prop::Propagatable(MeExpr *x, BB *frombb, bool atParm) {
     case kMeOpConststr:
     case kMeOpConststr16:
     case kMeOpSizeoftype:
-      return true;
+      return kPropYes;
     case kMeOpGcmalloc:
-      return false;
+      return kPropNo;
     case kMeOpNary: {
       if (x->op == OP_intrinsicop || x->op == OP_intrinsicopwithtype) {
-        return false;
+        return kPropNo;
       }
       NaryMeExpr *narymeexpr = static_cast<NaryMeExpr *>(x);
+      Propagatability propmin = kPropYes;
       for (uint32 i = 0; i < narymeexpr->numOpnds; i++) {
-        if (!Propagatable(narymeexpr->GetOpnd(i), frombb, false)) {
-          return false;
+        Propagatability prop = Propagatable(narymeexpr->GetOpnd(i), frombb, false, checkInverse, propagatingScalar);
+        if (prop == kPropNo) {
+          return kPropNo;
         }
+        propmin = std::min(propmin, prop);
       }
-      return true;
+      return propmin;
     }
     case kMeOpReg: {
       RegMeExpr *regreadx = static_cast<RegMeExpr *>(x);
       if (regreadx->regIdx < 0) {
-        return false;
+        return kPropNo;
       } else {
         // get the current definition version
         vector<MeExpr *> regreadxVec;
         CollectSubVarMeExpr(x, regreadxVec);
-        return IsVersionConsistent(regreadxVec, vst_live_stack_vec);
+        if (IsVersionConsistent(regreadxVec, vst_live_stack_vec)) {
+          return kPropYes;
+        } else if (checkInverse && regreadx->ost != propagatingScalar->ost) {
+          MapleStack<MeExpr *> *pstack = vst_live_stack_vec[regreadx->ost->index.idx];
+          return IsFunctionOfCurVersion(regreadx, static_cast<ScalarMeExpr *>(pstack->top())) ? kPropOnlyWithInverse : kPropNo;
+        } else {
+          return kPropNo;
+        }
       }
     }
     case kMeOpVar: {
       VarMeExpr *varmeexpr = static_cast<VarMeExpr *>(x);
       if (varmeexpr->IsVolatile(ssaTab)) {
-        return false;
+        return kPropNo;
       }
       MIRSymbol *st = varmeexpr->ost->GetMIRSymbol();
       if (st->wpofakeParm || st->wpofakeRet) {
-        return false;
+        return kPropNo;
       }
       if (!propagate_global_ref && st->IsGlobal() && !st->IsFinal() && !st->IgnoreRC() && !st->IsLiteralPtr()) {
-        return false;
+        return kPropNo;
       }
       if (LocalToDifferentPU(st->stIdx, frombb)) {
-        return false;
+        return kPropNo;
       }
       // get the current definition version
       vector<MeExpr *> varmeexprVec;
       CollectSubVarMeExpr(x, varmeexprVec);
-      return IsVersionConsistent(varmeexprVec, vst_live_stack_vec);
+      if (IsVersionConsistent(varmeexprVec, vst_live_stack_vec)) {
+        return kPropYes;
+      } else if (checkInverse && varmeexpr->ost != propagatingScalar->ost &&
+                 varmeexpr->GetType()->typeKind != kTypeBitField) {
+        MapleStack<MeExpr *> *pstack = vst_live_stack_vec[varmeexpr->ost->index.idx];
+        return IsFunctionOfCurVersion(varmeexpr, static_cast<ScalarMeExpr *>(pstack->top())) ? kPropOnlyWithInverse : kPropNo;
+      } else {
+        return kPropNo;
+      }
     }
     case kMeOpIvar: {
       IvarMeExpr *ivarmeexpr = static_cast<IvarMeExpr *>(x);
       if (!IvarIsFinalField(ivarmeexpr) && !GlobalTables::GetTypeTable().typeTable[ivarmeexpr->tyIdx.GetIdx()]->PointsToConstString()) {
         if ((!propagate_iload_ref || (propagate_iload_ref_nonparm && atParm)) && ivarmeexpr->primType == PTY_ref) {
-          return false;
+          return kPropNo;
         }
       }
       if (frombb->InTryBlock() && !curbb->InTryBlock()) {
-        return false;
-      }
-      if (!Propagatable(ivarmeexpr->base, frombb, false)) {
-        return false;
+        return kPropNo;
       }
       if (ivarmeexpr->IsVolatile() || ivarmeexpr->IsRCWeak()) {
-        return false;
+        return kPropNo;
+      }
+      Propagatability prop0 = Propagatable(ivarmeexpr->base, frombb, false, false, nullptr);
+      if (prop0 == kPropNo) {
+        return kPropNo;
       }
       // get the current definition version
       vector<MeExpr *> varmeexprVec;
       CollectSubVarMeExpr(x, varmeexprVec);
-      return IsVersionConsistent(varmeexprVec, vst_live_stack_vec);
+      return IsVersionConsistent(varmeexprVec, vst_live_stack_vec) ? prop0 : kPropNo;
     }
     case kMeOpOp: {
       if (kOpcodeInfo.NotPure(x->op)) {
-        return false;
+        return kPropNo;
       }
       if (x->op == OP_gcmallocjarray) {
-        return false;
+        return kPropNo;
       }
       OpMeExpr *meopexpr = static_cast<OpMeExpr *>(x);
       MeExpr *opnd0 = meopexpr->GetOpnd(0);
-      if (!Propagatable(opnd0, frombb, false)) {
-        return false;
+      Propagatability prop0 = Propagatable(opnd0, frombb, false, checkInverse, propagatingScalar);
+      if (prop0 == kPropNo) {
+        return kPropNo;
       }
       MeExpr *opnd1 = meopexpr->GetOpnd(1);
       if (!opnd1) {
-        return true;
+        return prop0;
       }
-      if (!Propagatable(opnd1, frombb, false)) {
-        return false;
+      Propagatability prop1 = Propagatable(opnd1, frombb, false, checkInverse, propagatingScalar);
+      if (prop1 == kPropNo) {
+        return kPropNo;
       }
+      prop1 = std::min(prop0, prop1);
       MeExpr *opnd2 = meopexpr->GetOpnd(2);
       if (!opnd2) {
-        return true;
+        return prop1;
       }
-      return Propagatable(opnd2, frombb, false);
+      Propagatability prop2 = Propagatable(opnd2, frombb, false, checkInverse, propagatingScalar);
+      return std::min(prop1, prop2);
     }
     default:
       CHECK_FATAL(false, "MeProp::Propagatable() NYI");
-      return false;
+      return kPropNo;
+  }
+}
+
+// Expression x contains v; form and return the inverse of this expression based
+// on the current version of v by descending x; formingExp is the tree being
+// constructed during the descent; x must contain one and only one occurrence of
+// v; work is done when it reaches the v node inside x.
+MeExpr *Prop::FormInverse(ScalarMeExpr *v, MeExpr *x, MeExpr *formingExp) {
+  MeExpr *newx = nullptr;
+  switch (x->meOp) {
+  case kMeOpVar:
+  case kMeOpReg:
+    if (x == v) {
+      return formingExp;
+    };
+    return x;
+  case kMeOpOp: {
+    OpMeExpr *opx = static_cast<OpMeExpr *>(x);
+    if (opx->op == OP_neg) {  // negate formingExp and recurse down
+      OpMeExpr negx(-1, OP_neg, opx->primType, 1);
+      negx.SetOpnd(formingExp, 0);
+      newx = irMap->HashMeExpr(&negx);
+      return FormInverse(v, opx->GetOpnd(0), newx);
+    }
+    if (opx->op == OP_add) {  // 2 patterns depending on which side contains v
+      OpMeExpr subx(-1, OP_sub, opx->primType, 2);
+      subx.SetOpnd(formingExp, 0);
+      if (InvertibleOccurrences(v, opx->GetOpnd(0)) == 0) {
+        // ( ..i2.. ) = y + ( ..i1.. ) becomes  ( ..i2.. ) - y = ( ..i1.. )
+        // form formingExp - opx->GetOpnd(0)
+        subx.SetOpnd(opx->GetOpnd(0), 1);
+        newx = irMap->HashMeExpr(&subx);
+        return FormInverse(v, opx->GetOpnd(1), newx);
+      } else {
+        // ( ..i2.. ) = ( ..i1.. ) + y  becomes  ( ..i2.. ) - y = ( ..i1.. )
+        // form formingExp - opx->GetOpnd(1)
+        subx.SetOpnd(opx->GetOpnd(1), 1);
+        newx = irMap->HashMeExpr(&subx);
+        return FormInverse(v, opx->GetOpnd(0), newx);
+      }
+    }
+    if (opx->op == OP_sub) {
+      if (InvertibleOccurrences(v, opx->GetOpnd(0)) == 0) {
+        // ( ..i2.. ) = y - ( ..i1.. ) becomes y - ( ..i2.. ) = ( ..i1.. )
+        // form opx->GetOpnd(0) - formingExp
+        OpMeExpr subx(-1, OP_sub, opx->primType, 2);
+        subx.SetOpnd(opx->GetOpnd(0), 0);
+        subx.SetOpnd(formingExp, 1);
+        newx = irMap->HashMeExpr(&subx);
+        return FormInverse(v, opx->GetOpnd(1), newx);
+      } else {
+        // ( ..i2.. ) = ( ..i1.. ) - y  becomes  ( ..i2.. ) + y = ( ..i1.. )
+        // form formingExp + opx->GetOpnd(1)
+        OpMeExpr addx(-1, OP_add, opx->primType, 2);
+        addx.SetOpnd(formingExp, 0);
+        addx.SetOpnd(opx->GetOpnd(1), 1);
+        newx = irMap->HashMeExpr(&addx);
+        return FormInverse(v, opx->GetOpnd(0), newx);
+      }
+    }
+    // fall-thru
+  }
+  default: CHECK_FATAL(false, "FormInverse: should not see these nodes");
+  }
+}
+
+// recurse down the expression tree x; at the scalar whose version is different
+// from the current version, replace it by an expression corresponding to the
+// inverse of how its current version is computed from it; if there is no change,
+// return NULL; if there is change, rehash on the way back
+MeExpr *Prop::RehashUsingInverse(MeExpr *x) {
+  switch (x->meOp) {
+  case kMeOpVar:
+  case kMeOpReg: {
+    ScalarMeExpr *scalar = static_cast<ScalarMeExpr *>(x);
+    MapleStack<MeExpr *> *pstack = vst_live_stack_vec[scalar->ost->index.idx];
+    if (pstack == nullptr || pstack->top() == scalar) {
+      return nullptr;
+    }
+    ScalarMeExpr *curScalar = static_cast<ScalarMeExpr *>(pstack->top());
+    return FormInverse(scalar, curScalar->def.defStmt->rhs, curScalar);
+  }
+  case kMeOpIvar: {
+    IvarMeExpr *ivarx = static_cast<IvarMeExpr *>(x);
+    MeExpr *result = RehashUsingInverse(ivarx->base);
+    if (result != nullptr) {
+      IvarMeExpr newivarx(-1, ivarx->primType, ivarx->tyIdx, ivarx->fieldID);
+      newivarx.base = result;
+      newivarx.mu = ivarx->mu;
+      return irMap->HashMeExpr(&newivarx);
+    }
+    return nullptr;
+  }
+  case kMeOpOp: {
+    OpMeExpr *opx = static_cast<OpMeExpr *>(x);
+    MeExpr *res0 = RehashUsingInverse(opx->GetOpnd(0));
+    MeExpr *res1 = nullptr;
+    MeExpr *res2 = nullptr;
+    if (opx->numOpnds > 1) {
+      res1 = RehashUsingInverse(opx->GetOpnd(1));
+      if (opx->numOpnds > 2) {
+        res2 = RehashUsingInverse(opx->GetOpnd(2));
+      }
+    }
+    if (res0 == nullptr && res1 == nullptr && res2 == nullptr) {
+      return nullptr;
+    }
+    OpMeExpr newopx(-1, opx->op, opx->primType, opx->numOpnds);
+    newopx.opndType = opx->opndType;
+    newopx.bitsOffset = opx->bitsOffset;
+    newopx.bitsSize = opx->bitsSize;
+    newopx.tyIdx = opx->tyIdx;
+    newopx.fieldID = opx->fieldID;
+    if (res0) {
+      newopx.SetOpnd(res0, 0);
+    } else {
+      newopx.SetOpnd(opx->GetOpnd(0), 0);
+    }
+    if (opx->numOpnds > 1) {
+      if (res1) {
+        newopx.SetOpnd(res1, 1);
+      } else {
+        newopx.SetOpnd(opx->GetOpnd(1), 1);
+      }
+      if (opx->numOpnds > 2) {
+        if (res1) {
+          newopx.SetOpnd(res2, 2);
+        } else {
+          newopx.SetOpnd(opx->GetOpnd(2), 2);
+        }
+      }
+    }
+    return irMap->HashMeExpr(&newopx);
+  }
+  case kMeOpNary: {
+    NaryMeExpr *naryx = static_cast<NaryMeExpr *>(x);
+    std::vector<MeExpr *> results(naryx->numOpnds, nullptr);
+    bool needRehash = false;
+    uint32 i;
+    for (i = 0; i < naryx->numOpnds; i++) {
+      results[i] = RehashUsingInverse(naryx->GetOpnd(i));
+      if (results[i] != nullptr) {
+        needRehash = true;
+      }
+    }
+    if (!needRehash) {
+      return nullptr;
+    }
+    NaryMeExpr newnaryx(&prop_map_alloc, -1, naryx->op, naryx->primType,
+            naryx->numOpnds, naryx->tyIdx, naryx->intrinsic, naryx->boundCheck);
+    for (i = 0; i < naryx->numOpnds; i++) {
+      if (results[i] != nullptr) {
+        newnaryx.SetOpnd(results[i], i);
+      } else {
+        newnaryx.SetOpnd(naryx->GetOpnd(i), i);
+      }
+    }
+    return irMap->HashMeExpr(&newnaryx);
+  }
+  default: return nullptr;
   }
 }
 
@@ -376,10 +616,17 @@ MeExpr *Prop::PropVar(VarMeExpr *varmeexpr, bool atParm, bool checkPhi) {
     DassignMeStmt *defStmt = dynamic_cast<DassignMeStmt *>(varmeexpr->def.defStmt);
     CHECK_FATAL(defStmt != nullptr, "dynamic cast result is nullptr");
     MeExpr *rhs = defStmt->rhs;
-    if (rhs->GetDepth() <= kPropTreeLevel && Propagatable(rhs, defStmt->bb, atParm)) {
+    if (rhs->GetDepth() > kPropTreeLevel) {
+      return varmeexpr;
+    }
+    Propagatability propagatable = Propagatable(rhs, defStmt->bb, atParm, true, varmeexpr);
+    if (propagatable != kPropNo) {
       // mark propagated for iread ref
       if (rhs->meOp == kMeOpIvar && rhs->primType == PTY_ref) {
         defStmt->propagated = true;
+      }
+      if (propagatable == kPropOnlyWithInverse) {
+        rhs = RehashUsingInverse(rhs);
       }
       return CheckTruncation(varmeexpr, rhs);
     } else {
@@ -417,7 +664,14 @@ MeExpr *Prop::PropReg(RegMeExpr *regmeexpr, bool atParm) {
     }
     ASSERT(defStmt, "");
     MeExpr *rhs = defStmt->rhs;
-    if (rhs->GetDepth() <= kPropTreeLevel && Propagatable(rhs, defStmt->bb, atParm)) {
+    if (rhs->GetDepth() > kPropTreeLevel) {
+      return regmeexpr;
+    }
+    Propagatability propagatable = Propagatable(rhs, defStmt->bb, atParm, true, regmeexpr);
+    if (propagatable != kPropNo) {
+      if (propagatable == kPropOnlyWithInverse) {
+        rhs = RehashUsingInverse(rhs);
+      }
       return rhs;
     }
   }
@@ -430,7 +684,7 @@ MeExpr *Prop::PropIvar(IvarMeExpr *ivarmeexpr) {
     return ivarmeexpr;
   }
   MeExpr *rhs = defStmt->rhs;
-  if (rhs->GetDepth() <= kPropTreeLevel && Propagatable(rhs, defStmt->bb, false)) {
+  if (rhs->GetDepth() <= kPropTreeLevel && Propagatable(rhs, defStmt->bb, false) != kPropNo) {
     return CheckTruncation(ivarmeexpr, rhs);
   }
   return ivarmeexpr;

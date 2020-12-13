@@ -791,6 +791,8 @@ DoloopNode *LfoPreEmitter::EmitLfoDoloop(BB *mewhilebb, LfoBlockNode *curblk, Lf
 WhileStmtNode *LfoPreEmitter::EmitLfoWhile(BB *meWhilebb, LfoBlockNode *curblk) {
   LabelIdx labidx = meWhilebb->bbLabel;
   MeStmt *lastmestmt = meWhilebb->meStmtList.last;
+  CHECK_FATAL(lastmestmt->prev == nullptr || dynamic_cast<AssignMeStmt *>(lastmestmt->prev) == nullptr,
+              "EmitLfoWhile: there are other statements at while header bb");
   MemPool *codeMap = mirFunc->codeMemPool;
   LfoWhileStmtNode *lnoWhilestmt = codeMap->New<LfoWhileStmtNode>(curblk);
   CondGotoMeStmt *condGotostmt = static_cast<CondGotoMeStmt *>(lastmestmt);

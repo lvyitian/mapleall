@@ -34,6 +34,7 @@ class LoopDesc {
   BB *entry = nullptr;
   MapleSet<BBId> loop_bbs;
   BB *exitBB = nullptr;
+  BB *startbodyBB = nullptr;
   uint32 nestdepth = 0;  // the nesting depth
 
   LoopDesc(MapleAllocator *alloc, BB *headbb, BB *tailbb)

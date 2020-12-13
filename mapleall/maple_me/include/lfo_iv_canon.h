@@ -64,6 +64,7 @@ class IVCanon {
   void CanonEntryValues();
   void ComputeTripCount();
   void CanonExitValues();
+  void ReplaceSecondaryIVPhis();
   void PerformIVCanon();
   std::string PhaseName() const { return "ivcanon"; }
 };

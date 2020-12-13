@@ -160,7 +160,7 @@ class OriginalSt {
       return false;
     }
     MIRType *mirtype = GlobalTables::GetTypeTable().GetTypeFromTyIdx(tyIdx);
-    return IsPrimitiveInteger(mirtype->primType);
+    return IsPrimitiveInteger(mirtype->primType) && mirtype->typeKind != kTypeBitField;
   }
 };
 

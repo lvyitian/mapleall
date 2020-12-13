@@ -248,6 +248,26 @@ uint32 GetPrimTypeP2Size(PrimType pty) {
   }
 }
 
+// return the signed version that has the same size
+const PrimType GetSignedPrimType(PrimType pty) {
+  switch (pty) {
+    case PTY_ptr:
+    case PTY_ref:
+    case PTY_a64:
+    case PTY_u64:
+      return PTY_i64;
+    case PTY_u8:
+      return PTY_i8;
+    case PTY_u16:
+      return PTY_i16;
+    case PTY_a32:
+    case PTY_u32:
+      return PTY_i32;
+    default: ;
+  }
+  return pty;
+}
+
 const char *GetPrimTypeName(PrimType ty) {
 #define LOAD_ALGO_PRIMARY_TYPE
   switch (ty) {

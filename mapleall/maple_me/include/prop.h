@@ -25,6 +25,12 @@ namespace maple {
 class IRMap;
 class Dominance;
 
+enum Propagatability {
+  kPropNo,
+  kPropOnlyWithInverse,
+  kPropYes,
+};
+
 class Prop {
  public:
   IRMap *irMap;
@@ -73,7 +79,11 @@ class Prop {
   bool IsVersionConsistent(const std::vector<MeExpr *> &vervec,
                            const MapleVector<MapleStack<MeExpr *> *> &vstLiveStack) const;
   bool IvarIsFinalField(const IvarMeExpr *ivarmeexpr);
-  bool Propagatable(MeExpr *x, BB *frombb, bool atParm);
+  int32 InvertibleOccurrences(ScalarMeExpr *scalar, MeExpr *x);
+  bool IsFunctionOfCurVersion(ScalarMeExpr *scalar, ScalarMeExpr *cur);
+  Propagatability Propagatable(MeExpr *x, BB *frombb, bool atParm, bool checkInverse = false, ScalarMeExpr *propagatingScalar = nullptr);
+  MeExpr *FormInverse(ScalarMeExpr *v, MeExpr *x, MeExpr *formingExp);
+  MeExpr *RehashUsingInverse(MeExpr *x);
   MeExpr *CheckTruncation(MeExpr *lhs, MeExpr *rhs);
   MeExpr *PropReg(RegMeExpr *regmeexpr, bool atParm);
   void TraversalMeStmt(MeStmt *);

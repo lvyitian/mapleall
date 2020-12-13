@@ -49,15 +49,17 @@ void IdentifyLoops::SetLoopEntry(LoopDesc *aloop) {
 }
 
 void IdentifyLoops::SetExitBB(LoopDesc *aloop) {
-  BB *tailBB = aloop->tail;
-  // the exit BB is the succeessor of tailBB that does not belong to the loop
-  if (tailBB->succ.size() != 2) {
+  BB *headBB = aloop->head;
+  // the exit BB is the succeessor of headBB that does not belong to the loop
+  if (headBB->succ.size() != 2) {
     return;
   }
-  if (aloop->loop_bbs.count(tailBB->succ[0]->id) != 1) {
-    aloop->exitBB = tailBB->succ[0];
+  if (aloop->loop_bbs.count(headBB->succ[0]->id) != 1) {
+    aloop->exitBB = headBB->succ[0];
+    aloop->startbodyBB = headBB->succ[1];
   } else {
-    aloop->exitBB = tailBB->succ[1];
+    aloop->exitBB = headBB->succ[1];
+    aloop->startbodyBB = headBB->succ[0];
   }
 }
 

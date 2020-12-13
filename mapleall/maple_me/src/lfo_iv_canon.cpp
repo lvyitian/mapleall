@@ -229,6 +229,7 @@ void IVCanon::ComputeTripCount() {
       OpMeExpr opmeexpr(-1, newop, testexp->primType, 2);
       opmeexpr.SetOpnd(testexp->GetOpnd(1), 0);
       opmeexpr.SetOpnd(testexp->GetOpnd(0), 1);
+      opmeexpr.opndType = testexp->opndType;
       testexp = static_cast<OpMeExpr *>(irMap->HashMeExpr(&opmeexpr));
       condbr->opnd = testexp;
     }
@@ -254,25 +255,27 @@ void IVCanon::ComputeTripCount() {
   // form the trip count expression
   PrimType primTypeUsed = testexp->GetOpnd(0)->primType;
   PrimType divPrimType = primTypeUsed;
-  if (ivdesc->stepValue < 0 && !IsSignedInteger(divPrimType)) {
-    // need to use signed div
-    if (GetPrimTypeSize(divPrimType) == 8) {
-      divPrimType = PTY_i64;
-    } else {
-      divPrimType = PTY_i32;
-    }
+  if (ivdesc->stepValue < 0) {
+    divPrimType = GetSignedPrimType(divPrimType);
   }
-  OpMeExpr subtract(-1, OP_sub, primTypeUsed, 2);
-  OpMeExpr divide(-1, OP_div, divPrimType, 2);
   OpMeExpr add(-1, OP_add, primTypeUsed, 2);
   add.SetOpnd(testexp->GetOpnd(1), 0); // IV bound
   add.SetOpnd(irMap->CreateIntConstMeExpr(ivdesc->stepValue > 0 ? ivdesc->stepValue-1 : ivdesc->stepValue+1, primTypeUsed), 1);
-  subtract.SetOpnd(irMap->HashMeExpr(&add), 0);
-  subtract.SetOpnd(ivdesc->initExpr, 1);
-  divide.SetOpnd(irMap->HashMeExpr(&subtract), 0);
-  divide.SetOpnd(irMap->CreateIntConstMeExpr(ivdesc->stepValue, primTypeUsed),1);
-  tripCount = irMap->HashMeExpr(&divide);
-  tripCount = irMap->SimplifyMeExpr(dynamic_cast<OpMeExpr *>(tripCount));
+  MeExpr *subx = irMap->HashMeExpr(&add);
+  if (!ivdesc->initExpr->IsZero()) {
+    OpMeExpr subtract(-1, OP_sub, primTypeUsed, 2);
+    subtract.SetOpnd(subx, 0);
+    subtract.SetOpnd(ivdesc->initExpr, 1);
+    subx = irMap->HashMeExpr(&subtract);
+  }
+  MeExpr *divx = subx;
+  if (ivdesc->stepValue != 1) {
+    OpMeExpr divide(-1, OP_div, divPrimType, 2);
+    divide.SetOpnd(divx, 0);
+    divide.SetOpnd(irMap->CreateIntConstMeExpr(ivdesc->stepValue, divPrimType),1);
+    divx = irMap->HashMeExpr(&divide);
+  }
+  tripCount = irMap->SimplifyMeExpr(dynamic_cast<OpMeExpr *>(divx));
 }
 
 void IVCanon::CanonEntryValues() {
@@ -295,7 +298,6 @@ void IVCanon::CanonEntryValues() {
 }
 
 void IVCanon::CanonExitValues() {
-  MapleVector<BB *> &bbVec = func->theCFG->bbVec;
   for (IVDesc *ivdesc : ivvec) {
     BB *exitBB = aloop->exitBB;
     // look for the identity assignment
@@ -316,14 +318,90 @@ void IVCanon::CanonExitValues() {
     ScalarMeExpr *rhsvar = static_cast<ScalarMeExpr *>(ass->rhs);
     CHECK_FATAL(rhsvar->ost == ivdesc->ost,
                 "CanonExitValues: assignment at exit node is not identity assignment");
-    OpMeExpr mulmeexpr(-1, OP_mul, ivdesc->primType, 2);
-    mulmeexpr.SetOpnd(tripCount, 0);
-    mulmeexpr.SetOpnd(func->irMap->CreateIntConstMeExpr(ivdesc->stepValue, ivdesc->primType), 1);
-    MeExpr *mulx = func->irMap->HashMeExpr(&mulmeexpr);
+    MeExpr *tripCountUsed = tripCount;
+    if (GetPrimTypeSize(tripCount->primType) != GetPrimTypeSize(ivdesc->primType)) {
+      OpMeExpr cvtx(-1, OP_cvt, ivdesc->primType, 1);
+      cvtx.SetOpnd(tripCount, 0);
+      cvtx.opndType = tripCount->primType;
+      tripCountUsed = func->irMap->HashMeExpr(&cvtx);
+    }
+    MeExpr *mulx = tripCountUsed;
+    if (ivdesc->stepValue != 1) {
+      PrimType primTypeUsed = ivdesc->stepValue < 0 ? GetSignedPrimType(ivdesc->primType) : ivdesc->primType;
+      OpMeExpr mulmeexpr(-1, OP_mul, primTypeUsed, 2);
+      mulmeexpr.SetOpnd(mulx, 0);
+      mulmeexpr.SetOpnd(func->irMap->CreateIntConstMeExpr(ivdesc->stepValue, primTypeUsed), 1);
+      mulx = func->irMap->HashMeExpr(&mulmeexpr);
+    }
+    MeExpr *addx = mulx;
+    if (!ivdesc->initExpr->IsZero()) {
+      OpMeExpr addmeexpr(-1, OP_add, ivdesc->primType, 2);
+      addmeexpr.SetOpnd(ivdesc->initExpr, 0);
+      addmeexpr.SetOpnd(mulx, 1);
+      addx = func->irMap->HashMeExpr(&addmeexpr);
+    }
+    ass->rhs = addx;
+  }
+}
+
+void IVCanon::ReplaceSecondaryIVPhis() {
+  BB *headBB = aloop->head;
+  // first, form the expression of the primary IV minus its init value
+  IVDesc *primaryIVDesc = ivvec[idxPrimaryIV];
+  // find its phi in the phi list at the loop head
+  MapleMap<OStIdx, MePhiNode *>::iterator it = headBB->mePhiList.find(primaryIVDesc->ost->index);
+  MePhiNode *phi = it->second;
+  MeExpr *iterCountExpr = phi->lhs;
+  if (!primaryIVDesc->initExpr->IsZero()) {
+    OpMeExpr submeexpr(-1, OP_sub, primaryIVDesc->primType, 2);
+    submeexpr.SetOpnd(phi->lhs, 0);
+    submeexpr.SetOpnd(primaryIVDesc->initExpr, 1);
+    iterCountExpr = func->irMap->HashMeExpr(&submeexpr);
+  }
+
+  for (uint32 i = 0; i < ivvec.size(); i++) {
+    if (i == idxPrimaryIV) {
+      continue;
+    }
+    IVDesc *ivdesc = ivvec[i];
+    // find its phi in the phi list at the loop head
+    it = headBB->mePhiList.find(ivdesc->ost->index);
+    phi = it->second;
+
+    MeExpr *iterCountUsed = iterCountExpr;
+    if (GetPrimTypeSize(iterCountExpr->primType) != GetPrimTypeSize(ivdesc->primType)) {
+      OpMeExpr cvtx(-1, OP_cvt, ivdesc->primType, 1);
+      cvtx.SetOpnd(iterCountExpr, 0);
+      cvtx.opndType = iterCountExpr->primType;
+      iterCountUsed = func->irMap->HashMeExpr(&cvtx);
+    }
+    MeExpr *mulx = iterCountUsed;
+    if (ivdesc->stepValue != 1) {
+      PrimType primTypeUsed = ivdesc->stepValue < 0 ? GetSignedPrimType(ivdesc->primType) : ivdesc->primType;
+      OpMeExpr mulmeexpr(-1, OP_mul, primTypeUsed, 2);
+      mulmeexpr.SetOpnd(mulx, 0);
+      mulmeexpr.SetOpnd(func->irMap->CreateIntConstMeExpr(ivdesc->stepValue, primTypeUsed), 1);
+      mulx = func->irMap->HashMeExpr(&mulmeexpr);
+    }
     OpMeExpr addmeexpr(-1, OP_add, ivdesc->primType, 2);
-    addmeexpr.SetOpnd(ivdesc->initExpr, 0);
-    addmeexpr.SetOpnd(mulx, 1);
-    ass->rhs = func->irMap->HashMeExpr(&addmeexpr);
+    MeExpr *addx = mulx;
+    if (!ivdesc->initExpr->IsZero()) {
+      addmeexpr.SetOpnd(ivdesc->initExpr, 0);
+      addmeexpr.SetOpnd(mulx, 1);
+      addx = func->irMap->HashMeExpr(&addmeexpr);
+    }
+    AssignMeStmt *ass = func->irMap->CreateAssignMeStmt(phi->lhs, addx, headBB);
+    headBB->PrependMeStmt(ass);
+    // change phi's lhs to new version
+    ScalarMeExpr *newlhs;
+    if (phi->lhs->meOp == kMeOpVar) {
+      newlhs = func->irMap->CreateVarMeExprVersion(ivdesc->ost);
+    } else {
+      newlhs = func->irMap->CreateRegMeExprVersion(ivdesc->ost);
+    }
+    phi->lhs = newlhs;
+    newlhs->defBy = kDefByPhi;
+    newlhs->def.defPhi = phi;
   }
 }
 
@@ -375,6 +453,7 @@ void IVCanon::PerformIVCanon() {
     LogInfo::MapleLogger() << endl;
   }
   CanonExitValues();
+  ReplaceSecondaryIVPhis();
 }
 
 AnalysisResult *DoLfoIVCanon::Run(MeFunction *func, MeFuncResultMgr *m) {

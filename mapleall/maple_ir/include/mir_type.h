@@ -41,6 +41,7 @@ using FieldVector = std::vector<FieldPair>;
 extern bool VerifyPrimType(PrimType pty1, PrimType pty2);  // verify if pty1 and pty2 match
 extern uint32 GetPrimTypeSize(PrimType pty);               // answer in bytes; 0 if unknown
 extern uint32 GetPrimTypeP2Size(PrimType pty);             // answer in bytes in power-of-two.
+extern const PrimType GetSignedPrimType(PrimType pty); // return signed version
 extern const char *GetPrimTypeName(PrimType ty);
 extern const char *GetPrimTypeJavaName(PrimType ty);
 

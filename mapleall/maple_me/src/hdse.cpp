@@ -24,6 +24,8 @@
 #include "opcode_info.h"
 #include "mir_preg.h"
 
+#define JAVALANG (irMap->ssaTab->mirModule.IsJavaModule())
+
 namespace maple {
 
 void HDSE::MarkExprNeeded(MeExpr *meexpr) {
@@ -204,7 +206,7 @@ void HDSE::MarkBBNeeded(BB *bb) {
     CHECK_FATAL((laststmt->IsCondBr() || op == OP_switch || op == OP_igoto || op == OP_retsub || op == OP_throw || cdBb->InTryBlock() ||
             cdBb->WontExit()),
            "HDSE::MarkBBNeeded: control dependent on unexpected statement");
-    if ((laststmt->IsCondBr() || op == OP_goto || op == OP_switch || op == OP_retsub || op == OP_throw) &&
+    if ((laststmt->IsCondBr() || op == OP_goto || op == OP_switch || op == OP_igoto || op == OP_retsub || op == OP_throw) &&
         !laststmt->isLive) {
       laststmt->isLive = true;
       UnaryMeStmt *unarystmt = dynamic_cast<UnaryMeStmt *>(laststmt);
@@ -290,7 +292,7 @@ void HDSE::MarkStmtNeeded(MeStmt *mestmt) {
 }
 
 bool HDSE::ExprNonDeletable(MeExpr *x) {
-  if (kOpcodeInfo.HasSideEffect(x->op)) {
+  if (JAVALANG && kOpcodeInfo.HasSideEffect(x->op)) {
     return true;
   }
   switch (x->meOp) {
