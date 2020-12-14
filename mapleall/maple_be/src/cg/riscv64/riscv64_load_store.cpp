@@ -1376,8 +1376,12 @@ void Riscv64CGFunc::SelectAggIassign(IassignNode *stmt, Operand *lhsaddropnd) {
           insn = cg->BuildInstruction<Riscv64Insn>(MOP_xaddrrr, vreg, base, tmpreg);
           curbb->AppendInsn(insn);
         } else {
-          Insn *insn = cg->BuildInstruction<Riscv64Insn>(MOP_xaddrri12, vreg, base, offOpnd);
-          curbb->AppendInsn(insn);
+          if (val == 0) {
+            vreg = static_cast<RegOperand *>(base);
+          } else {
+            Insn *insn = cg->BuildInstruction<Riscv64Insn>(MOP_xaddrri12, vreg, base, offOpnd);
+            curbb->AppendInsn(insn);
+          }
         }
         opndvec.push_back(vreg);  // param 0
         if (parmCopy) {
@@ -1399,8 +1403,12 @@ void Riscv64CGFunc::SelectAggIassign(IassignNode *stmt, Operand *lhsaddropnd) {
           insn = cg->BuildInstruction<Riscv64Insn>(MOP_xaddrrr, vreg, base, tmpreg);
           curbb->AppendInsn(insn);
         } else {
-          Insn *insn = cg->BuildInstruction<Riscv64Insn>(MOP_xaddrri12, vreg, base, offOpnd);
-          curbb->AppendInsn(insn);
+          if (val == 0) {
+            vreg = static_cast<RegOperand *>(base);
+          } else {
+            Insn *insn = cg->BuildInstruction<Riscv64Insn>(MOP_xaddrri12, vreg, base, offOpnd);
+            curbb->AppendInsn(insn);
+          }
         }
         opndvec.push_back(vreg);  // param 1
         vreg = CreateVirtualRegisterOperand(New_V_Reg(kRegTyInt, 8));
