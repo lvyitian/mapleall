@@ -113,6 +113,11 @@ int main(int argc, char **argv) {
     fpm.RegisterFuncPhases(); /*scan cg_phases.def and create phase object */
     fpm.SetCgPhase(kCgPhaseMainopt);
 
+    // generate debuginfo
+    if (cgoption.WithDwarf()) {
+      themodule->dbgInfo->BuildDebugInfo();
+    }
+
     std::string::size_type lastdot = fileName.find_last_of(".");
     std::string output;
     std::string basename;

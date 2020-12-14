@@ -88,7 +88,7 @@ void MeFuncPhaseManager::RunFuncPhase(MeFunction *func, MeFuncPhase *phase) {
   // 4. run: skip mplme phase except "emit" if no cfg in MeFunction
   AnalysisResult *r = nullptr;
   MePhaseID phaseid = phase->GetPhaseId();
-  if ((phaseid == MeFuncPhase_CFGBUILD) || (func->theCFG->NumBBs() > 0) || (phaseid == MeFuncPhase_EMIT)) {
+  if ((phaseid == MeFuncPhase_CFGBUILD) || (func->theCFG && func->theCFG->NumBBs() > 0) || (phaseid == MeFuncPhase_EMIT)) {
     r = phase->Run(func, &arFuncManager, modResMgr);
   }
 #ifdef DEBUG_TIMER

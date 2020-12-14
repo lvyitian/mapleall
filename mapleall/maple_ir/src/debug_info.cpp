@@ -329,11 +329,17 @@ void DebugInfo::BuildDebugInfo() {
     }
     // function decl
     if (stridx_dieid_map_.find(func->GetNameStridx().GetIdx()) == stridx_dieid_map_.end()) {
-      GetOrCreateFuncDeclDie(func, 0);
+      DBGDie *fdie = GetOrCreateFuncDeclDie(func, 0);
+      if (!func->classTyIdx.GetIdx() && func->body) {
+        cu_->AddSubVec(fdie);
+      }
     }
     // function def
     if (funcdef_stridx_dieid_map_.find(func->GetNameStridx().GetIdx()) == funcdef_stridx_dieid_map_.end()) {
-      GetOrCreateFuncDefDie(func, 0);
+      DBGDie *fdie = GetOrCreateFuncDefDie(func, 0);
+      if (!func->classTyIdx.GetIdx() && func->body) {
+        cu_->AddSubVec(fdie);
+      }
     }
   }
 
@@ -858,6 +864,9 @@ DBGDie *DebugInfo::CreateStructTypeDie(GStrIdx strIdx, const MIRStructType *stru
     MIRSymbol *symbol = GlobalTables::GetGsymTable().GetSymbolFromStIdx(fp.first.Idx());
     ASSERT(symbol && symbol->sKind == kStFunc, "member function symbol not exist");
     MIRFunction *func = symbol->value.mirFunc;
+    if (!func->body) {
+      continue;
+    }
     ASSERT(func, "member function not exist");
     DBGDie *fdie = GetOrCreateFuncDefDie(func, 0);
     cu_->AddSubVec(fdie);
