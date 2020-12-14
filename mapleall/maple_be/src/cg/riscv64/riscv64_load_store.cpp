@@ -1349,10 +1349,68 @@ void Riscv64CGFunc::SelectAggIassign(IassignNode *stmt, Operand *lhsaddropnd) {
       }
 
       alignused = std::min(lhsalign, rhsalign);
-      Operand *rhsmemopnd = nullptr;
-      Operand *lhsmemopnd = nullptr;
+      MemOperand *rhsmemopnd = nullptr;
+      MemOperand *lhsmemopnd = nullptr;
       bool parmCopy = IsParamStructCopy(rhssymbol);
-      for (uint32 i = 0; i < (lhssize / alignused); i++) {
+      uint32 numElems = lhssize / alignused;
+      if (numElems > 4) {
+        vector<Operand *> opndvec;
+        RegOperand *vreg;
+        vreg = CreateVirtualRegisterOperand(New_V_Reg(kRegTyInt, 8));
+        opndvec.push_back(vreg);  // result
+        Riscv64OfstOperand *offopnd = GetOrCreateOfstOpnd(lhsoffset, 32);
+        lhsmemopnd = GetOrCreateMemOpnd(alignused * 8,
+                         static_cast<Riscv64RegOperand *>(lhsaddropnd), nullptr, offopnd,
+                         static_cast<MIRSymbol *>(nullptr));
+        vreg = CreateVirtualRegisterOperand(New_V_Reg(kRegTyInt, 8));
+        ImmOperand *offOpnd = static_cast<ImmOperand *>(lhsmemopnd->GetOffsetOperand());
+        int64 val = offOpnd->GetValue();
+        Operand *base = lhsmemopnd->GetBaseRegister();
+        if (val > 0x7ff) {
+          Insn *insn;
+          RegOperand *tmpreg;
+          tmpreg = CreateVirtualRegisterOperand(New_V_Reg(kRegTyInt, 8));
+          ImmOperand *newImmOpnd = CreateImmOperand(val, 64, false);
+          insn = cg->BuildInstruction<Riscv64Insn>(MOP_xmovri64, tmpreg, newImmOpnd);
+          curbb->AppendInsn(insn);
+          insn = cg->BuildInstruction<Riscv64Insn>(MOP_xaddrrr, vreg, base, tmpreg);
+          curbb->AppendInsn(insn);
+        } else {
+          Insn *insn = cg->BuildInstruction<Riscv64Insn>(MOP_xaddrri12, vreg, base, offOpnd);
+          curbb->AppendInsn(insn);
+        }
+        opndvec.push_back(vreg);  // param 0
+        if (parmCopy) {
+          rhsmemopnd = LoadStructCopyBase(rhssymbol, rhsoffset, alignused * 8);
+        } else {
+          rhsmemopnd = GetOrCreateMemOpnd(rhssymbol, rhsoffset, alignused * 8);
+        }
+        vreg = CreateVirtualRegisterOperand(New_V_Reg(kRegTyInt, 8));
+        offOpnd = static_cast<ImmOperand *>(rhsmemopnd->GetOffsetOperand());
+        val = offOpnd->GetValue();
+        base = rhsmemopnd->GetBaseRegister();
+        if (val > 0x7ff) {
+          Insn *insn;
+          RegOperand *tmpreg;
+          tmpreg = CreateVirtualRegisterOperand(New_V_Reg(kRegTyInt, 8));
+          ImmOperand *newImmOpnd = CreateImmOperand(val, 64, false);
+          insn = cg->BuildInstruction<Riscv64Insn>(MOP_xmovri64, tmpreg, newImmOpnd);
+          curbb->AppendInsn(insn);
+          insn = cg->BuildInstruction<Riscv64Insn>(MOP_xaddrrr, vreg, base, tmpreg);
+          curbb->AppendInsn(insn);
+        } else {
+          Insn *insn = cg->BuildInstruction<Riscv64Insn>(MOP_xaddrri12, vreg, base, offOpnd);
+          curbb->AppendInsn(insn);
+        }
+        opndvec.push_back(vreg);  // param 1
+        vreg = CreateVirtualRegisterOperand(New_V_Reg(kRegTyInt, 8));
+        Riscv64ImmOperand *sizeOpnd = CreateImmOperand(numElems * alignused, 64, false);
+        curbb->AppendInsn(cg->BuildInstruction<Riscv64Insn>(MOP_xmovri64, vreg, sizeOpnd));
+        opndvec.push_back(vreg);  // param 2
+        SelectLibCall("memcpy", opndvec, PTY_a64, PTY_a64);
+        return;
+      }
+      for (uint32 i = 0; i < numElems; i++) {
         // generate the load
         if (parmCopy) {
           rhsmemopnd = LoadStructCopyBase(rhssymbol, rhsoffset + i * alignused, alignused * 8);
