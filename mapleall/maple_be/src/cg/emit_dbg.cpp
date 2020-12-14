@@ -21,6 +21,12 @@
 #include "global_tables.h"
 #include "mir_symbol.h"
 
+#if TARGRISCV64
+#define CMNT "\t# "
+#else
+#define CMNT "\t// "
+#endif
+
 namespace maple {
 const char *get_DW_TAG_name(unsigned n);
 const char *get_DW_FORM_name(unsigned n);
@@ -131,9 +137,9 @@ void Emitter::EmitDIFooter() {
 }
 
 void Emitter::EmitDIHeaderFileInfo() {
-  Emit("// dummy header file 1\n");
-  Emit("// dummy header file 2\n");
-  Emit("// dummy header file 3\n");
+  Emit(CMNT "dummy header file 1\n");
+  Emit(CMNT "dummy header file 2\n");
+  Emit(CMNT "dummy header file 3\n");
 }
 
 void Emitter::AddLabelDieToLabelIdxMapping(DBGDie *lbldie, LabelIdx lblidx) {
@@ -239,7 +245,7 @@ void Emitter::EmitDIAttrValue(DBGDie *die, DBGDieAttr *attr, dw_at attrName, dw_
     case DW_FORM_string: {
       const string &name = GlobalTables::GetStrTable().GetStringFromStrIdx(attr->val_.id);
       Emit("\"").Emit(name).Emit("\"");
-      Emit("\t// len = ");
+      Emit(CMNT "len = ");
       EmitDecUnsigned(name.length() + 1);
     } break;
     case DW_FORM_strp:
@@ -348,7 +354,7 @@ void Emitter::EmitDIAttrValue(DBGDie *die, DBGDieAttr *attr, dw_at attrName, dw_
         } else {
           // unknown type, missing mplt
           EmitHexUnsigned(di->dummytypedie_->Offset);
-          Emit("\t// Warning: dummy type used");
+          Emit(CMNT "Warning: dummy type used");
         }
       } else if (attrName == DW_AT_specification || attrName == DW_AT_sibling) {
         DBGDie *die = di->GetDie(attr->val_.u);
@@ -414,7 +420,7 @@ void Emitter::EmitDIDebugInfoSection(DebugInfo *mirdi) {
   // $ 7.5.1.1
   Emit("\t.4byte\t");
   EmitHexUnsigned(mirdi->debug_info_length_);
-  Emit(" // section length\n");
+  Emit(CMNT "section length\n");
   // DWARF version. uhalf.
   Emit("\t.2byte\t0x" XSTR(DWARF_VERSION) "\n");  // 4 for version 4.
   // debug_abbrev_offset. 4byte for 32-bit, 8byte for 64-bit
@@ -442,7 +448,7 @@ void Emitter::EmitDIDebugInfoSection(DebugInfo *mirdi) {
     emitter->Emit("\t.uleb128 ");
     emitter->EmitHexUnsigned(die->abbrevid_);
     if (verbose) {
-      emitter->Emit("\t// ");
+      emitter->Emit(CMNT);
       CHECK_FATAL(maple::get_DW_TAG_name(die->tag_) != nullptr,
              "get_DW_TAG_name(die->tag_) return null in Emitter::EmitDIDebugInfoSection");
       emitter->Emit(maple::get_DW_TAG_name(die->tag_));
@@ -471,7 +477,7 @@ void Emitter::EmitDIDebugInfoSection(DebugInfo *mirdi) {
       emitter->EmitDIFormSpecification(unsigned(apl[i + 1]));
       emitter->EmitDIAttrValue(die, attr, unsigned(apl[i]), diae->tag_, mirdi);
       if (verbose) {
-        emitter->Emit("\t// ");
+        emitter->Emit(CMNT);
         emitter->Emit(maple::get_DW_AT_name(unsigned(apl[i])));
         emitter->Emit(" : ");
         emitter->Emit(maple::get_DW_FORM_name(unsigned(apl[i + 1])));
@@ -508,7 +514,7 @@ void Emitter::EmitDIDebugAbbrevSection(DebugInfo *mirdi) {
     Emit("\t.uleb128 ");
     EmitHexUnsigned(diae->abbrevid_);
     if (verbose) {
-      Emit("\t// Abbrev Entry ID");
+      Emit(CMNT "Abbrev Entry ID");
     }
     Emit("\n");
     // TAG
@@ -517,7 +523,7 @@ void Emitter::EmitDIDebugAbbrevSection(DebugInfo *mirdi) {
     CHECK_FATAL(maple::get_DW_TAG_name(diae->tag_) != nullptr,
            "get_DW_TAG_name return null in Emitter::EmitDIDebugAbbrevSection");
     if (verbose) {
-      Emit("\t// ");
+      Emit(CMNT);
       Emit(maple::get_DW_TAG_name(diae->tag_));
     }
     Emit("\n");
@@ -527,7 +533,7 @@ void Emitter::EmitDIDebugAbbrevSection(DebugInfo *mirdi) {
     Emit("\t.byte    ");
     EmitHexUnsigned(diae->withchildren_);
     if (verbose) {
-      Emit(diae->withchildren_ ? "\t// DW_CHILDREN_yes" : "\t// DW_CHILDREN_no");
+      Emit(diae->withchildren_ ? CMNT "DW_CHILDREN_yes" : CMNT "DW_CHILDREN_no");
     }
     Emit("\n");
 
@@ -538,7 +544,7 @@ void Emitter::EmitDIDebugAbbrevSection(DebugInfo *mirdi) {
       CHECK_FATAL(maple::get_DW_AT_name(unsigned(apl[i])) != nullptr,
              "get_DW_AT_name return null in Emitter::EmitDIDebugAbbrevSection");
       if (verbose) {
-        Emit("\t// ");
+        Emit(CMNT);
         Emit(maple::get_DW_AT_name(unsigned(apl[i])));
       }
       Emit("\n");
@@ -547,7 +553,7 @@ void Emitter::EmitDIDebugAbbrevSection(DebugInfo *mirdi) {
       CHECK_FATAL(maple::get_DW_FORM_name(unsigned(apl[i + 1])) != nullptr,
              "get_DW_FORM_name return null in Emitter::EmitDIDebugAbbrevSection");
       if (verbose) {
-        Emit("\t// ");
+        Emit(CMNT);
         Emit(maple::get_DW_FORM_name(unsigned(apl[i + 1])));
       }
       Emit("\n");
