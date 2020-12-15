@@ -4674,6 +4674,11 @@ void Riscv64CGFunc::SelectLibCall(const char *name, vector<Operand *> &opndvec, 
   }
   curbb->AppendInsn(callInsn);
   func->SetHasCall();
+  curbb->SetKind(BB::kBBCall);
+  BB *newbb = CreateNewBB();
+  curbb->AppendBB(newbb);
+  curbb = newbb;
+
   // get return value
   Operand *opnd0 = opndvec[0];
   ReturnMechanism retmech(GlobalTables::GetTypeTable().typeTable.at(retprmtype), becommon);
