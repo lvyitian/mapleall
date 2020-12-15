@@ -26,13 +26,13 @@ if [ ! -f ../bin/ast2mpl ]; then
   echo Merged ast2mpl.
 fi
 
-if [ ! -f ./ninja_1.9.0/ninja ]; then
-  mkdir -p ./ninja_1.9.0
-  cd ./ninja_1.9.0 || exit 3
-  wget https://github.com/ninja-build/ninja/releases/download/v1.9.0/ninja-linux.zip
+if [ ! -f ./ninja/ninja ]; then
+  mkdir -p ./ninja
+  cd ./ninja || exit 3
+  wget https://github.com/ninja-build/ninja/releases/download/v1.10.0/ninja-linux.zip
   unzip ninja-linux.zip
   cd ..
-  echo Downloaded ninja 1.9.0.
+  echo Downloaded ninja.
 fi
 
 if [ ! -f ./gn/gn ]; then

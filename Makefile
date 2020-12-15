@@ -19,7 +19,7 @@ BUILD_TYPE := RELEASE
 HOST_ARCH := 64
 MIR_JAVA := 1
 GN := ${MAPLE_ROOT}/tools/gn/gn
-NINJA := ${MAPLE_ROOT}/tools/ninja_1.9.0/ninja
+NINJA := ${MAPLE_ROOT}/tools/ninja/ninja
 
 USE_CLANG_OP := 1
 HOST_ARCH_OP := 64
