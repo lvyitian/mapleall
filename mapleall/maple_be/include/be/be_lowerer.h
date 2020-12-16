@@ -141,8 +141,8 @@ class BELowerer {
   }
 
   DassignNode *SaveReturnValueInLocal(StIdx, uint16);
-  void LowerCallStmt(StmtNode *, StmtNode *&, BlockNode *, MIRType *retty = nullptr);
-  BlockNode *LowerCallAssignedStmt(StmtNode *);
+  void LowerCallStmt(StmtNode *, StmtNode *&, BlockNode *, MIRType *retty = nullptr, bool uselvar = false);
+  BlockNode *LowerCallAssignedStmt(StmtNode *, bool uselvar = false);
   BaseNode *LowerRem(BaseNode *rem, BlockNode *);
   BlockNode *LowerJavaThrow(UnaryStmtNode *);
   BaseNode *LowerJavaDiv(BaseNode *, BinaryNode *, BlockNode *);
@@ -224,7 +224,7 @@ class BELowerer {
     return kfuncNotFound;
   }
 
-  StmtNode *LowerCall(CallNode *, StmtNode *&, BlockNode *, MIRType *retty = nullptr);;
+  StmtNode *LowerCall(CallNode *, StmtNode *&, BlockNode *, MIRType *retty = nullptr, bool uselvar = false);
 
   void CleanupBranches(MIRFunction *func);
 

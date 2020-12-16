@@ -989,7 +989,12 @@ void BELowerer::LowerIassign(IassignNode *iassign, BlockNode *newblk) {
 }
 
 DassignNode *BELowerer::SaveReturnValueInLocal(StIdx stIdx, uint16 fieldID) {
-  MIRSymbol *var = mirModule.CurFunction()->symTab->GetSymbolFromStIdx(stIdx.Idx());
+  MIRSymbol *var;
+  if (stIdx.IsGlobal()) {
+    var = GlobalTables::GetGsymTable().GetSymbolFromStIdx(stIdx.Idx());
+  } else {
+    var = mirModule.CurFunction()->symTab->GetSymbolFromStIdx(stIdx.Idx());
+  }
   CHECK_FATAL(var, "");
   RegreadNode *regread = mirModule.mirBuilder->CreateExprRegread(
     GlobalTables::GetTypeTable().typeTable.at(var->GetTyIdx().GetIdx())->GetPrimType(), -kSregRetval0);
@@ -1052,7 +1057,7 @@ BlockNode *BELowerer::LowerJavaThrow(UnaryStmtNode *throwstmt) {
 }
 
 // to lower call (including icall) and intrinsicall statements
-void BELowerer::LowerCallStmt(StmtNode *stmt, StmtNode *&nextstmt, BlockNode *newblk, MIRType *retty) {
+void BELowerer::LowerCallStmt(StmtNode *stmt, StmtNode *&nextstmt, BlockNode *newblk, MIRType *retty, bool uselvar) {
   StmtNode *newstmt = nullptr;
   if (stmt->op == OP_intrinsiccall) {
     IntrinsiccallNode *intrnnode = static_cast<IntrinsiccallNode *>(stmt);
@@ -1068,13 +1073,13 @@ void BELowerer::LowerCallStmt(StmtNode *stmt, StmtNode *&nextstmt, BlockNode *ne
   }
 
   if (newstmt->op == OP_call || newstmt->op == OP_icall) {
-    newstmt = LowerCall(static_cast<CallNode *>(newstmt), nextstmt, newblk, retty);
+    newstmt = LowerCall(static_cast<CallNode *>(newstmt), nextstmt, newblk, retty, uselvar);
   }
 
   newblk->AddStatement(newstmt);
 }
 
-BlockNode *BELowerer::LowerCallAssignedStmt(StmtNode *stmt) {
+BlockNode *BELowerer::LowerCallAssignedStmt(StmtNode *stmt, bool uselvar) {
   BlockNode *blk = mirModule.CurFuncCodeMemPool()->New<BlockNode>();
   StmtNode *newcall = nullptr;
   CallReturnVector *p2nrets = nullptr;
@@ -1231,7 +1236,12 @@ BlockNode *BELowerer::LowerCallAssignedStmt(StmtNode *stmt) {
     MIRType *rettype = nullptr;
     if (p2nrets->size() == 1) {
       StIdx stIdx = (*p2nrets)[0].first;
-      MIRSymbol *sym = GetCurrentFunc()->symTab->GetSymbolFromStIdx(stIdx.Idx());
+      MIRSymbol *sym;
+      if (stIdx.IsGlobal()) {
+        sym = GlobalTables::GetGsymTable().GetSymbolFromStIdx(stIdx.Idx());
+      } else {
+        sym = GetCurrentFunc()->symTab->GetSymbolFromStIdx(stIdx.Idx());
+      }
       bool sizeIs0 = false;
       if (sym) {
         rettype = GlobalTables::GetTypeTable().GetTypeFromTyIdx(sym->tyIdx);
@@ -1276,8 +1286,8 @@ BlockNode *BELowerer::LowerCallAssignedStmt(StmtNode *stmt) {
     }
 
     CHECK_FATAL(!dstmt || dstmt->GetNext() == nullptr, "");
-    LowerCallStmt(newcall, dstmt, blk, rettype);
-    if (dstmt != nullptr) {
+    LowerCallStmt(newcall, dstmt, blk, rettype, uselvar ? true : false);
+    if (!uselvar && dstmt != nullptr) {
       blk->AddStatement(dstmt);
     }
   }
@@ -1342,10 +1352,39 @@ BlockNode *BELowerer::LowerBlock(BlockNode *block) {
         break;
       }
       case OP_callassigned:
+      case OP_icallassigned: {
+        // pass the addr of lvar if this is a struct call assignment
+        bool lvar = false;
+        if (nextstmt && nextstmt->op == OP_dassign) {
+          BaseNode *bnode = static_cast<DassignNode *>(nextstmt)->GetRhs();
+          DreadNode *dnode = dynamic_cast<DreadNode *>(bnode);
+          if (dnode) {
+            MIRType *dtype = mirModule.CurFunction()->GetLocalOrGlobalSymbol(dnode->stIdx)->GetType();
+            if (dnode->op == OP_dread && dnode->primType == PTY_agg && dtype->GetSize() > 16) {
+              CallNode *callnode = static_cast<CallNode *>(stmt);
+              CallReturnVector *p2nrets = &callnode->returnValues;
+              if (p2nrets->size() == 1) {
+                CallReturnPair pair = (*p2nrets)[0];
+                if (pair.first == dnode->stIdx &&
+                    pair.second.fieldID == dnode->fieldID) {
+                  DassignNode *dnode_stmt = static_cast<DassignNode *>(nextstmt);
+                  if (dnode_stmt->fieldID == 0) {
+                    (*p2nrets)[0].first = dnode_stmt->stIdx;
+                    (*p2nrets)[0].second.fieldID = dnode_stmt->fieldID;
+                    nextstmt = nextstmt->GetNext(); // skip dassign
+                    lvar = true;
+                  }
+                }
+              }
+            }
+          }
+        }
+        newblk->AppendStatementsFromBlock(LowerCallAssignedStmt(stmt, lvar));
+        break;
+      }
       case OP_virtualcallassigned:
       case OP_superclasscallassigned:
       case OP_interfacecallassigned:
-      case OP_icallassigned:
       case OP_intrinsiccallassigned:
       case OP_xintrinsiccallassigned:
       case OP_intrinsiccallwithtypeassigned:
@@ -1434,7 +1473,7 @@ BlockNode *BELowerer::LowerBlock(BlockNode *block) {
   return newblk;
 }
 
-StmtNode *BELowerer::LowerCall(CallNode *callnode, StmtNode *&nextstmt /*in-out*/, BlockNode *newblk, MIRType *retty) {
+StmtNode *BELowerer::LowerCall(CallNode *callnode, StmtNode *&nextstmt /*in-out*/, BlockNode *newblk, MIRType *retty, bool uselvar) {
   // call $foo(constVal u32 128)
   // dassign %jlt (dread agg %%retval)
   bool isarraystore = false;
@@ -1542,7 +1581,7 @@ StmtNode *BELowerer::LowerCall(CallNode *callnode, StmtNode *&nextstmt /*in-out*
     return callnode;
   }
 
-  if (retty && becommon.type_size_table[retty->tyIdx.GetIdx()] <= 16) {
+  if (!uselvar && retty && becommon.type_size_table[retty->tyIdx.GetIdx()] <= 16) {
       // return structure fitting in one or two regs.
       return callnode;
   }
