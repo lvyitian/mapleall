@@ -162,6 +162,10 @@ class OriginalSt {
     MIRType *mirtype = GlobalTables::GetTypeTable().GetTypeFromTyIdx(tyIdx);
     return IsPrimitiveInteger(mirtype->primType) && mirtype->typeKind != kTypeBitField;
   }
+
+  MIRType *GetType() const {
+    return GlobalTables::GetTypeTable().GetTypeFromTyIdx(tyIdx);
+  }
 };
 
 // This Table is for original symobols only. There is no SSA info attached and SSA is built based on this table.

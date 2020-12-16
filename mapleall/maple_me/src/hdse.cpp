@@ -520,6 +520,9 @@ void HDSE::DseProcess() {
     BB *bb = bbVec[i];
     DseProcessBB(bb);
   }
+  if (IsLfo()) {
+    ProcessWhileInfos();
+  }
   while (!worklist.empty()) {
     MeExpr *meexpr = worklist.front();
     worklist.pop_front();

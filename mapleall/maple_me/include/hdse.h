@@ -64,6 +64,8 @@ class HDSE {
   void MarkStmtNeeded(MeStmt *);
   bool ExprNonDeletable(MeExpr *x);
   void DseProcessBB(BB *);
+  virtual bool IsLfo() { return false; }
+  virtual void ProcessWhileInfos() {}
  public:
   void DseProcess();
   void Update();

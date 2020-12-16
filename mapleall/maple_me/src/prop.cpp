@@ -277,6 +277,9 @@ Propagatability Prop::Propagatable(MeExpr *x, BB *frombb, bool atParm, bool chec
       if (LocalToDifferentPU(st->stIdx, frombb)) {
         return kPropNo;
       }
+      if (varmeexpr->defBy == kDefByMustdef && varmeexpr->GetType()->primType == PTY_agg) {
+        return kPropNo;  // keep temps for storing call return values single use
+      }
       // get the current definition version
       vector<MeExpr *> varmeexprVec;
       CollectSubVarMeExpr(x, varmeexprVec);

@@ -24,11 +24,11 @@ class MeFunction;
 
 class LfoWhileInfo {
  public:
-  MIRSymbol *injectedIVSym = nullptr;
-  MeExpr *iv = nullptr;
-  MeExpr *startmeexpr = nullptr;
-  MeExpr *testmeexpr = nullptr;
-  MeExpr *incrmeexpr = nullptr;
+  MIRSymbol *injectedIVSym = nullptr;   // the injected IV
+  OriginalSt *ivOst = nullptr;          // the primary IV
+  MeExpr *initExpr = nullptr;
+  int32 stepValue = 0;
+  MeExpr *tripCount = nullptr;
   bool canConvertDoloop = false;
 };
 

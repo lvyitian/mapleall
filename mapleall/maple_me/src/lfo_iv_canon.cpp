@@ -132,11 +132,30 @@ void IVCanon::FindPrimaryIV() {
           strncmp(ivdesc->ost->GetMIRSymbol()->GetName().c_str(), "injected.iv", 11) == 0) {
         injected = true;
       }
-      if (!injected) {
-        idxPrimaryIV = i;
-        return;
+      if (injected) {
+        if (idxPrimaryIV == -1) {
+          idxPrimaryIV = i;
+        }
+      } else {
+        // verify its increment is the last statement in loop body
+        BB *tailbb = aloop->tail;
+        MeStmt *laststmt = tailbb->meStmtList.last->prev; // skipping the branch stmt
+        if (laststmt == nullptr || laststmt->op != OP_dassign) {
+          continue;
+        }
+        DassignMeStmt *lastdass = static_cast<DassignMeStmt *>(laststmt);
+        if (strncmp(lastdass->lhs->ost->GetMIRSymbol()->GetName().c_str(), "injected.iv", 11) == 0) {
+          laststmt = laststmt->prev;
+          if (laststmt == nullptr || laststmt->op != OP_dassign) {
+            continue;
+          }
+          lastdass = static_cast<DassignMeStmt *>(laststmt);
+        }
+        if (lastdass->lhs->ost == ivdesc->ost) {
+          idxPrimaryIV = i;
+          return;
+        }
       }
-      idxPrimaryIV = i;
     }
   }
 }
@@ -279,11 +298,14 @@ void IVCanon::ComputeTripCount() {
 }
 
 void IVCanon::CanonEntryValues() {
-  for (IVDesc *ivdesc : ivvec) {
+  for (uint32 i = 0; i < ivvec.size(); i++) {
+    IVDesc *ivdesc = ivvec[i];
     if (ivdesc->initExpr->meOp == kMeOpVar || ivdesc->initExpr->meOp == kMeOpReg) {
 #if 1 // create temp var
       std::string initName = ivdesc->ost->GetMIRSymbol()->GetName();
       initName.append(std::to_string(ivdesc->ost->fieldID));
+      initName.append(std::to_string(loopID));
+      initName.append(std::to_string(i));
       initName.append(".init");
       GStrIdx strIdx = GlobalTables::GetStrTable().GetOrCreateStrIdxFromName(initName);
       ScalarMeExpr *scalarmeexpr = func->irMap->CreateNewVar(strIdx, ivdesc->primType, false);
@@ -444,7 +466,7 @@ void IVCanon::PerformIVCanon() {
   }
   CanonEntryValues();
   ComputeTripCount();
-  if (tripCount == 0) {
+  if (tripCount == nullptr) {
     return;
   }
   if (DEBUGFUNC(func)) {
@@ -476,7 +498,7 @@ AnalysisResult *DoLfoIVCanon::Run(MeFunction *func, MeFuncResultMgr *m) {
     if (headbb->bbLabel == 0) {
       continue;
     }
-    if (aloop->exitBB == nullptr) {
+    if (aloop->exitBB == nullptr || aloop->entry == nullptr) {
       continue;
     }
     MapleMap<LabelIdx, LfoWhileInfo*>::iterator it = lfoFunc->label2WhileInfo.find(headbb->bbLabel);
@@ -488,9 +510,17 @@ AnalysisResult *DoLfoIVCanon::Run(MeFunction *func, MeFuncResultMgr *m) {
       continue;
     }
     MemPool *ivmp = mempoolctrler.NewMemPool(PhaseName().c_str());
-    IVCanon ivCanon(ivmp, func, dom, aloop, whileInfo);
-    if (ivCanon.aloop->entry != nullptr) {
-      ivCanon.PerformIVCanon();
+    IVCanon ivCanon(ivmp, func, dom, aloop, i, whileInfo);
+    ivCanon.PerformIVCanon();
+    // transfer primary IV info to whileinfo
+    if (ivCanon.idxPrimaryIV != -1) {
+      IVDesc *primaryIVDesc = ivCanon.ivvec[ivCanon.idxPrimaryIV];
+      CHECK_FATAL(primaryIVDesc->ost->IsSymbol(), "primary IV cannot be preg");
+      whileInfo->ivOst = primaryIVDesc->ost;
+      whileInfo->initExpr = primaryIVDesc->initExpr;
+      whileInfo->stepValue = primaryIVDesc->stepValue;
+      whileInfo->tripCount = ivCanon.tripCount;
+      whileInfo->canConvertDoloop = ivCanon.tripCount != nullptr;
     }
     mempoolctrler.DeleteMemPool(ivmp);
   }

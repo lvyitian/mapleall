@@ -750,7 +750,7 @@ void LfoPreEmitter::EmitBB(BB *bb, LfoBlockNode *curblk) {
   LabelIdx labidx = bb->bbLabel;
   if (labidx != 0 && !lfoFunc->LabelCreatedByLfo(labidx)) {
     // not a empty bb
-    LabelNode *lbnode = meirmap->ssaTab->mirModule.CurFunction()->codeMemPool->New<LabelNode>();
+    LabelNode *lbnode = mirFunc->codeMemPool->New<LabelNode>();
     lbnode->labelIdx = labidx;
     curblk->AddStatement(lbnode);
   }
@@ -762,28 +762,27 @@ void LfoPreEmitter::EmitBB(BB *bb, LfoBlockNode *curblk) {
   }
   if (bb->IsEndTry()) {
     /* generate op_endtry */
-    StmtNode *endtry = meirmap->ssaTab->mirModule.CurFunction()->codeMemPool->New<StmtNode>(OP_endtry);
+    StmtNode *endtry = mirFunc->codeMemPool->New<StmtNode>(OP_endtry);
     curblk->AddStatement(endtry);
   }
 }
 
 DoloopNode *LfoPreEmitter::EmitLfoDoloop(BB *mewhilebb, LfoBlockNode *curblk, LfoWhileInfo *whileInfo) {
   LabelIdx labidx = mewhilebb->bbLabel;
-  CHECK_FATAL(labidx != 0, "no go back edge for the while bb");
-  CHECK_FATAL(mewhilebb->meStmtList.last->op == OP_brfalse, "expect brfalse for while loop cond");
+  MeStmt *lastmestmt = mewhilebb->meStmtList.last;
+  CHECK_FATAL(lastmestmt->prev == nullptr || dynamic_cast<AssignMeStmt *>(lastmestmt->prev) == nullptr,
+              "EmitLfoWhile: there are other statements at while header bb");
   MemPool *codeMap = mirFunc->codeMemPool;
   LfoDoloopNode *lnoDoloopnode = codeMap->New<LfoDoloopNode>(curblk);
-  LfoParentPart *lnoIvnode = EmitLfoExpr(whileInfo->iv, lnoDoloopnode, true);
-  CHECK_FATAL(lnoIvnode->Cvt2BaseNode()->op == OP_dread, "error");
-  LfoDreadNode *dreadIvnode = static_cast<LfoDreadNode *>(lnoIvnode);
-  MeStmt *lastmestmt = mewhilebb->meStmtList.last;
-  CHECK_FATAL(lastmestmt->op == OP_brfalse, "NYI");
-  //BaseNode *testnode = static_cast<CondGotoMeStmt *>(lastmestmt)->opnd->EmitExpr(meirmap->ssaTab);
-  lnoDoloopnode->doVarStIdx = dreadIvnode->stIdx;
-  lnoDoloopnode->startExpr =  EmitLfoExpr(whileInfo->startmeexpr, lnoDoloopnode, true)->Cvt2BaseNode();
-  lnoDoloopnode->condExpr = EmitLfoExpr(static_cast<CondGotoMeStmt *>(lastmestmt)->opnd, lnoDoloopnode, true)->Cvt2BaseNode();
-  lnoDoloopnode->incrExpr = EmitLfoExpr(whileInfo->incrmeexpr, lnoDoloopnode, true)->Cvt2BaseNode();
+  lnoDoloopnode->doVarStIdx = whileInfo->ivOst->GetMIRSymbol()->stIdx;
+  CondGotoMeStmt *condGotostmt = static_cast<CondGotoMeStmt *>(lastmestmt);
+  lnoDoloopnode->startExpr =  EmitLfoExpr(whileInfo->initExpr, lnoDoloopnode, true)->Cvt2BaseNode();
+  lnoDoloopnode->condExpr = EmitLfoExpr(condGotostmt->opnd, lnoDoloopnode, true)->Cvt2BaseNode();
   lnoDoloopnode->doBody = codeMap->New<LfoBlockNode>(lnoDoloopnode);
+  MIRIntConst *intConst = mirFunc->dataMemPool->New<MIRIntConst>(whileInfo->stepValue, whileInfo->ivOst->GetType());
+  LfoConstvalNode *lfoconstnode = codeMap->New<LfoConstvalNode>(intConst, lnoDoloopnode);
+  lnoDoloopnode->incrExpr = lfoconstnode;
+  lnoDoloopnode->isPreg = false;
   curblk->AddStatement(lnoDoloopnode);
   return lnoDoloopnode;
 }
@@ -796,7 +795,7 @@ WhileStmtNode *LfoPreEmitter::EmitLfoWhile(BB *meWhilebb, LfoBlockNode *curblk) 
   MemPool *codeMap = mirFunc->codeMemPool;
   LfoWhileStmtNode *lnoWhilestmt = codeMap->New<LfoWhileStmtNode>(curblk);
   CondGotoMeStmt *condGotostmt = static_cast<CondGotoMeStmt *>(lastmestmt);
-  lnoWhilestmt->uOpnd = EmitLfoExpr(condGotostmt->opnd, lnoWhilestmt, false)->Cvt2BaseNode();
+  lnoWhilestmt->uOpnd = EmitLfoExpr(condGotostmt->opnd, lnoWhilestmt, true)->Cvt2BaseNode();
   lnoWhilestmt->body = codeMap->New<LfoBlockNode>(lnoWhilestmt);
   curblk->AddStatement(lnoWhilestmt);
   return lnoWhilestmt;
@@ -816,22 +815,30 @@ uint32 LfoPreEmitter::Raise2LfoWhile(uint32 curj, LfoBlockNode *curblk) {
   CondGotoMeStmt *condgotomestmt = static_cast<CondGotoMeStmt *>(laststmt);
   BB *endlblbb = condgotomestmt->offset == suc1->bbLabel ? suc1 : suc0;
   BB *firstWhilebb = condgotomestmt->offset == suc1->bbLabel ? suc0 : suc1;
-  LfoBlockNode *lnoDobody = nullptr;
+  LfoBlockNode *lfoDobody = nullptr;
   if (whileInfo->canConvertDoloop) {  // emit doloop
     DoloopNode *doloopnode = EmitLfoDoloop(curbb, curblk, whileInfo);
     ++curj;
-    lnoDobody = static_cast<LfoBlockNode *>(doloopnode->doBody);
+    lfoDobody = static_cast<LfoBlockNode *>(doloopnode->doBody);
   } else { // emit while loop
     WhileStmtNode *whileNode = EmitLfoWhile(curbb, curblk);
     ++curj;
-    lnoDobody = static_cast<LfoBlockNode *> (whileNode->body);
+    lfoDobody = static_cast<LfoBlockNode *> (whileNode->body);
   }
   // emit loop body
   while (bbvec[curj]->id != endlblbb->id) {
-    curj = EmitLfoBB(curj, lnoDobody);
+    curj = EmitLfoBB(curj, lfoDobody);
     while (bbvec[curj] == nullptr) {
       curj++;
     }
+  }
+  if (whileInfo->canConvertDoloop) {  // delete the increment statement
+    StmtNode *bodylaststmt = lfoDobody->GetLast();
+    CHECK_FATAL(bodylaststmt->op == OP_dassign, "Raise2LfoWhile: cannot find increment stmt");
+    DassignNode *dassnode = static_cast<DassignNode *>(bodylaststmt);
+    CHECK_FATAL(dassnode->stIdx == whileInfo->ivOst->GetMIRSymbol()->stIdx,
+                "Raise2LfoWhile: cannot find IV increment");
+    lfoDobody->RemoveStmt(dassnode);
   }
   return curj;
 }

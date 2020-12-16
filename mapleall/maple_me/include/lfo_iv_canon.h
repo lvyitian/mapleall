@@ -28,8 +28,8 @@ class IVDesc {
  public:
   OriginalSt *ost;
   PrimType primType;
-  int32 stepValue = 0;
   MeExpr *initExpr = nullptr;
+  int32 stepValue = 0;
 
  public:
   explicit IVDesc(OriginalSt *o) : ost(o) {
@@ -47,15 +47,16 @@ class IVCanon {
   Dominance *dominance;
   SSATab *ssatab;
   LoopDesc *aloop;
+  uint32 loopID;
   LfoWhileInfo *whileInfo;
   MapleVector<IVDesc *> ivvec;
   int32 idxPrimaryIV = -1;      // the index in ivvec of the primary IV
   MeExpr *tripCount = nullptr;
 
  public:
-  explicit IVCanon(MemPool *m, MeFunction *f, Dominance *dom, LoopDesc *ldesc, LfoWhileInfo *winfo) :
-        mp(m), alloc(m), func(f), dominance(dom), ssatab(f->meSSATab), aloop(ldesc), whileInfo(winfo),
-        ivvec(alloc.Adapter()) {}
+  explicit IVCanon(MemPool *m, MeFunction *f, Dominance *dom, LoopDesc *ldesc, uint32 id, LfoWhileInfo *winfo) :
+        mp(m), alloc(m), func(f), dominance(dom), ssatab(f->meSSATab),
+        aloop(ldesc), loopID(id), whileInfo(winfo), ivvec(alloc.Adapter()) {}
   bool ResolveExprValue(MeExpr *x, ScalarMeExpr *philhs);
   int32 ComputeIncrAmt(MeExpr *x, ScalarMeExpr *philhs, int32 *appearances);
   void CharacterizeIV(ScalarMeExpr *initversion, ScalarMeExpr *loopbackversion, ScalarMeExpr *philhs);

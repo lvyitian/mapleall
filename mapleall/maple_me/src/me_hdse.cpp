@@ -108,6 +108,15 @@ void MeHDSE::DseInitFull() {
   }
 }
 
+void MeHDSE::ProcessWhileInfos() {
+  MapleMap<LabelIdx, LfoWhileInfo *>::iterator it = func->lfoFunc->label2WhileInfo.begin();
+  for ( ; it != func->lfoFunc->label2WhileInfo.end(); it++) {
+    if (it->second->initExpr != nullptr) {
+      worklist.push_front(it->second->initExpr);
+    }
+  }
+}
+
 void MeHDSE::DetermineUseCounts(MeExpr *x) {
   if (x->meOp == kMeOpVar) {
     VarMeExpr *varmeexpr = static_cast<VarMeExpr *>(x);

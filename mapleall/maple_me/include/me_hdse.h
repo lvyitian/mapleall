@@ -50,6 +50,8 @@ class MeHDSE : public HDSE {
   std::string PhaseName() const {
     return "hdse";
   }
+  bool IsLfo() { return func->isLfo; }
+  void ProcessWhileInfos();
 
   MeFunction *func;
   MapleVector<uint32> verstUseCounts; // index is vstIdx

@@ -135,7 +135,7 @@ class LfoIntrinsicopNode : public IntrinsicopNode, public LfoParentPart {
 class LfoConstvalNode : public ConstvalNode, public LfoParentPart {
  public:
    LfoConstvalNode(LfoParentPart *parent) : ConstvalNode(), LfoParentPart(parent) {}
-   LfoConstvalNode(MIRConst *constv, LfoParentPart *parent) : ConstvalNode(constv), LfoParentPart(parent) {}
+   LfoConstvalNode(MIRConst *constv, LfoParentPart *parent) : ConstvalNode(constv->type->primType, constv), LfoParentPart(parent) {}
   BaseNode *Cvt2BaseNode() {
     return this;
   }
