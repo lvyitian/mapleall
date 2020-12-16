@@ -1046,7 +1046,6 @@ void CGFunc::HandleFunction(void) {
   for (; stmt; stmt = stmt->GetNext()) {
     needSplit = false;
     // insert Insn for .loc before cg for the stmt
-    //stmt->Dump(func->module,0);
     if (cg->cgopt_.WithLoc() && stmt->op != OP_label && stmt->op != OP_comment) {
       // if original src file location info is availiable for this stmt,
       // use it and skip mpl file location info for this stmt
@@ -1059,17 +1058,16 @@ void CGFunc::HandleFunction(void) {
         Insn *loc = cg->BuildInstruction<mpldbg::DbgInsn>(mpldbg::OP_DBG_loc, o0, o1);
         curbb->AppendInsn(loc);
         lastsrcloc = newsrcloc;
-      } else {
-        // .loc for mpl file
-        uint32 newmplloc = cg->cgopt_.WithMpl() ? stmt->srcPosition.MplLinenum() : 0;
-        if (newmplloc != 0 && newmplloc != lastmplloc) {
-          uint32 fileid = 1;
-          Operand *o0 = CreateDbgImmOperand(fileid);
-          Operand *o1 = CreateDbgImmOperand(newmplloc);
-          Insn *loc = cg->BuildInstruction<mpldbg::DbgInsn>(mpldbg::OP_DBG_loc, o0, o1);
-          curbb->AppendInsn(loc);
-          lastmplloc = newmplloc;
-        }
+      }
+      // .loc for mpl file
+      uint32 newmplloc = cg->cgopt_.WithMpl() ? stmt->srcPosition.MplLinenum() : 0;
+      if (newmplloc != 0 && newmplloc != lastmplloc) {
+        uint32 fileid = 1;
+        Operand *o0 = CreateDbgImmOperand(fileid);
+        Operand *o1 = CreateDbgImmOperand(newmplloc);
+        Insn *loc = cg->BuildInstruction<mpldbg::DbgInsn>(mpldbg::OP_DBG_loc, o0, o1);
+        curbb->AppendInsn(loc);
+        lastmplloc = newmplloc;
       }
     }
     isVolLoad = false;
