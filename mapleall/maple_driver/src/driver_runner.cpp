@@ -224,6 +224,19 @@ void DriverRunner::ProcessMpl2mplAndMeAndMplCgPhases(const std::string &interimO
   // emit after module phase
   if (printOutExe == kMpl2mpl || printOutExe == kMplMe || genVtableImpl || Options::emitVtableImpl) {
     theModule->Emit(interimOutputFile);
+
+//#define DUMP_ME_IR_IN_BPL 1
+#if DUMP_ME_IR_IN_BPL
+     size_t index = 0;
+     std::string bplFileName(interimOutputFile);
+     index = bplFileName.find(".mpl", index);
+     if (index != std::string::npos) {
+       bplFileName.replace(index, 4, ".bpl");
+       BinaryMplt binMplt(*theModule);
+       binMplt.GetBinExport().not2mplt = true;
+       binMplt.Export(bplFileName, nullptr);
+     }
+#endif
   }
 
   timer.Stop();
