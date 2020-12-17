@@ -37,7 +37,7 @@ DEFINE_MOP(MOP_xmov52up, {MOPD_Reg64ID,MOPD_Imm64,MOPD_Undef,MOPD_Undef,MOPD_Und
 
 
 // MOP_xvmovsr
-DEFINE_MOP(MOP_xvmovsr, {MOPD_Reg32FD,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISMOVE,kLtR2f,"fmv.s.w","0,1", 1, 1)
+DEFINE_MOP(MOP_xvmovsr, {MOPD_Reg32FD,MOPD_Reg32IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISMOVE,kLtR2f,"fmv.s.x","0,1", 1, 1)
 // MOP_xvmovdr
 DEFINE_MOP(MOP_xvmovdr, {MOPD_Reg64FD,MOPD_Reg64IS,MOPD_Undef,MOPD_Undef,MOPD_Undef},ISMOVE,kLtR2f,"fmv.d.x","0,1", 1, 1)
 // MOP_xvmovrs
