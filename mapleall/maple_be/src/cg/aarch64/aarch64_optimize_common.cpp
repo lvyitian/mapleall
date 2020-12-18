@@ -563,6 +563,13 @@ bool AArch64InsnVisitor::CanDoIco(Insn *branch) {
   return ccCode != kCcLast;
 }
 
+Insn *AArch64InsnVisitor::BuildFmoveZero(RegOperand *dst, uint32 dsize) {
+  MOperator mop = dsize == 64 ? MOP_xvmovdr : MOP_xvmovsr;
+  AArch64CGFunc *f = static_cast<AArch64CGFunc *>(GetCGFunc());
+  RegOperand *zero = f->GetOrCreatePhysicalRegisterOperand(RZR, dsize, kRegTyInt);
+  return GetCGFunc()->cg->BuildInstruction<AArch64Insn>(mop, dst, zero);
+}
+
 Insn *AArch64InsnVisitor::BuildCondSet(Insn *branch, RegOperand *reg, bool inverse) {
   AArch64CC_t ccCode = Encode(branch->mop_, inverse);
 

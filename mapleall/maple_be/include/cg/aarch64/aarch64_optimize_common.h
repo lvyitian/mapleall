@@ -55,6 +55,7 @@ class AArch64InsnVisitor : public InsnVisitor {
                                 Operand *srcElse) override;
   Insn *CreateCmpInsn(Insn *condbr) override;
   RegOperand *CreateVregFromReg(RegOperand *pReg) override;
+  Insn *BuildFmoveZero(RegOperand *dst, uint32 dsize) override;
   Insn *BuildCondSet(Insn *branch, RegOperand *reg, bool inverse) override;
   Insn *BuildCondSel(Insn *branch, MOperator mop, RegOperand *dst, RegOperand *src1, RegOperand *src2) override;
   bool ModifyInsnOpnds(Insn *insn, Operand *src, Operand *tar) override;

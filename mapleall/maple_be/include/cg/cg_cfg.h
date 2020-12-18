@@ -86,6 +86,9 @@ class InsnVisitor {
     return nullptr;
   }
   virtual Insn *CreateCmpInsn(Insn *condbr) = 0;
+  virtual Insn *BuildFmoveZero(RegOperand *dst, uint32 dsize) {
+    return nullptr;
+  }
   virtual Insn *BuildCondSet(Insn *branch, RegOperand *reg, bool inverse) {
     return nullptr;
   }
