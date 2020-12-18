@@ -1423,7 +1423,7 @@ uint32 MirGenerator::GetFieldOffsetType(TyIdx tyidx, FieldID fieldID, MIRType *&
 void MirGenerator::EmitAsmComment(CommentNode *stmt) {
   // cross ref info to source are in the comments nodes from .mpl input
   if (stmt->comment.c_str() && stmt->comment.c_str()[stmt->comment.length()-1] == '\\') {
-    // remove trailing slash in comment line otherwuse gnu g++-5 treats next line as 
+    // remove trailing slash in comment line otherwuse gnu g++-5 treats next line as
     // continuation of comment and skips compiling it
     stmt->comment.c_str()[stmt->comment.length()-1] = 0;
   }
