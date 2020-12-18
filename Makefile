@@ -71,6 +71,14 @@ default: mapleall
 mapleall:
 	$(call build_gn, ${GN_OPTIONS}, irbuild maple mplcg)
 
+.PHONY: js2mpl
+js2mpl:
+	$(call build_gn, ${GN_OPTIONS}, js2mpl)
+
+.PHONY: mplbe
+mplbe:
+	$(call build_gn, ${GN_OPTIONS}, mplbe)
+
 .PHONY: install
 install: mapleall
 	$(shell mkdir -p ${MAPLE_ROOT}/bin; \
