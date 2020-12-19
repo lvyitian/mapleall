@@ -1183,6 +1183,7 @@ void MirGenerator::EmitAsmFuncInfo(MIRFunction *func) {
     os << "\t.ascii \"MPLI\"\n";
     os << infoLabel << ":\n";
     os << "\t" << ".long " << codeLabel << " - .\n";
+    os << "\t" << ".word " << curFunc.numFormalArgs << ", " << curFunc.numAutoVars << ", " << curFunc.evalStackDepth <<  ", " << curFunc.funcAttrs << " // func storage info\n";
 
     if (curFunc.numFormalArgs) {
       os << "\t" << "// PrimType of formal arguments\n";
