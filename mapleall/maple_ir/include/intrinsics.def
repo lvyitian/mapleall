@@ -192,6 +192,7 @@ DEF_MIR_INTRINSIC(MCCNewPermanentArray,\
 
 #include "intrinsic_misc.def"
 #include "intrinsic_c.def"
+#include "js2mpl/jsintrinsic_eng.def"
 
 DEF_MIR_INTRINSIC(LAST,\
                   nullptr, kIntrnUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
