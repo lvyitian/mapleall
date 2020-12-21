@@ -2284,12 +2284,9 @@ bool Riscv64CGFunc::TailCallOpt() {
 
   CG_ASSERT(regsToRestore.size() >= 2, "Forgot FP and LR ?");
 
-  if ((mirModule.IsCModule()) &&
-      static_cast<Riscv64MemLayout *>(memlayout)->locals().size > 0) {
-    return false;
-  }
-
-  if (CLANG && func->GetAttr(FUNCATTR_varargs)) {
+  if (CLANG &&
+      ((static_cast<Riscv64MemLayout *>(memlayout)->locals().size > 0) ||
+       func->GetAttr(FUNCATTR_varargs) || HasVLAOrAlloca())) {
     return false;
   }
 
