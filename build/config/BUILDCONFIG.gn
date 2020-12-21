@@ -43,6 +43,8 @@ IS_JS2MPL_EXISTS = getenv("IS_JS2MPL_EXISTS")
 if (IS_JS2MPL_EXISTS == "1") {
   HOST_ARCH = 32
   JAVA = 0
+  TARGET = "vm"
+  JAVA_OP = 0
 }
 DYNAMICLANG = true
 RC_V2 = true
