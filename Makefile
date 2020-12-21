@@ -23,7 +23,7 @@ NINJA := ${MAPLE_ROOT}/tools/ninja/ninja
 
 USE_CLANG_OP := 1
 HOST_ARCH_OP := 64
-JAVA_OP := 1
+JAVA_OP := 0
 USE_ZRT := 0
 DEFERRAL_RC := OFF
 STRICT_NAIVE_RC := OFF
@@ -47,6 +47,8 @@ else
   BUILD_TYPE_OP := DEBUG
 endif
 
+
+TARGET=vm
 
 GN_OPTIONS := \
   GN_INSTALL_PREFIX="$(MAPLE_ROOT)" \

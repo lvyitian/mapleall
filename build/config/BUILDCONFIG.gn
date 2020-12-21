@@ -17,6 +17,8 @@
 # declare here will be implicitly global.
 
 # List all the input args
+
+# Define global args
 declare_args() {
     GN_INSTALL_PREFIX = ""
     GN_BUILD_TYPE = ""
@@ -36,10 +38,12 @@ declare_args() {
     TARGET = ""
     USE_OJ_LIBCORE = 0
 }
-
-# Define global args
 MAPLE_ROOT = getenv("MAPLE_ROOT")
 IS_JS2MPL_EXISTS = getenv("IS_JS2MPL_EXISTS")
+if (IS_JS2MPL_EXISTS == "1") {
+  HOST_ARCH = 32
+  JAVA = 0
+}
 DYNAMICLANG = true
 RC_V2 = true
 if (X86_ARK == 1) {
