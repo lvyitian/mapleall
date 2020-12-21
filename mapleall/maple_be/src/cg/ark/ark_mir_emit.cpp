@@ -30,6 +30,8 @@
 #include <iomanip>
 
 #define CLANG (mmodule.IsCModule())
+#define JAVALANG (mmodule.IsJavaModule())
+#define JAVASCRIPT (mmodule.IsJsModule())
 
 using std::hex;
 
@@ -119,13 +121,13 @@ std::set<std::string> PreDefClassInfo = {
 // TODO: add memcmpMpl to list when we have x86 replacement.
 // NOTE: IntrinsicList is moved to special_func.cpp
 
-inline void MirGenerator::EmitString(const std::string &str, int bytes) {
+inline void MirGenerator::EmitString(const std::string &str, int bytes=0) {
   int offset = GetFuncOffset();
   os << "\t" << str << "\n";
   SetFuncOffset(offset + bytes);
 }
 
-inline void MirGenerator::EmitStringNoTab(const std::string &str, int bytes) {
+inline void MirGenerator::EmitStringNoTab(const std::string &str, int bytes=0) {
   int offset = GetFuncOffset();
   os << str << "\n";
   SetFuncOffset(offset + bytes);
@@ -282,7 +284,11 @@ void MirGenerator::EmitExpr(Opcode curOp, PrimType curPrimType, BaseNode *fexpr)
       ASSERT(preg, "preg is null");
       regName.append("%");
       regName.append(std::to_string(preg->pregNo));
-      expr.param.frameIdx = curFunc.EncodePreg(preg->pregNo);
+      if (JAVASCRIPT) {
+        expr.param.frameIdx = preg->pregNo;
+      } else {
+        expr.param.frameIdx = curFunc.EncodePreg(preg->pregNo);
+      }
       EmitAsmBaseNode(expr, regName);
       // check for regread of less than 4 bytes
       CheckInsertOpCvt(curOp, curPrimType, fexpr->primType);
@@ -297,6 +303,20 @@ void MirGenerator::EmitExpr(Opcode curOp, PrimType curPrimType, BaseNode *fexpr)
         EmitAsmBaseNode(expr);
       } else {
         expr.op = RE_ireadoff32;
+        EmitAsmBaseNode(expr);
+        EmitAsmWord(offset);
+      }
+      break;
+    }
+    case OP_ireadfpoff: {
+      ASSERT(JAVASCRIPT, "OP_ireadfpoff in non Maple JS input");
+      int32 offset = static_cast<IreadFPoffNode *>(fexpr)->offset;
+      // generate 4 byte instr if offset fits in 16 bits else generate 8 byte instr
+      if (offset <= 32767 && offset >= -32768) {
+        expr.param.offset = offset;
+        EmitAsmBaseNode(expr);
+      } else {
+        expr.op = RE_ireadfpoff32;
         EmitAsmBaseNode(expr);
         EmitAsmWord(offset);
       }
@@ -415,6 +435,13 @@ void MirGenerator::EmitExpr(Opcode curOp, PrimType curPrimType, BaseNode *fexpr)
       EmitAsmBaseNode(expr);
       EmitAsmConststr(reinterpret_cast<ConststrNode *>(fexpr)->strIdx);
       break;
+    case OP_intrinsicop: {
+      IntrinsicopNode *intrinsicop = (IntrinsicopNode *)fexpr;
+      expr.param.intrinsic.intrinsicId = intrinsicop->intrinsic;
+      FlattenExpr(fexpr);
+      EmitAsmBaseNode(expr, GetIntrinsicName(intrinsicop->intrinsic));
+      break;
+    }
     default:
       MIR_FATAL("unknown expression opcode: [%d]:(%s)\n", fexpr->op, kOpcodeInfo.GetName(fexpr->op));
   }
@@ -473,6 +500,21 @@ void MirGenerator::EmitStmt(StmtNode *fstmt) {
       }
       break;
     }
+    case OP_iassignfpoff: {
+      ASSERT(JAVASCRIPT, "OP_iassignfpoff in non Maple JS input");
+      int32 offset = static_cast<IassignFPoffNode *>(fstmt)->offset;
+      FlattenExpr(fstmt);
+      // generate 4 byte instr if offset fits in 16 bits else generate 8 byte instr
+      if (offset <= 32767 && offset >= -32768) {
+        stmt.param.offset = offset;
+        EmitAsmBaseNode(stmt);
+      } else {
+        stmt.op = RE_iassignfpoff32;
+        EmitAsmBaseNode(stmt);
+        EmitAsmWord(offset);
+      }
+      break;
+    }
     case OP_regassign: {
       string regName;
       FlattenExpr(fstmt);
@@ -480,7 +522,11 @@ void MirGenerator::EmitStmt(StmtNode *fstmt) {
       ASSERT(preg, "preg is null");
       regName.append("%");
       regName.append(std::to_string(preg->pregNo));
-      stmt.param.frameIdx = curFunc.EncodePreg(preg->pregNo);
+      if (JAVASCRIPT) {
+        stmt.param.frameIdx = preg->pregNo;
+      } else {
+        stmt.param.frameIdx = curFunc.EncodePreg(preg->pregNo);
+      }
       EmitAsmBaseNode(stmt, regName);
       break;
     }
@@ -512,6 +558,11 @@ void MirGenerator::EmitStmt(StmtNode *fstmt) {
       EmitAsmBaseNode(stmt);
       EmitAsmLabel(((GotoNode *)fstmt)->offset, true);
       break;
+    case OP_gosub:
+      stmt.op = RE_gosub;
+      EmitAsmBaseNode(stmt);
+      EmitAsmLabel(((GotoNode *)fstmt)->offset, true);
+      break;
     case OP_rangegoto: {
       RangegotoNode *rNode = static_cast<RangegotoNode *>(fstmt);
       SmallCaseVector &rTable = rNode->rangegotoTable;
@@ -522,9 +573,7 @@ void MirGenerator::EmitStmt(StmtNode *fstmt) {
       EmitAsmBaseNode(stmt); // emit base instr with num jump table entry
       EmitAsmWord(rNode->tagOffset); // emit tagOffset
       for (int i = 0; i < numCases; i++) { // emit jump table
-        MIRFunction *func = GetCurFunction();
-        string label = "mirbin_label_"+to_string(func->puIdxOrigin)+"_"+to_string(rTable[i].second);
-        EmitString(".4byte "+label+"-. "+"\t// jmptbl["+to_string(rTable[i].first)+"]", 2);
+        EmitString(".4byte "+BuildLabelString(rTable[i].second)+"-. "+"\t// jmptbl["+to_string(rTable[i].first)+"]", 4);
       }
       break;
     }
@@ -669,6 +718,30 @@ void MirGenerator::EmitStmt(StmtNode *fstmt) {
       EmitAsmBaseNode(stmt);
       curFunc.currentTry = nullptr;
       break;
+    case OP_cleanuptry:
+    case OP_finally:
+    case OP_retsub:
+      EmitAsmBaseNode(stmt);
+      break;
+    case OP_jstry: {
+      JsTryNode *jstry = static_cast<JsTryNode *>(fstmt);
+      EmitAsmBaseNode(stmt);
+      if (jstry->catchOffset) {
+        EmitAsmLabel(jstry->catchOffset, true);
+      } else {
+        EmitString(".long 0", 4);
+      }
+      if (jstry->finallyOffset) {
+        EmitAsmLabel(jstry->finallyOffset, true);
+      } else {
+        EmitString(".long 0", 4);
+      }
+      break;
+    }
+    case OP_jscatch: {
+      EmitAsmBaseNode(stmt);
+      break;
+    }
     default:
       MIR_FATAL("unknown statement opcode: [%d]:(%s)\n", fstmt->op, kOpcodeInfo.GetName(fstmt->op));
   }
@@ -1079,46 +1152,96 @@ void MirGenerator::EmitAsmFuncInfo(MIRFunction *func) {
 
   //printf("func %d \n", func->puIdxOrigin);
   curFunc.Init(func);
-  curFunc.numFormalArgs = GetFormalsInfo(func);
-  curFunc.numAutoVars = GetLocalsInfo(func) + 2; // incl. %%retval0 and %%thrownval
+  if (!JAVASCRIPT) {
+    curFunc.numFormalArgs = GetFormalsInfo(func);
+    curFunc.numAutoVars = GetLocalsInfo(func) + 2; // incl. %%retval0 and %%thrownval
+    if (func->IsWeak()) curFunc.SetWeakAttr();
+    if (func->IsStatic()) curFunc.SetStaticAttr();
+    if (func->IsConstructor()) curFunc.SetConstructorAttr();
+    if (GlobalTables::GetStrTable().GetStringFromStrIdx(func->GetBaseFuncNameStridx()) == "finalize") curFunc.SetFinalizeAttr();
+  }
   curFunc.evalStackDepth = MaxEvalStack(func);
-
-  if (func->IsWeak()) curFunc.SetWeakAttr();
-  if (func->IsStatic()) curFunc.SetStaticAttr();
-  if (func->IsConstructor()) curFunc.SetConstructorAttr();
-  if (GlobalTables::GetStrTable().GetStringFromStrIdx(func->GetBaseFuncNameStridx()) == "finalize") curFunc.SetFinalizeAttr();
-
   // insert interpreter shim and signature
-  os << "\t.ascii \"MPLI\"\n";
-  os << infoLabel << ":\n";
-  os << "\t" << ".long " << codeLabel << " - .\n";
-  os << "\t" << ".word " << curFunc.numFormalArgs << ", " << curFunc.numAutoVars << ", " << curFunc.evalStackDepth <<  ", " << curFunc.funcAttrs << " // func storage info\n";
+  if (JAVASCRIPT) {
+    os << "\t.ascii \"MPJS\"\n";
+    os << infoLabel << ":\n";
+    os << "\t" << ".long " << codeLabel << " - .\n";
 
-  if (curFunc.numFormalArgs) {
-    os << "\t" << "// PrimType of formal arguments\n";
-  }
-  EmitAsmFormalArgInfo(func);
-  if (curFunc.numAutoVars) {
-    os << "\t" << "// PrimType of automatic variables\n";
-  }
-  EmitAsmAutoVarsInfo(func);
+    int formalsBlkBitVectBytes = BlkSize2BitvectorSize(func->upFormalSize);
+    int localsBlkBitVectBytes = BlkSize2BitvectorSize(func->frameSize);
+    os << "\t" << ".word " << func->upFormalSize << ", " << func->frameSize << ", " << curFunc.evalStackDepth <<  ", " << 0 << "\t// upFormalSize, frameSize, evalStackDepth\n";
+    os << "\t" << ".word " << formalsBlkBitVectBytes << ", " << localsBlkBitVectBytes << "\t\t// formalWords bit vector byte count, localWords bit vector byte count\n";
+    if (formalsBlkBitVectBytes) {
+      EmitBytesCommentOffset(func->formalWordsTypeTagged, formalsBlkBitVectBytes, "// formalWordsTypeTagged", 0);
+      EmitBytesCommentOffset(func->formalWordsRefCounted, formalsBlkBitVectBytes, "// formalWordsRefCounted", 0);
+    }
+    if (localsBlkBitVectBytes) {
+      EmitBytesCommentOffset(func->localWordsTypeTagged, localsBlkBitVectBytes, "// localWordsTypeTagged", 0);
+      EmitBytesCommentOffset(func->localWordsRefCounted, localsBlkBitVectBytes, "// localWordsRefCounted", 0);
+    }
+  } else {
+    os << "\t.ascii \"MPLI\"\n";
+    os << infoLabel << ":\n";
+    os << "\t" << ".long " << codeLabel << " - .\n";
+    os << "\t" << ".word " << curFunc.numFormalArgs << ", " << curFunc.numAutoVars << ", " << curFunc.evalStackDepth <<  ", " << curFunc.funcAttrs << " // func storage info\n";
 
-  if (curFunc.numFormalArgs) {
-    os << "\t" << "// Name of formal arguments\n";
-  }
-  EmitAsmFormalArgNameInfo(func);
-  if (curFunc.numAutoVars) {
-    os << "\t" << "// Name of automatic variables\n";
-  }
-  EmitAsmAutoVarsNameInfo(func);
+    if (curFunc.numFormalArgs) {
+      os << "\t" << "// PrimType of formal arguments\n";
+    }
+    EmitAsmFormalArgInfo(func);
+    if (curFunc.numAutoVars) {
+      os << "\t" << "// PrimType of automatic variables\n";
+    }
+    EmitAsmAutoVarsInfo(func);
 
-  for (std::pair<GStrIdx, MIRAliasVars> it : curFunc.func->aliasVarMap) {
-      os << "\t// ALIAS %" << GlobalTables::GetStrTable().GetStringFromStrIdx(it.first) << " %"
-         << GlobalTables::GetStrTable().GetStringFromStrIdx(it.second.memPoolStrIdx) << "\n";
+    if (curFunc.numFormalArgs) {
+      os << "\t" << "// Name of formal arguments\n";
+    }
+    EmitAsmFormalArgNameInfo(func);
+    if (curFunc.numAutoVars) {
+      os << "\t" << "// Name of automatic variables\n";
+    }
+    EmitAsmAutoVarsNameInfo(func);
+
+    for (std::pair<GStrIdx, MIRAliasVars> it : curFunc.func->aliasVarMap) {
+        os << "\t// ALIAS %" << GlobalTables::GetStrTable().GetStringFromStrIdx(it.first) << " %"
+           << GlobalTables::GetStrTable().GetStringFromStrIdx(it.second.memPoolStrIdx) << "\n";
+    }
   }
 
   os << "\t.p2align 1\n";
   os << codeLabel << ":\n";
+}
+
+void MirGenerator::EmitModuleInfo(void) {
+  EmitOpCodes();
+  if (JAVASCRIPT) {
+    EmitGlobalDecl();
+  }
+}
+
+void MirGenerator::EmitOpCodes(void) {
+  // gen opcodes - skip entry 0 (kOpUndef) and handle duplicate name (OP_dassign, OP_maydassign)
+  EmitStringNoTab("\nOP_dassign = 1");
+  EmitStringNoTab("OP_maydassign = 2");
+  for (int i = 3; i < kREOpLast; ++i) {
+    EmitStringNoTab(string("OP_")+RE_OpName[i]+" = "+to_string(i));
+  }
+  EmitStringNoTab("");
+}
+
+void MirGenerator::EmitGlobalDecl(void) {
+  os << "\t.section\t.rodata\n";
+  os << "\t.p2align 3\n";
+  os << "\t.global __mpljs_module_decl__\n";
+  os << "__mpljs_module_decl__:\n";
+  os << "\t.word " << mmodule.globalMemSize << "\t// globalMemSize byte count\n";
+  if (mmodule.globalMemSize) {
+    EmitBytesCommentOffset(mmodule.globalBlkMap, mmodule.globalMemSize, "\t// globalMemMap", 0);;
+    os << "\t.word " << BlkSize2BitvectorSize(mmodule.globalMemSize) << "\t// globalwordstypetagged/refcounted byte count\n";
+    EmitBytesCommentOffset(mmodule.globalWordsTypeTagged, BlkSize2BitvectorSize(mmodule.globalMemSize), "\t// globalwordstypetagged", 0);
+    EmitBytesCommentOffset(mmodule.globalWordsRefCounted, BlkSize2BitvectorSize(mmodule.globalMemSize), "\t// globalwordsrefcounted", 0);
+  }
 }
 
 void MirGenerator::EmitAsmBaseNode(mre_instr_t &m) {
@@ -1158,7 +1281,7 @@ void MirGenerator::EmitBytes(uint8 *b, int count) {
   EmitString(ss.str(), count);
 }
 
-void MirGenerator::EmitBytesComment(uint8 *b, int count, string &comment) {
+void MirGenerator::EmitBytesCommentOffset(uint8 *b, int count, const string &comment, int offset=0) {
   stringstream ss;
   ss << ".byte ";
   for (int i=0; i<count; ++i) {
@@ -1168,7 +1291,11 @@ void MirGenerator::EmitBytesComment(uint8 *b, int count, string &comment) {
     }
   }
   ss << "\t" << comment;
-  EmitString(ss.str(), count);
+  EmitString(ss.str(), offset);
+}
+
+void MirGenerator::EmitBytesComment(uint8 *b, int count, const string &comment) {
+  EmitBytesCommentOffset(b, count, comment, count);
 }
 
 inline void MirGenerator::EmitAsmShort(uint16 s) {
@@ -1296,6 +1423,11 @@ uint32 MirGenerator::GetFieldOffsetType(TyIdx tyidx, FieldID fieldID, MIRType *&
 
 void MirGenerator::EmitAsmComment(CommentNode *stmt) {
   // cross ref info to source are in the comments nodes from .mpl input
+  if (stmt->comment.c_str() && stmt->comment.c_str()[stmt->comment.length()-1] == '\\') {
+    // remove trailing slash in comment line otherwuse gnu g++-5 treats next line as
+    // continuation of comment and skips compiling it
+    stmt->comment.c_str()[stmt->comment.length()-1] = 0;
+  }
   os << "\t// " << stmt->comment.data << "\n";
 }
 
@@ -1324,15 +1456,36 @@ void MirGenerator::EmitYieldPoint(void) {
   EmitAsmBaseNode(node);
 }
 
+std::string MirGenerator::BuildLabelString(LabelIdx lbidx) {
+  MIRFunction *func = GetCurFunction();
+  string label;
+
+  // Many strangeness with labels if we generate labels into .s
+  // by the label's name in string table:
+  // - we get @ and | characters in name string that the assembler complains
+  // - duplicate name strings across different label idx in the same function
+  // - duplicate label idx in same function if all of CG's phases are run.
+  if (JAVASCRIPT){
+    string labelName = func->GetLabelName(lbidx);
+    replace(labelName.begin(), labelName.end(), '@', '_');
+    replace(labelName.begin(), labelName.end(), '|', '_');
+    // cannot use puIdxOrigin because they are all 0 in js2mpl generated mpl
+    MIRSymbol *fnSt = GlobalTables::GetGsymTable().GetSymbolFromStIdx(func->stIdx.Idx());
+    label = "mirbin_label_"+fnSt->GetName()+"_"+labelName;
+  } else {
+    label = "mirbin_label_"+ to_string(func->puIdxOrigin)+"_"+to_string(lbidx);
+  }
+  return label;
+}
+
 void MirGenerator::EmitAsmLabel(LabelIdx lbidx, bool genOffset) {
   MIRFunction *func = GetCurFunction();
 
-  string label = "mirbin_label_"+to_string(func->puIdxOrigin)+"_"+to_string(lbidx);
   // TODO: fix issue - currently have to disable fpm->run in CG to avoid duplicate labels
   if (genOffset) {
-    EmitString(".long "+label+"-.", 4);
+    EmitString(".long "+BuildLabelString(lbidx)+"-.", 4);
   } else {
-    os << label+":\n";
+    os << BuildLabelString(lbidx)+":\n";
   }
 }
 
@@ -1352,14 +1505,13 @@ void MirGenerator::EmitAsmConststr(UStrIdx strIdx) {
 }
 
 RE_Opcode MirGenerator::MapEHOpcode(RE_Opcode op) {
-  MIRModule *module = GetCurFunction()->module;
-  if (module->IsCModule()) {
+  if (CLANG) {
     if (op == RE_catch) {
       op = RE_cppcatch;
     } else if (op == RE_try) {
       op = RE_cpptry;
     }
-  } else if (module->IsJavaModule()) {
+  } else if (JAVALANG) {
     if (op == RE_catch) {
       op = RE_javacatch;
     } else if (op == RE_try) {

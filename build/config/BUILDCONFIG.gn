@@ -39,6 +39,7 @@ declare_args() {
 
 # Define global args
 MAPLE_ROOT = getenv("MAPLE_ROOT")
+IS_JS2MPL_EXISTS = getenv("IS_JS2MPL_EXISTS")
 DYNAMICLANG = true
 RC_V2 = true
 if (X86_ARK == 1) {
@@ -66,6 +67,7 @@ MAPLEALL_ROOT = "${MAPLE_ROOT}/mapleall"
 MAPLE_RE_ROOT = "${MAPLE_ROOT}/maple_engine"
 HUAWEI_SECURE_C_ROOT = "${MAPLE_ROOT}/huawei_secure_c"
 DWARF_ROOT = "${MAPLE_ROOT}/tools/dwarf"
+JS2MPL_ROOT = "${MAPLE_ROOT}/js2mpl"
 
 # Toolchain setup
 if (USE_CLANG == 1) {

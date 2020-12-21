@@ -22,3 +22,6 @@
   OPCODE(brtrue32, none, none, none)
   OPCODE(brfalse32, none, none, none)
   OPCODE(goto32, none, none, none)
+  OPCODE(ireadfpoff32, none, none, none)
+  OPCODE(iassignfpoff32, none, none, none)
+

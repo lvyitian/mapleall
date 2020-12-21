@@ -353,7 +353,8 @@ class MirGenerator : public CmplGenerator {
   void EmitAsmCall(CallNode *fstmt);
   void EmitAsmComment(CommentNode *comment);
   void EmitBytes(uint8 *b, int count);
-  void EmitBytesComment(uint8 *b, int count, string &comment);
+  void EmitBytesComment(uint8 *b, int count, const string &comment);
+  void EmitBytesCommentOffset(uint8 *b, int count, const string &comment, int offset);
   void EmitAsmShort(uint16 s);
   void EmitAsmWord(uint32 word);
   void EmitAsmWord(uint32 word, string comment);
@@ -370,6 +371,9 @@ class MirGenerator : public CmplGenerator {
   void EmitString(const std::string &str, int bytes);
   void EmitStringNoTab(const std::string &str, int bytes);
   void EmitYieldPoint(void);
+  void EmitModuleInfo(void);
+  void EmitGlobalDecl(void);
+  void EmitOpCodes(void);
   void CheckYieldPointInsert(StmtNode *fstmt);
   int GetFormalsInfo(MIRFunction *func);
   int GetLocalsInfo(MIRFunction *func);
@@ -377,6 +381,7 @@ class MirGenerator : public CmplGenerator {
   uint32 GetFieldOffsetType(TyIdx tyidx, FieldID fieldid, MIRType *&);
   RE_Opcode MapEHOpcode(RE_Opcode op);
   void CheckInsertOpCvt(Opcode expr, PrimType exprType, PrimType insnType);
+  std::string BuildLabelString(LabelIdx lbidx);
 
   int GetFuncOffset(void) {
     return funcOffset;

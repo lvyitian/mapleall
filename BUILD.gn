@@ -18,3 +18,12 @@ group("mapleall") {
         "${MAPLEALL_ROOT}:mapleall"
     ]
 }
+
+group("js2mpl") {
+    deps = []
+    if(IS_JS2MPL_EXISTS == "1"){
+        deps = [
+            "${JS2MPL_ROOT}:js2mpl"
+        ]
+    }
+}

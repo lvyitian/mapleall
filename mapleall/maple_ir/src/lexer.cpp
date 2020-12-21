@@ -360,7 +360,7 @@ TokenKind MIRLexer::GetTokenWithPrefixPercent() {
 TokenKind MIRLexer::GetTokenWithPrefixAmpersand() {
   // token with prefix '&'
   char c = GetCurrentCharWithUpperCheck();
-  if (isalpha(c) || c == '_') {
+  if (isalpha(c) || c == '_' || c == '$') {
     GenName();
     return TK_fname;
   } else {

@@ -1159,11 +1159,14 @@ bool MIRParser::ParseExprIntrinsicopwithtype(BaseNode *&expr) {
 bool MIRParser::ParseScalarValue(MIRConst *&stype, MIRType *type) {
   PrimType ptp = type->primType;
   if (IsPrimitiveInteger(ptp) || IsPrimitiveDynType(ptp) || ptp == PTY_gen) {
-    if (lexer.GetTokenKind() != TK_intconst) {
+    if (lexer.GetTokenKind() == TK_intconst) {
+      stype = mod.memPool->New<MIRIntConst>(lexer.GetTheIntVal(), type);
+    } else if (lexer.GetTokenKind() == TK_doubleconst) {
+      stype = mod.memPool->New<MIRDoubleConst>(lexer.GetTheDoubleVal(), type);
+    } else {
       Error("constant value incompatible with integer type at ");
       return false;
     }
-    stype = mod.memPool->New<MIRIntConst>(lexer.GetTheIntVal(), type);
   } else if (ptp == PTY_f32) {
     if (lexer.GetTokenKind() != TK_floatconst) {
       Error("constant value incompatible with single-precision float type at ");

@@ -1,0 +1,34 @@
+/*
+ * Copyright (c) [2020] Huawei Technologies Co., Ltd. All rights reserved.
+ *
+ * OpenArkCompiler is licensed under the Mulan Permissive Software License v2.
+ * You can use this software according to the terms and conditions of the MulanPSL - 2.0.
+ * You may obtain a copy of MulanPSL - 2.0 at:
+ *
+ *   https://opensource.org/licenses/MulanPSL-2.0
+ *
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
+ * FIT FOR A PARTICULAR PURPOSE.
+ * See the MulanPSL - 2.0 for more details.
+ */
+
+// DEF_MIR_INTRINSIC(STR, NAME, INTRN_CLASS, RETURN_TYPE, ARG0, ARG1, ARG2, ARG3, ARG4, ARG5)
+DEF_MIR_INTRINSIC(JS_GET_ARGUMENTOBJECT,\
+                  __jsobj_get_or_create_argument, INTRNISJS | INTRNISPURE, kArgTySimpleobj, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JS_GET_ERROR_OBJECT,\
+                  __jsobj_get_or_create_error, INTRNISJS | INTRNISPURE, kArgTySimpleobj, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JS_GET_EVALERROR_OBJECT,\
+                  __jsobj_get_or_create_evalError, INTRNISJS | INTRNISPURE, kArgTySimpleobj, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JS_GET_RANGEERROR_OBJECT,\
+                  __jsobj_get_or_create_rangeError, INTRNISJS | INTRNISPURE, kArgTySimpleobj, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JS_GET_REFERENCEERROR_OBJECT,\
+                  __jsobj_get_or_create_referenceError, INTRNISJS | INTRNISPURE, kArgTySimpleobj, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JS_GET_SYNTAXERROR_OBJECT,\
+                  __jsobj_get_or_create_syntaxError, INTRNISJS | INTRNISPURE, kArgTySimpleobj, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JS_GET_TYPEERROR_OBJECT,\
+                  __jsobj_get_or_create_typeError, INTRNISJS | INTRNISPURE, kArgTySimpleobj, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JS_GET_URIERROR_OBJECT,\
+                  __jsobj_get_or_create_uriError, INTRNISJS | INTRNISPURE, kArgTySimpleobj, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JSOP_ASSERTVALUE,
+                  __jsop_assert_value, INTRNISJS, kArgTyDynany, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)

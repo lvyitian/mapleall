@@ -195,7 +195,9 @@ void ArkCGFunc::Emit() {
     // nothing
   } else {
     emitter.Emit("\t.globl\t").Emit(funcSt->GetName()).Emit("\n");
-    emitter.Emit("\t.hidden\t").Emit(funcSt->GetName()).Emit("\n");
+    if (!func->module->IsJsModule()) {
+      emitter.Emit("\t.hidden\t").Emit(funcSt->GetName()).Emit("\n");
+    }
   }
 
   emitter.Emit("\t.type\t").Emit(funcSt->GetName()).Emit(", %function\n");
@@ -207,7 +209,9 @@ void ArkCGFunc::Emit() {
 
   emitter.Emit("\t// mir2bin func begin: ========================\n");
   emitter.Emit("\t.cfi_startproc\n");
-  emitter.Emit("\t.cfi_personality 155, DW.ref.__mpl_personality_v0\n");
+  if (!func->module->IsJsModule()) {
+    emitter.Emit("\t.cfi_personality 155, DW.ref.__mpl_personality_v0\n");
+  }
   emitter.mirg_->EmitFunc(cg->curCgFunc->func);
   emitter.Emit("\t.cfi_endproc\n");
   emitter.Emit(".label.end."+funcSt->GetName()+":\n");
