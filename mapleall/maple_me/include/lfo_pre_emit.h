@@ -21,46 +21,31 @@
 namespace maple {
 
 class LfoPreEmitter {
- public:
+ private:
   MeIRMap *meirmap;
-  MIRModule *mirModule;
   LfoFunction *lfoFunc;
   MIRFunction *mirFunc;
+  MemPool *codeMP;
+  MapleAllocator *codeMPAlloc;
   MirCFG *cfg;
-  MapleMap<MeStmt *, StmtNode *> meir2stmtMap;
 
  public:
   LfoPreEmitter(MeIRMap *hmap, LfoFunction *f) : meirmap(hmap),
-    mirModule(hmap->mirModule),
     lfoFunc(f),
     mirFunc(f->meFunc->mirFunc),
-    cfg(f->meFunc->theCFG),
-    meir2stmtMap(lfoFunc->lfoAlloc.Adapter()) {}
+    codeMP(f->meFunc->mirFunc->codeMemPool),
+    codeMPAlloc(&f->meFunc->mirFunc->codeMemPoolAllocator),
+    cfg(f->meFunc->theCFG) {}
 
  private:
-   void EmitBBNoLabel(BB *, BlockNode *, bool);
-   void EmitBBStmts(BB *bb, BlockNode *);
-   void UpdateUsesDefs(BaseNode *, MeExpr *);
-   void UpdateUsesDefs4Dread(LfoDreadNode *, VarMeExpr *, std::set<MePhiNode *> &);
-   StmtNode *GetOrCreateStmtNodeFromMestmt(MeStmt *);
-
- public:
-  LfoParentPart *EmitLfoDread(VarMeExpr *, LfoParentPart *, bool);
-  LfoParentPart *EmitLfoExpr(MeExpr*, LfoParentPart *, bool);
-  StmtNode *EmitLfoDassign(DassignMeStmt *, LfoParentPart *);
-  StmtNode *EmitLfoRegassign(AssignMeStmt *, LfoParentPart *);
-  StmtNode *EmitLfoIassign(IassignMeStmt *, LfoParentPart *);
+  LfoParentPart *EmitLfoExpr(MeExpr*, LfoParentPart *);
   StmtNode* EmitLfoStmt(MeStmt *, LfoParentPart *);
-  LfoBlockNode *EmitLfoBlockNode (LfoParentPart *);
-  void InitBaseNodeByMeExpr (BaseNode *bd, MeExpr *meExpr) {
-    bd->primType = meExpr->primType;
-    bd->numOpnds = meExpr->numOpnds;
-  }
   void EmitBB(BB *, LfoBlockNode *);
   DoloopNode *EmitLfoDoloop(BB *, LfoBlockNode *, LfoWhileInfo *);
   WhileStmtNode *EmitLfoWhile(BB *, LfoBlockNode *);
   uint32 Raise2LfoWhile(uint32, LfoBlockNode *);
   uint32 Raise2LfoIf(uint32, LfoBlockNode *);
+ public:
   uint32 EmitLfoBB(uint32, LfoBlockNode *);
 };
 
@@ -70,9 +55,7 @@ class DoLfoPreEmission : public MeFuncPhase {
   DoLfoPreEmission(MePhaseID id) : MeFuncPhase(id) {}
 
   AnalysisResult *Run(MeFunction *func, MeFuncResultMgr *m) override;
-  std::string PhaseName() const override {
-    return "lfopreemit";
-  }
+  std::string PhaseName() const override { return "lfopreemit"; }
 };
 
 }  // namespace maple

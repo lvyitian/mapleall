@@ -247,14 +247,7 @@ BaseNode *NaryMeExpr::EmitExpr(SSATab *ssaTab) {
     nodeToReturn = arrnode;
   } else {
     IntrinsicopNode *intrinnode;
-    if (op == OP_intrinsicopwithtype) {
-      IntrinsicopNode *intrinwith =
-        ssaTab->mirModule.CurFunction()->codeMemPool->New<IntrinsicopNode>(&(ssaTab->mirModule), OP_intrinsicopwithtype, primType);
-      intrinwith->tyIdx = tyIdx;
-      intrinnode = intrinwith;
-    } else
-      intrinnode =
-        ssaTab->mirModule.CurFunction()->codeMemPool->New<IntrinsicopNode>(&(ssaTab->mirModule), OP_intrinsicop, primType);
+    intrinnode = ssaTab->mirModule.CurFunction()->codeMemPool->New<IntrinsicopNode>(&(ssaTab->mirModule), op, primType, tyIdx);
     intrinnode->numOpnds = numOpnds;
     intrinnode->intrinsic = intrinsic;
     nopndpart = intrinnode;

@@ -15,6 +15,7 @@
 
 #ifndef MAPLE_ME_INCLUDE_LFO_MIR_NODES_H_
 #define MAPLE_ME_INCLUDE_LFO_MIR_NODES_H_
+#include "me_ir.h"
 #include "mir_nodes.h"
 
 namespace maple {
@@ -36,279 +37,210 @@ class LfoParentPart {
 
 class LfoUnaryNode : public UnaryNode, public LfoParentPart{
  public:
-  LfoUnaryNode(Opcode o, LfoParentPart *parent) : UnaryNode(o), LfoParentPart(parent) {}
-  BaseNode *Cvt2BaseNode() {
-    return this;
-  }
+  LfoUnaryNode(Opcode o, PrimType ptyp, LfoParentPart *parent) : UnaryNode(o, ptyp), LfoParentPart(parent) {}
+  BaseNode *Cvt2BaseNode() { return this; }
 };
 
 class LfoTypeCvtNode : public TypeCvtNode, public LfoParentPart {
  public:
-   LfoTypeCvtNode(Opcode o, LfoParentPart *parent) :
-        TypeCvtNode(o), LfoParentPart(parent) {}
-  BaseNode *Cvt2BaseNode() {
-    return this;
-  }
+  LfoTypeCvtNode(Opcode o, PrimType ptyp, LfoParentPart *parent) :
+        TypeCvtNode(o, ptyp), LfoParentPart(parent) {}
+  BaseNode *Cvt2BaseNode() { return this; }
 };
 
 class LfoRetypeNode : public RetypeNode, public LfoParentPart {
  public:
-   LfoRetypeNode(Opcode o, LfoParentPart *parent) :
-        RetypeNode (), LfoParentPart(parent) {}
-  BaseNode *Cvt2BaseNode() {
-    return this;
-  }
+  LfoRetypeNode(Opcode o, PrimType ptyp,  LfoParentPart *parent) :
+        RetypeNode(ptyp), LfoParentPart(parent) {}
+  BaseNode *Cvt2BaseNode() { return this; }
 };
 
 class LfoExtractbitsNode : public ExtractbitsNode, public LfoParentPart {
  public:
-   LfoExtractbitsNode(Opcode o, LfoParentPart *parent) : ExtractbitsNode(o), LfoParentPart(parent) {}
-  BaseNode *Cvt2BaseNode() {
-    return this;
-  }
+  LfoExtractbitsNode(Opcode o, PrimType ptyp, LfoParentPart *parent) : ExtractbitsNode(o, ptyp), LfoParentPart(parent) {}
+  BaseNode *Cvt2BaseNode() { return this; }
 };
 
 class LfoIreadNode : public IreadNode, public LfoParentPart {
  public:
-   LfoIreadNode(Opcode o, LfoParentPart *parent) : IreadNode(o), LfoParentPart(parent) {}
-  BaseNode *Cvt2BaseNode() {
-    return this;
-  }
+  IvarMeExpr *ivarx;
+
+ public:
+  LfoIreadNode(Opcode o, PrimType ptyp, LfoParentPart *parent, IvarMeExpr *v) :
+       IreadNode(o, ptyp), LfoParentPart(parent), ivarx(v) {}
+  BaseNode *Cvt2BaseNode() { return this; }
 };
 
-class LfoIreadoffNode : public IreadoffNode, public LfoParentPart {
+class LfoIaddrofNode : public IreadNode, public LfoParentPart {
  public:
-   LfoIreadoffNode (LfoParentPart *parent) : IreadoffNode(),
-            LfoParentPart(parent) {}
-  BaseNode *Cvt2BaseNode() {
-    return this;
-  }
+   LfoIaddrofNode(Opcode o, PrimType pty, LfoParentPart *parent) : IreadNode(o, pty), LfoParentPart(parent) {}
+  BaseNode *Cvt2BaseNode() { return this; }
 };
 
 class LfoBinaryNode : public BinaryNode, public LfoParentPart {
  public:
    LfoBinaryNode (Opcode o, PrimType typ, LfoParentPart *parent) : BinaryNode (o,typ),
    LfoParentPart (parent) {}
-  BaseNode *Cvt2BaseNode() {
-    return this;
-  }
+  BaseNode *Cvt2BaseNode() { return this; }
 };
 
 class LfoCompareNode : public CompareNode, public LfoParentPart {
  public:
-   LfoCompareNode (Opcode o, PrimType typ, PrimType otype, BaseNode *l, BaseNode *r, LfoParentPart *parent) :
+  LfoCompareNode (Opcode o, PrimType typ, PrimType otype, BaseNode *l, BaseNode *r, LfoParentPart *parent) :
    CompareNode (o, typ, otype, l, r), LfoParentPart (parent) {}
-  BaseNode *Cvt2BaseNode() {
-    return this;
-  }
+  BaseNode *Cvt2BaseNode() { return this; }
 };
 
 class LfoTernaryNode : public TernaryNode, public LfoParentPart {
  public:
-   LfoTernaryNode (Opcode o, LfoParentPart *parent) : TernaryNode(o),
+  LfoTernaryNode (Opcode o, PrimType ptyp,  LfoParentPart *parent) : TernaryNode(o, ptyp),
      LfoParentPart(parent) {}
-  BaseNode *Cvt2BaseNode() {
-    return this;
-  }
+  BaseNode *Cvt2BaseNode() { return this; }
 };
 
 class LfoNaryNode : public NaryNode, public LfoParentPart {
  public:
-   LfoNaryNode (MapleAllocator *allc, Opcode o, LfoParentPart *parent) : NaryNode (allc, o),
+  LfoNaryNode (MapleAllocator *allc, Opcode o, PrimType pty, LfoParentPart *parent) : NaryNode (allc, o, pty),
      LfoParentPart(parent) {}
-  BaseNode *Cvt2BaseNode() {
-    return this;
-  }
+  BaseNode *Cvt2BaseNode() { return this; }
 };
 
 class LfoIntrinsicopNode : public IntrinsicopNode, public LfoParentPart {
  public:
-  LfoIntrinsicopNode (MapleAllocator *allc, Opcode o, LfoParentPart *parent) :
-     IntrinsicopNode(allc, o), LfoParentPart(parent) {}
-  LfoIntrinsicopNode (MapleAllocator *allc, TyIdx tyIdx, LfoParentPart *parent) :
-     IntrinsicopNode(allc, OP_intrinsicop, tyIdx), LfoParentPart(parent) {}
-  BaseNode *Cvt2BaseNode() {
-    return this;
-  }
+  LfoIntrinsicopNode (MapleAllocator *allc, Opcode o, PrimType ptyp, TyIdx tidx, LfoParentPart *parent) :
+     IntrinsicopNode(allc, o, ptyp, tidx), LfoParentPart(parent) {}
+  BaseNode *Cvt2BaseNode() { return this; }
 };
 
 class LfoConstvalNode : public ConstvalNode, public LfoParentPart {
  public:
-   LfoConstvalNode(LfoParentPart *parent) : ConstvalNode(), LfoParentPart(parent) {}
-   LfoConstvalNode(MIRConst *constv, LfoParentPart *parent) : ConstvalNode(constv->type->primType, constv), LfoParentPart(parent) {}
-  BaseNode *Cvt2BaseNode() {
-    return this;
-  }
+  LfoConstvalNode(MIRConst *constv, LfoParentPart *parent) : ConstvalNode(constv->type->primType, constv), LfoParentPart(parent) {}
+  BaseNode *Cvt2BaseNode() { return this; }
 };
 
 class LfoConststrNode : public ConststrNode, public LfoParentPart {
  public:
-   LfoConststrNode(LfoParentPart *parent) : ConststrNode(), LfoParentPart(parent) {}
-  BaseNode *Cvt2BaseNode() {
-    return this;
-  }
+  LfoConststrNode(PrimType ptyp, UStrIdx i, LfoParentPart *parent) : ConststrNode(ptyp, i), LfoParentPart(parent) {}
+  BaseNode *Cvt2BaseNode() { return this; }
 };
 
 class LfoConststr16Node : public Conststr16Node, public LfoParentPart {
  public:
-  LfoConststr16Node(LfoParentPart *parent) : Conststr16Node(), LfoParentPart(parent) {}
-  BaseNode *Cvt2BaseNode() {
-    return this;
-  }
+  LfoConststr16Node(PrimType ptyp, U16StrIdx i, LfoParentPart *parent) : Conststr16Node(ptyp, i), LfoParentPart(parent) {}
+  BaseNode *Cvt2BaseNode() { return this; }
 };
 
 class LfoSizeoftypeNode : public SizeoftypeNode, public LfoParentPart {
  public:
-  LfoSizeoftypeNode(LfoParentPart *parent) : SizeoftypeNode(), LfoParentPart(parent) {}
-  BaseNode *Cvt2BaseNode() {
-    return this;
-  }
+  LfoSizeoftypeNode(PrimType ptyp, TyIdx tidx, LfoParentPart *parent) : SizeoftypeNode(ptyp, tidx), LfoParentPart(parent) {}
+  BaseNode *Cvt2BaseNode() { return this; }
 };
 
 class LfoArrayNode : public ArrayNode, public LfoParentPart {
  public:
-   LfoArrayNode(MapleAllocator *allc, PrimType typ, TyIdx idx, LfoParentPart *parent) : ArrayNode (allc, typ, idx),
-   LfoParentPart (parent) {}
-  BaseNode *Cvt2BaseNode() {
-    return this;
-  }
+  LfoArrayNode(MapleAllocator *allc, PrimType typ, TyIdx idx, LfoParentPart *parent) : ArrayNode (allc, typ, idx), LfoParentPart (parent) {}
+  BaseNode *Cvt2BaseNode() { return this; }
 };
 
 class LfoDreadNode : public AddrofNode, public LfoParentPart {
  public:
-   MapleForwardList<StmtNode *> defsList;
+  VarMeExpr *varx;
 
  public:
-  LfoDreadNode (MapleAllocator *allocator, LfoParentPart *parent) : AddrofNode(OP_dread),
-    LfoParentPart(parent), defsList(allocator->Adapter()){}
-  BaseNode *Cvt2BaseNode() {
-    return this;
-  }
-
+  LfoDreadNode(PrimType ptyp, StIdx sidx, FieldID fid, LfoParentPart *parent, VarMeExpr *v) :
+      AddrofNode(OP_dread, ptyp, sidx, fid), LfoParentPart(parent), varx(v) {}
+  BaseNode *Cvt2BaseNode() { return this; }
 };
 
 class LfoAddrofNode : public AddrofNode, public LfoParentPart {
  public:
-  LfoAddrofNode(LfoParentPart *parent) : AddrofNode(OP_addrof),
-  LfoParentPart(parent) {}
-  BaseNode *Cvt2BaseNode() {
-    return this;
-  }
+  LfoAddrofNode(PrimType ptyp, StIdx sidx, FieldID fid, LfoParentPart *parent) : AddrofNode(OP_addrof, ptyp, sidx, fid), LfoParentPart(parent) {}
+  BaseNode *Cvt2BaseNode() { return this; }
 };
 
 class LfoRegreadNode : public RegreadNode, public LfoParentPart {
  public:
-  LfoRegreadNode (LfoParentPart *parent) : RegreadNode(), LfoParentPart(parent) {}
-  BaseNode *Cvt2BaseNode() {
-    return this;
-  }
+  ScalarMeExpr *scalarx;
+
+ public:
+  LfoRegreadNode(LfoParentPart *parent, ScalarMeExpr *s) : RegreadNode(), LfoParentPart(parent), scalarx(s) {}
+  BaseNode *Cvt2BaseNode() { return this; }
 };
 
 class LfoAddroffuncNode : public AddroffuncNode, public LfoParentPart {
  public:
-  LfoAddroffuncNode(LfoParentPart *parent) : AddroffuncNode(), LfoParentPart(parent) {}
-  BaseNode *Cvt2BaseNode() {
-    return this;
-  }
+  LfoAddroffuncNode(PrimType ptyp, PUIdx pidx, LfoParentPart *parent) : AddroffuncNode(ptyp, pidx), LfoParentPart(parent) {}
+  BaseNode *Cvt2BaseNode() { return this; }
 };
 
 class LfoAddroflabelNode : public AddroflabelNode, public LfoParentPart {
  public:
-  LfoAddroflabelNode(LfoParentPart *parent) : AddroflabelNode(), LfoParentPart (parent) {}
-  BaseNode *Cvt2BaseNode() {
-    return this;
-  }
+  LfoAddroflabelNode(uint32 o, LfoParentPart *parent) : AddroflabelNode(o), LfoParentPart (parent) {}
+  BaseNode *Cvt2BaseNode() { return this; }
 };
 
 class LfoGCMallocNode : public GCMallocNode, public LfoParentPart {
  public:
-  LfoGCMallocNode(Opcode o, LfoParentPart *parent) : GCMallocNode(o), LfoParentPart(parent) {}
-  BaseNode *Cvt2BaseNode() {
-    return this;
-  }
+  LfoGCMallocNode(Opcode o, PrimType pty, TyIdx tidx, LfoParentPart *parent) : GCMallocNode(o, pty, tidx), LfoParentPart(parent) {}
+  BaseNode *Cvt2BaseNode() { return this; }
 };
 
 class LfoFieldsDistNode : public FieldsDistNode, public LfoParentPart {
  public:
-  LfoFieldsDistNode(LfoParentPart *parent) : FieldsDistNode(), LfoParentPart(parent) {}
-  BaseNode *Cvt2BaseNode() {
-    return this;
-  }
-};
-
-class LfoResolveFuncNode : public ResolveFuncNode, public LfoParentPart {
- public:
-  LfoResolveFuncNode(Opcode o, LfoParentPart *parent) : ResolveFuncNode(o),
-    LfoParentPart(parent) {}
-  BaseNode *Cvt2BaseNode() {
-    return this;
-  }
+  LfoFieldsDistNode(PrimType ptyp, TyIdx tidx, FieldID f1, FieldID f2, LfoParentPart *parent) :
+    FieldsDistNode(ptyp, tidx, f1, f2), LfoParentPart(parent) {}
+  BaseNode *Cvt2BaseNode() { return this; }
 };
 
 class LfoIassignNode : public IassignNode, public LfoParentPart {
  public:
-  MapleForwardList<LfoParentPart *> usesList;
+  IassignMeStmt *iasgn;
 
  public:
-   LfoIassignNode(MapleAllocator *allc, LfoParentPart *parent) : IassignNode(),
-     LfoParentPart(parent), usesList(allc->Adapter()) {}
-   BaseNode *Cvt2BaseNode() {
-     return this;
-   }
+  LfoIassignNode(LfoParentPart *parent, IassignMeStmt *ia) : IassignNode(), LfoParentPart(parent), iasgn(ia) {}
+  BaseNode *Cvt2BaseNode() { return this; }
 };
 
 class LfoGotoNode : public GotoNode, public LfoParentPart {
  public:
   LfoGotoNode (Opcode o, LfoParentPart *parent) : GotoNode(o), LfoParentPart(parent) {}
-  BaseNode *Cvt2BaseNode() {
-    return this;
-  }
+  BaseNode *Cvt2BaseNode() { return this; }
 };
 
 class LfoDassignNode : public DassignNode, public LfoParentPart {
  public:
- MapleForwardList<LfoParentPart *> usesList; // the use-chain of this definition
+  DassignMeStmt *dasgn;
 
  public:
-  LfoDassignNode(MapleAllocator *allc, LfoParentPart *parent) : DassignNode(), LfoParentPart(parent), usesList(allc->Adapter()) {}
-  BaseNode *Cvt2BaseNode() {
-    return this;
-  }
+  LfoDassignNode(LfoParentPart *parent, DassignMeStmt *das) : DassignNode(), LfoParentPart(parent), dasgn(das) {}
+  BaseNode *Cvt2BaseNode() { return this; }
 };
 
 class LfoRegassignNode : public RegassignNode, public LfoParentPart {
  public:
- MapleForwardList<LfoParentPart *> usesList; // the use-chain of this definition
+  AssignMeStmt *asgn;
 
  public:
-  LfoRegassignNode(MapleAllocator *allc, LfoParentPart *parent) : RegassignNode(), LfoParentPart(parent), usesList(allc->Adapter()) {}
-  BaseNode *Cvt2BaseNode() {
-    return this;
-  }
+  LfoRegassignNode(LfoParentPart *parent, AssignMeStmt *as) : RegassignNode(), LfoParentPart(parent), asgn(as) {}
+  BaseNode *Cvt2BaseNode() { return this; }
 };
 
 class LfoCondGotoNode : public CondGotoNode, public LfoParentPart {
  public:
   LfoCondGotoNode(Opcode o, LfoParentPart *parent) : CondGotoNode(o), LfoParentPart(parent) {}
-  BaseNode *Cvt2BaseNode() {
-    return this;
-  }
+  BaseNode *Cvt2BaseNode() { return this; }
 };
 
 class LfoWhileStmtNode : public WhileStmtNode, public LfoParentPart {
  public:
   LfoWhileStmtNode(LfoParentPart *parent) : WhileStmtNode(OP_while), LfoParentPart(parent) {}
-  BaseNode *Cvt2BaseNode() {
-    return this;
-  }
+  BaseNode *Cvt2BaseNode() { return this; }
 };
 
 class LfoDoloopNode : public DoloopNode, public LfoParentPart {
  public:
   LfoDoloopNode (LfoParentPart *parent) : DoloopNode (), LfoParentPart(parent) {}
-  BaseNode *Cvt2BaseNode() {
-    return this;
-  }
+  BaseNode *Cvt2BaseNode() { return this; }
   void InitLfoDoloopNode (StIdx stIdx, bool ispg, BaseNode *startExp, BaseNode *contExp, BaseNode *incrExp, BlockNode *blk) {
     doVarStIdx = stIdx;
     isPreg = ispg;
@@ -323,132 +255,65 @@ class LfoNaryStmtNode : public NaryStmtNode, public LfoParentPart {
  public:
   LfoNaryStmtNode (MapleAllocator *allc, Opcode o, LfoParentPart *parent) :
      NaryStmtNode(allc, o), LfoParentPart(parent) {}
-  BaseNode *Cvt2BaseNode() {
-    return this;
-  }
+  BaseNode *Cvt2BaseNode() { return this; }
+};
+
+class LfoReturnStmtNode : public NaryStmtNode, public LfoParentPart {
+ public:
+  RetMeStmt *retmestmt;
+
+ public:
+  LfoReturnStmtNode(MapleAllocator *allc, LfoParentPart *parent, RetMeStmt *ret) :
+     NaryStmtNode(allc, OP_return), LfoParentPart(parent), retmestmt(ret) {}
+  BaseNode *Cvt2BaseNode() { return this; }
 };
 
 class LfoCallNode : public CallNode, public LfoParentPart {
  public:
-  MapleForwardList<LfoParentPart *> usesList;
+  CallMeStmt *callmestmt;
+
  public:
-  LfoCallNode (MapleAllocator *allc, Opcode o, LfoParentPart *parent) : CallNode(allc, o), LfoParentPart(parent),usesList(allc->Adapter()) {}
-  BaseNode *Cvt2BaseNode() {
-    return this;
-  }
+  LfoCallNode(MapleAllocator *allc, Opcode o, LfoParentPart *parent, CallMeStmt *cl) : CallNode(allc, o), LfoParentPart(parent), callmestmt(cl) {}
+  BaseNode *Cvt2BaseNode() { return this; }
 };
 
 class LfoIcallNode : public IcallNode, public LfoParentPart {
  public:
-   MapleForwardList<LfoParentPart *> usesList;
+  IcallMeStmt *icallmestmt;
+
  public:
-   LfoIcallNode (MapleAllocator *allc, Opcode o, TyIdx idx, LfoParentPart *parent) :
-     IcallNode (allc, o, idx), LfoParentPart(parent), usesList(allc->Adapter()) {}
-  BaseNode *Cvt2BaseNode() {
-    return this;
-  }
+   LfoIcallNode (MapleAllocator *allc, Opcode o, TyIdx idx, LfoParentPart *parent, IcallMeStmt *ic) :
+     IcallNode (allc, o, idx), LfoParentPart(parent), icallmestmt(ic) {}
+  BaseNode *Cvt2BaseNode() { return this; }
 };
 
 class LfoIntrinsiccallNode : public IntrinsiccallNode, public LfoParentPart {
  public:
-   MapleForwardList<LfoParentPart *> usesList;
- public:
-   LfoIntrinsiccallNode (MapleAllocator *allc, Opcode o, MIRIntrinsicID id, LfoParentPart *parent) :
-     IntrinsiccallNode(allc, o, id), LfoParentPart(parent), usesList(allc->Adapter()) {}
-   BaseNode *Cvt2BaseNode () {
-     return this;
-   }
-};
+  IntrinsiccallMeStmt *intrinmestmt;
 
-class LfoLabelNode : public LabelNode, public LfoParentPart {
  public:
-  LfoLabelNode(LfoParentPart *parent) : LabelNode(), LfoParentPart(parent) {}
-  BaseNode *Cvt2BaseNode() {
-    return this;
-  }
-};
-
-class LfoCommentNode : public CommentNode, public LfoParentPart {
- public:
-  LfoCommentNode(MapleAllocator *allc, LfoParentPart *parent) : CommentNode(allc), LfoParentPart(parent) {}
-  BaseNode *Cvt2BaseNode() {
-    return this;
-  }
+   LfoIntrinsiccallNode (MapleAllocator *allc, Opcode o, MIRIntrinsicID id, LfoParentPart *parent, IntrinsiccallMeStmt *intncall) :
+     IntrinsiccallNode(allc, o, id), LfoParentPart(parent), intrinmestmt(intncall) {}
+   BaseNode *Cvt2BaseNode () { return this; }
 };
 
 class LfoIfStmtNode : public IfStmtNode, public LfoParentPart {
  public:
   LfoIfStmtNode(LfoParentPart *parent) : IfStmtNode(),LfoParentPart(parent) {}
-  BaseNode *Cvt2BaseNode() {
-    return this;
-  }
+  BaseNode *Cvt2BaseNode() { return this; }
 };
 
 class LfoBlockNode : public BlockNode, public LfoParentPart {
  public:
   LfoBlockNode (LfoParentPart *parent) : BlockNode(),LfoParentPart(parent) {}
-  BaseNode *Cvt2BaseNode() {
-    return this;
-  }
+  BaseNode *Cvt2BaseNode() { return this; }
 };
-
-
-class LfoGosubNode : public LfoGotoNode {
- public:
-  MapleForwardList<LfoParentPart *> usesList;
- public:
-  LfoGosubNode(MapleAllocator *allc, LfoParentPart *parent) : LfoGotoNode(OP_gosub, parent),
-    usesList(allc->Adapter()) {}
-  BaseNode *Cvt2BaseNode() {
-    return this;
-  }
-};
-
 
 class LfoStmtNode : public StmtNode, public LfoParentPart {
  public:
   LfoStmtNode (LfoParentPart *parent, Opcode o) : StmtNode (o),
       LfoParentPart(parent) {}
-  BaseNode *Cvt2BaseNode() {
-    return this;
-  }
-};
-
-class LfoWithUsesStmtNode : public LfoStmtNode {
- public:
-   MapleForwardList<LfoParentPart *> usesList;
- public:
-  LfoWithUsesStmtNode(MapleAllocator *allc, LfoParentPart *parent, Opcode o) : LfoStmtNode(parent, o),
-      usesList(allc->Adapter()) {}
-  BaseNode *Cvt2BaseNode() {
-    return this;
-  }
-};
-
-class LfoTryNode : public TryNode, public LfoParentPart {
- public:
-  LfoTryNode(MapleAllocator *allc, Opcode o, LfoParentPart *parent) : TryNode(allc, o),
-    LfoParentPart(parent) {}
-  BaseNode *Cvt2BaseNode() {
-    return this;
-  }
-};
-
-class LfoCppCatchNode : public CppCatchNode, public LfoParentPart {
- public:
-  LfoCppCatchNode(LfoParentPart *parent) : CppCatchNode(), LfoParentPart(parent) {}
-  BaseNode *Cvt2BaseNode() {
-    return this;
-  }
-};
-
-class LfoCatchNode : public CatchNode, public LfoParentPart {
- public:
-  LfoCatchNode(MapleAllocator *alloc, LfoParentPart *parent) : CatchNode(alloc),
-    LfoParentPart(parent) {}
-  BaseNode *Cvt2BaseNode() {
-    return this;
-  }
+  BaseNode *Cvt2BaseNode() { return this; }
 };
 
 class LfoUnaryStmtNode : public UnaryStmtNode, public LfoParentPart {
@@ -459,35 +324,11 @@ class LfoUnaryStmtNode : public UnaryStmtNode, public LfoParentPart {
   }
 };
 
-class LfoThrowStmt : public LfoUnaryStmtNode {
- public:
-  MapleForwardList<LfoParentPart *> usesList;
- public:
-  LfoThrowStmt(MapleAllocator *allc, Opcode o, LfoParentPart *parent) :
-    LfoUnaryStmtNode(o, parent), usesList(allc->Adapter()) {}
-  BaseNode *Cvt2BaseNode() {
-    return this;
-  }
-};
-
-class LfoSyncStmt : public LfoNaryStmtNode {
- public:
-  MapleForwardList<LfoParentPart *> usesList;
- public:
-  LfoSyncStmt(MapleAllocator *allc, Opcode o, LfoParentPart *parent) :
-    LfoNaryStmtNode(allc, o, parent), usesList(allc->Adapter()) {}
-  BaseNode *Cvt2BaseNode() {
-    return this;
-  }
-};
-
 class LfoSwitchNode : public SwitchNode, public LfoParentPart {
  public:
   LfoSwitchNode(MapleAllocator *allc, LfoParentPart *parent) :
     SwitchNode(allc), LfoParentPart(parent) {}
-  BaseNode *Cvt2BaseNode() {
-    return this;
-  }
+  BaseNode *Cvt2BaseNode() { return this; }
 };
 
 }  // namespace maple
