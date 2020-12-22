@@ -4898,6 +4898,13 @@ void Riscv64CGFunc::OffsetAdjustmentForFPLR() {
             RegOperand *regop = dynamic_cast<RegOperand *>(oper);
             if (regop && regop->IsOfVary()) {
               insn->SetOperand(i, GetOrCreateStackBaseRegOperand());
+              MOperator mop = insn->GetMachineOpcode();
+              if (mop == MOP_xmovrr || mop == MOP_wmovrr) {
+                insn->SetMOP(MOP_xaddrri12);
+                ImmOperand *iopnd = CreateImmOperand(0, 64, false);
+                insn->SetOperand(2, iopnd);
+                iopnd->SetVary(true);
+              }
             }
           } else if (oper->IsMemoryAccessOperand()) {
             Riscv64MemOperand *memoper = dynamic_cast<Riscv64MemOperand *>(oper);
