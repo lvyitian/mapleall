@@ -2200,11 +2200,19 @@ Operand *SelectLiteral(T *c, MIRFunction *func, uint32 labelIdx, Riscv64CGFunc *
 }
 
 Operand *Riscv64CGFunc::SelectFloatconst(MIRFloatConst *floatconst) {
-  return SelectLiteral(floatconst, func, labelIdx++, this, floatconst->GetIntValue() == 0);
+  bool isZero = false;
+  if (floatconst->GetIntValue() == 0) {
+    isZero = true;
+  }
+  return SelectLiteral(floatconst, func, labelIdx++, this, isZero);
 }
 
 Operand *Riscv64CGFunc::SelectDoubleconst(MIRDoubleConst *doubleconst) {
-  return SelectLiteral(doubleconst, func, labelIdx++, this, doubleconst->GetIntValue() == 0);
+  bool isZero = false;
+  if (doubleconst->GetIntValue() == 0) {
+    isZero = true;
+  }
+  return SelectLiteral(doubleconst, func, labelIdx++, this, isZero);
 }
 
 Operand *Riscv64CGFunc::SelectVectorIntconst(MIRVectorIntConst *vecIntconst) {

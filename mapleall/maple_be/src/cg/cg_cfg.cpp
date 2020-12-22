@@ -1215,22 +1215,6 @@ bool CGCFG::BuildCondMovInsn(BB *cmpBB, BB *bb, const map<Operand *, Operand *> 
         MOperator mopcode = isIntty ? (dsize == 64 ? MOP_xcselrrrc : MOP_wcselrrrc)
                                     : (dsize == 64 ? MOP_dcselrrrc : (dsize == 32 ? MOP_scselrrrc : MOP_hcselrrrc));
 
-        if (isIntty == false) {
-          if (tReg->GetRegisterNumber() == RZR || eReg->GetRegisterNumber() == RZR) {
-            Insn *cselInsn;
-            RegOperand *movDest = CreateVregFromReg(tReg);
-            Insn *mov0 = insnVisitor->BuildFmoveZero(movDest, dsize);
-            generateInsn.push_back(mov0);
-            if (tReg->GetRegisterNumber() == R0) {
-              cselInsn = insnVisitor->BuildCondSel(branchInsn, mopcode, destReg, movDest, eReg);
-            } else {
-              cselInsn = insnVisitor->BuildCondSel(branchInsn, mopcode, destReg, tReg, movDest);
-            }
-            CG_ASSERT(cselInsn != nullptr, "null ptr check");
-            generateInsn.push_back(cselInsn);
-            return true;
-          }
-        }
         Insn *cselInsn = insnVisitor->BuildCondSel(branchInsn, mopcode, destReg, tReg, eReg);
         CG_ASSERT(cselInsn != nullptr, "null ptr check");
         generateInsn.push_back(cselInsn);

@@ -2228,7 +2228,7 @@ Operand *AArch64CGFunc::SelectIntconst(MIRIntConst *intconst, PrimType pty) {
 }
 
 template <typename T>
-Operand *SelectLiteral(T *c, MIRFunction *func, uint32 labelIdx, AArch64CGFunc *cgfunc, bool isZero) {
+Operand *SelectLiteral(T *c, MIRFunction *func, uint32 labelIdx, AArch64CGFunc *cgfunc) {
   MIRSymbol *st = func->symTab->CreateSymbol(kScopeLocal);
   std::string lblstr(".LB_");
   MIRSymbol *funcSt = GlobalTables::GetGsymTable().GetSymbolFromStIdx(func->stIdx.Idx());
@@ -2246,7 +2246,10 @@ Operand *SelectLiteral(T *c, MIRFunction *func, uint32 labelIdx, AArch64CGFunc *
     case kConstFloatConst:
     case kConstDoubleConst: {
       // Handling of -0.0.  Use zero reg only for +0.0, not -0.0.
-      return (isZero && !(c->IsNeg())) ? static_cast<Operand *>(cgfunc->GetOrCreateFpZeroOperand(typeBitsize))
+      if (cgfunc->mirModule.IsCModule()) {
+        return static_cast<Operand *>(cgfunc->GetOrCreateMemOpnd(st, 0, typeBitsize));
+      }
+      return (c->IsZero() && !(c->IsNeg())) ? static_cast<Operand *>(cgfunc->GetOrCreateFpZeroOperand(typeBitsize))
                        : static_cast<Operand *>(cgfunc->GetOrCreateMemOpnd(st, 0, typeBitsize));
     }
     case kConstVecInt: {
@@ -2260,19 +2263,15 @@ Operand *SelectLiteral(T *c, MIRFunction *func, uint32 labelIdx, AArch64CGFunc *
 }
 
 Operand *AArch64CGFunc::SelectFloatconst(MIRFloatConst *floatconst) {
-  bool isZero = false;
-  if (floatconst->GetIntValue() == 0) {
-    isZero = true;
-  }
-  return SelectLiteral(floatconst, func, labelIdx++, this, floatconst->GetIntValue() == 0);
+  return SelectLiteral(floatconst, func, labelIdx++, this);
 }
 
 Operand *AArch64CGFunc::SelectDoubleconst(MIRDoubleConst *doubleconst) {
-  return SelectLiteral(doubleconst, func, labelIdx++, this, doubleconst->GetIntValue() == 0);
+  return SelectLiteral(doubleconst, func, labelIdx++, this);
 }
 
 Operand *AArch64CGFunc::SelectVectorIntconst(MIRVectorIntConst *vecIntconst) {
-  return SelectLiteral(vecIntconst, func, labelIdx++, this, false);
+  return SelectLiteral(vecIntconst, func, labelIdx++, this);
 }
 
 template <typename T>
