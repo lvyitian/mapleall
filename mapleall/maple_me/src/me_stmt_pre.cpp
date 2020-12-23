@@ -925,7 +925,7 @@ void MeStmtPre::BuildWorkListBB(BB *bb) {
         if (!MeOption::dassignpre || !dassmestmt->rhs->IsLeaf() ||
             !dassmestmt->chiList.empty() || dassmestmt->NeedIncref() ||
             (dassmestmt->rhs->op == OP_regread &&
-             static_cast<RegMeExpr *>(dassmestmt->rhs)->regIdx == -kSregThrownval)) {
+             static_cast<RegMeExpr *>(dassmestmt->rhs)->GetPregIdx() == -kSregThrownval)) {
           // update version stacks
           MapleStack<ScalarMeExpr *> *pstack = versionStackVec.at(dassmestmt->lhs->ost->index.idx);
           pstack->push(dassmestmt->GetVarLhs());

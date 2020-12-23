@@ -78,10 +78,6 @@ class SSATab : public AnalysisResult {
   OriginalSt *GetOriginalStFromid(OStIdx id) {
     return originalStTable.GetOriginalStFromid(id);
   }
-  OriginalSt *GetSymbolOriginalStFromid(OStIdx id) {
-    OriginalSt *ost = originalStTable.GetOriginalStFromid(id);
-    return ost;
-  }
   MIRSymbol *GetMIRSymbolFromid(OStIdx id) {
     return originalStTable.GetMIRSymbolFromid(id);
   }

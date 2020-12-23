@@ -467,7 +467,7 @@ void DelegateRC::DelegateRCTemp(MeStmt *stmt) {
 
           if (rhs->IsGcmalloc() || (rhs->meOp == kMeOpIvar && !static_cast<IvarMeExpr *>(rhs)->IsFinal()) ||
               (rhs->meOp == kMeOpVar && !ost->isFinal && ost->GetMIRSymbol()->IsGlobal()) ||
-              (rhs->op == OP_regread && static_cast<RegMeExpr *>(rhs)->regIdx == -kSregThrownval)) {
+              (rhs->op == OP_regread && static_cast<RegMeExpr *>(rhs)->GetPregIdx() == -kSregThrownval)) {
             if (retmestmt->bb == defStmt->bb && ContainAllTheUses(val, stmt, defStmt)) {
               RegMeExpr *curreg = RHSTempDelegated(ret, stmt);
               if (curreg != nullptr) {
@@ -553,7 +553,7 @@ bool DelegateRC::CanOmitRC4LHSVar(MeStmt *stmt, bool &onlyWithDecref) {
       // condition B1
       if (!verst_derefedcopied[thelhs->vstIdx]) {
         onlyWithDecref = therhs->op == OP_gcmalloc || therhs->op == OP_gcmallocjarray ||
-                         (therhs->op == OP_regread && static_cast<RegMeExpr *>(therhs)->regIdx == -kSregThrownval);
+                         (therhs->op == OP_regread && static_cast<RegMeExpr *>(therhs)->GetPregIdx() == -kSregThrownval);
         if (onlyWithDecref && verst_cantdecrefearly[thelhs->vstIdx]) {
           onlyWithDecref = false;
           return false;

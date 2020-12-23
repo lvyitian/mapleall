@@ -238,7 +238,7 @@ void SSAUpdate::Run() {
   // push zero-version varmeexpr nodes to rename stacks
   MapleMap<OStIdx, MapleStack<ScalarMeExpr *> *>::iterator it = renameStacks.begin();
   for (; it != renameStacks.end(); it++) {
-    OriginalSt *ost = ssaTab->GetSymbolOriginalStFromid(it->first);
+    OriginalSt *ost = ssaTab->GetOriginalStFromid(it->first);
     VarMeExpr *zeroversvar = irMap->GetOrCreateZeroVersionVarMeExpr(ost);
     MapleStack<ScalarMeExpr *> *renamestack = it->second;
     renamestack->push(zeroversvar);

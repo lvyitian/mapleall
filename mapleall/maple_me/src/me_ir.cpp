@@ -530,7 +530,7 @@ void MePhiNode::Dump(IRMap *irMap) {
     LogInfo::MapleLogger() << "VAR:";
     ost->Dump();
   } else {
-    PregIdx16 regId = static_cast<RegMeExpr*>(lhs)->regIdx;
+    PregIdx16 regId = static_cast<RegMeExpr*>(lhs)->GetPregIdx();
     LogInfo::MapleLogger() << "REGVAR: " << regId;
     LogInfo::MapleLogger() << "(%"
               << irMap->mirModule->CurFunction()->pregTab->PregFromPregIdx(static_cast<uint32>(regId))->pregNo
@@ -562,8 +562,8 @@ void VarMeExpr::Dump(IRMap *irMap, int32 indent) {
 }
 
 void RegMeExpr::Dump(IRMap *irMap, int32 indent) {
-  LogInfo::MapleLogger() << "REGINDX:" << regIdx;
-  LogInfo::MapleLogger() << " %" << irMap->mirModule->CurFunction()->pregTab->PregFromPregIdx(static_cast<uint32>(regIdx))->pregNo;
+  LogInfo::MapleLogger() << "REGINDX:" << GetPregIdx();
+  LogInfo::MapleLogger() << " %" << irMap->mirModule->CurFunction()->pregTab->PregFromPregIdx(static_cast<uint32>(GetPregIdx()))->pregNo;
   LogInfo::MapleLogger() << " mx" << exprID;
 }
 
@@ -629,7 +629,7 @@ void FieldsDistMeExpr::Dump(IRMap *irMap, int32 indent) {
 void AddrofMeExpr::Dump(IRMap *irMap, int32 indent) {
   LogInfo::MapleLogger() << "ADDROF:";
   irMap->ssaTab->GetOriginalStFromid(ostIdx)->Dump();
-  LogInfo::MapleLogger() << " (field)" << fieldID;
+  LogInfo::MapleLogger() << " (field)" << irMap->ssaTab->GetOriginalStFromid(ostIdx)->fieldID;
   LogInfo::MapleLogger() << " mx" << exprID;
 }
 
@@ -1209,7 +1209,7 @@ bool MeExpr::IsJavaMerge() {
   }
   if (naryx->GetOpnd(0)->meOp == kMeOpReg) {
     RegMeExpr *r = static_cast<RegMeExpr *>(naryx->GetOpnd(0));
-    return r->regIdx >= 0;
+    return r->GetPregIdx() >= 0;
   }
   return false;
 }
@@ -1228,7 +1228,7 @@ bool MeExpr::PointsToSomethingThatNeedsIncref() {
   }
   if (meOp == kMeOpReg) {
     RegMeExpr *r = static_cast<RegMeExpr *>(this);
-    return r->regIdx != -kSregThrownval;
+    return r->GetPregIdx() != -kSregThrownval;
   }
   return false;
 }

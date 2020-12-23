@@ -45,7 +45,7 @@ class IRMap : public AnalysisResult {
       dominance(dom),
       irMapAlloc(mp),
       tempAlloc(tempmp),
-      exprID(0),
+      exprID(1),        // starts from 1
       mapHashLength(hashTableSize),
       hashTable(mapHashLength, nullptr, irMapAlloc.Adapter()),
       verst2MeExprTable(ssaTab->versionStTable.Size(), nullptr, irMapAlloc.Adapter()),

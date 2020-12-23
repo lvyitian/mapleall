@@ -39,7 +39,7 @@ void MeSSALPre::GenerateSaveRealocc(MeRealOcc *realocc) {
     MIRSymbol *oldformalst = varmeexpr->ost->GetMIRSymbol();
     RegMeExpr *regformal = static_cast<RegMeExpr *>(regorvar);
     MIRSymbol *newformalst =
-      mirModule->mirBuilder->CreatePregFormalSymbol(oldformalst->tyIdx, regformal->regIdx, func->mirFunc);
+      mirModule->mirBuilder->CreatePregFormalSymbol(oldformalst->tyIdx, regformal->GetPregIdx(), func->mirFunc);
     uint32 i = 0;
     for (; i < func->mirFunc->formalDefVec.size(); i++)
       if (func->mirFunc->formalDefVec[i].formalSym == oldformalst) {
@@ -171,7 +171,7 @@ bool MeSSALPre::ScreenRHS4LHSoccur(const MeExpr *rhs) const {
       return rhs->primType != PTY_ref;
     case kMeOpReg:
       return !((rhs->primType == PTY_ref || rhs->primType == PTY_ptr) &&
-               static_cast<const RegMeExpr *>(rhs)->regIdx == -kSregThrownval);
+               static_cast<const RegMeExpr *>(rhs)->GetPregIdx() == -kSregThrownval);
     default:
       return true;
   }

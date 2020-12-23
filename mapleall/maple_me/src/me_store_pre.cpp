@@ -207,7 +207,7 @@ void MeStorePre::CreateRealOcc(OStIdx oidx, MeStmt *mestmt) {
   if (mapit != workcand_map.end()) {
     wkcand = mapit->second;
   } else {
-    OriginalSt *ost = ssaTab->GetSymbolOriginalStFromid(oidx);
+    OriginalSt *ost = ssaTab->GetOriginalStFromid(oidx);
     wkcand = ssuPreMempool->New<SSUPreWorkCand>(&ssuPreAlloc, ost);
     workcand_map[oidx] = wkcand;
     // if it is local symbol, insert artificial real occ at commonExitBB
@@ -253,7 +253,7 @@ void MeStorePre::CreateKillOcc(OStIdx oidx, BB *bb) {
 // create kill occurs for all the symbols that alias with muost
 void MeStorePre::CreateSpreKillOccsThruAliasing(const OriginalSt *muost, BB *bb) {
   if (muost->indexRenamedFrom.idx != 0) {  // change to use the original ost
-    muost = ssaTab->GetSymbolOriginalStFromid(muost->indexRenamedFrom);
+    muost = ssaTab->GetOriginalStFromid(muost->indexRenamedFrom);
   }
   if (muost->index.idx >= aliasclass->osym2Elem.size()) {
     return;

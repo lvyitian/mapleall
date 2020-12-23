@@ -68,10 +68,10 @@ void LowerGlobals::LowerGlobalDreads(MeStmt *stmt, MeExpr *x) {
     }
     case kMeOpAddrof: {
       AddrofMeExpr *theaddrof = static_cast<AddrofMeExpr *>(x);
-      if (theaddrof->fieldID == 0) {
+      OriginalSt *ost = ssaTab->GetOriginalStFromid(theaddrof->ostIdx);
+      if (ost->fieldID == 0) {
         break;
       }
-      OriginalSt *ost = ssaTab->GetSymbolOriginalStFromid(theaddrof->ostIdx);
       if (ost->isLocal) {
         break;
       }
@@ -80,7 +80,6 @@ void LowerGlobals::LowerGlobalDreads(MeStmt *stmt, MeExpr *x) {
                                                                  (FieldID)0);
 
       AddrofMeExpr addrofmeexpr(-1, PTY_ptr, baseost->index);
-      addrofmeexpr.fieldID = 0;
       AddrofMeExpr *newaddrof = static_cast<AddrofMeExpr *>(irMap->HashMeExpr(&addrofmeexpr));
 
       MIRPtrType pointtype(baseost->tyIdx, PTY_ptr);
@@ -88,7 +87,7 @@ void LowerGlobals::LowerGlobalDreads(MeStmt *stmt, MeExpr *x) {
 
       OpMeExpr iaddrof(-1, OP_iaddrof, PTY_ptr, 1);
       iaddrof.tyIdx = addrtyidx;
-      iaddrof.fieldID = theaddrof->fieldID;
+      iaddrof.fieldID = ost->fieldID;
       iaddrof.SetOpnd(newaddrof, 0);
       OpMeExpr *theiaddrof = static_cast<OpMeExpr *>(irMap->HashMeExpr(&iaddrof));
 

@@ -64,7 +64,7 @@ void Prop::PropUpdateDef(MeExpr *meexpr) {
     ostIdx = static_cast<VarMeExpr *>(meexpr)->ost->index;
   } else {
     ostIdx = static_cast<RegMeExpr *>(meexpr)->ost->index;
-    if (static_cast<RegMeExpr *>(meexpr)->regIdx < 0) {
+    if (static_cast<RegMeExpr *>(meexpr)->GetPregIdx() < 0) {
       return;
     }
   }
@@ -164,8 +164,8 @@ int32 Prop::InvertibleOccurrences(ScalarMeExpr *scalar, MeExpr *x) {
   switch (x->meOp) {
   case kMeOpConst: return 0;
   case kMeOpReg: {
-    RegMeExpr *regreadx = static_cast<RegMeExpr *>(scalar);
-    if (regreadx->regIdx < 0) {
+    RegMeExpr *regreadx = static_cast<RegMeExpr *>(x);
+    if (regreadx->GetPregIdx() < 0) {
       return -1;
     }
   }
@@ -246,7 +246,7 @@ Propagatability Prop::Propagatable(MeExpr *x, BB *frombb, bool atParm, bool chec
     }
     case kMeOpReg: {
       RegMeExpr *regreadx = static_cast<RegMeExpr *>(x);
-      if (regreadx->regIdx < 0) {
+      if (regreadx->GetPregIdx() < 0) {
         return kPropNo;
       } else {
         // get the current definition version
@@ -707,7 +707,7 @@ MeExpr *Prop::PropMeExpr(MeExpr *meexpr, bool &isproped, bool atParm) {
     }
     case kMeOpReg: {
       RegMeExpr *regexpr = static_cast<RegMeExpr *>(meexpr);
-      if (regexpr->regIdx < 0) {
+      if (regexpr->GetPregIdx() < 0) {
         return meexpr;
       }
       MeExpr *propmeexpr = PropReg(regexpr, atParm);

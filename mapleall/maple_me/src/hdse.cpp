@@ -67,7 +67,7 @@ void HDSE::MarkExprNeeded(MeExpr *meexpr) {
     }
     case kMeOpReg: {
       RegMeExpr *regread = static_cast<RegMeExpr *>(meexpr);
-      PregIdx regIdx = regread->regIdx;
+      PregIdx regIdx = regread->GetPregIdx();
       if (regIdx == -kSregRetval0) {
         if (regread->def.defStmt) {
           MarkStmtNeeded(regread->def.defStmt);
@@ -307,7 +307,7 @@ bool HDSE::ExprNonDeletable(MeExpr *x) {
       return false;
     case kMeOpReg: {
       RegMeExpr *r = static_cast<RegMeExpr *>(x);
-      return (r->regIdx == -kSregThrownval);
+      return (r->GetPregIdx() == -kSregThrownval);
     }
     case kMeOpVar: {
       VarMeExpr *v = static_cast<VarMeExpr *>(x);

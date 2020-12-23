@@ -100,7 +100,7 @@ RCItem *AnalyzeRC::FindOrCreateRCItem(OriginalSt *ost) {
   RCItem *rci = analyzercMp->New<RCItem>(ost, &analyzercAllocator);
   rcitemsmap[ost->index] = rci;
   if (ost->indexRenamedFrom.idx != 0) {  // change to use the original ost
-    ost = ssaTab->GetSymbolOriginalStFromid(ost->indexRenamedFrom);
+    ost = ssaTab->GetOriginalStFromid(ost->indexRenamedFrom);
   }
   if (ost->index.idx >= aliasclass->osym2Elem.size()) {
     rci->noalias = true;

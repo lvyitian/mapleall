@@ -25,7 +25,6 @@ class MeStmt;
 class IRMap;
 class SSATab;
 class VarMeExpr;
-class RegMeExpr;
 class OriginalSt;
 class Dominance;
 class AssignMeStmt;
@@ -149,7 +148,7 @@ typedef enum {
 
 class MePhiNode;
 
-// base class for VarMeExpr and RegMeExpr
+// base class for VarMeExpr
 class ScalarMeExpr : public MeExpr {
  public:
   OriginalSt *ost;
@@ -185,8 +184,17 @@ class ScalarMeExpr : public MeExpr {
   bool IsDefByPhi() const {
     return defBy == kDefByPhi;
   }
+  PregIdx GetPregIdx() const {
+    CHECK_FATAL(ost->IsPregSymbol(), "GetPregIdx: not a preg");
+    return ost->symOrPreg.pregIdx;
+  }
   BB *DefByBB();
+  BaseNode *EmitExpr(SSATab *ssaTab);
+  ScalarMeExpr *FindDefByStmt(std::set<ScalarMeExpr *> *visited);
+  void Dump(IRMap *, int32 indent = 0);
 };
+
+using RegMeExpr = ScalarMeExpr;
 
 // represant dread
 class VarMeExpr : public ScalarMeExpr {
@@ -214,20 +222,6 @@ class VarMeExpr : public ScalarMeExpr {
     return GlobalTables::GetTypeTable().GetTypeFromTyIdx(ost->tyIdx);
   }
   VarMeExpr *ResolveVarMeValue();
-};
-
-class RegMeExpr : public ScalarMeExpr {
- public:
-  PregIdx16 regIdx;
-
-  RegMeExpr(int32 exprid, OriginalSt *ost, uint32 vidx, PrimType ptyp)
-    : ScalarMeExpr(exprid, ost, vidx, kMeOpReg, OP_regread, ptyp),
-      regIdx(ost->GetPregIdx()) {}
-  ~RegMeExpr() {}
-
-  void Dump(IRMap *, int32 indent = 0);
-  BaseNode *EmitExpr(SSATab *);
-  RegMeExpr *FindDefByStmt(std::set<RegMeExpr *> *visited);
 };
 
 class MePhiNode {
@@ -421,9 +415,8 @@ class FieldsDistMeExpr : public MeExpr {
 class AddrofMeExpr : public MeExpr {
  public:
   OStIdx ostIdx;  // the index in MEOptimizer: OriginalStTable;
-  FieldID fieldID;
 
-  AddrofMeExpr(int32 exprid, PrimType t, OStIdx idx) : MeExpr(exprid, kMeOpAddrof, OP_addrof, t, 0), ostIdx(idx), fieldID(0) {}
+  AddrofMeExpr(int32 exprid, PrimType t, OStIdx idx) : MeExpr(exprid, kMeOpAddrof, OP_addrof, t, 0), ostIdx(idx) {}
 
   ~AddrofMeExpr() {}
   void Dump(IRMap *, int32 indent = 0);
@@ -432,7 +425,7 @@ class AddrofMeExpr : public MeExpr {
       return false;
     }
     const AddrofMeExpr *x = static_cast<const AddrofMeExpr *>(meexpr);
-    if (ostIdx != x->ostIdx || fieldID != x->fieldID) {
+    if (ostIdx != x->ostIdx) {
       return false;
     }
     return true;
@@ -879,16 +872,9 @@ class MustDefMeNode {
   bool isLive;
 
   MustDefMeNode(ScalarMeExpr *x, MeStmt *mestmt) : lhs(x), base(mestmt), isLive(true) {
-    if (x->meOp == kMeOpReg) {
-      RegMeExpr *reg = static_cast<RegMeExpr*>(x);
-      reg->defBy = kDefByMustdef;
-      reg->def.defMustDef = this;
-    } else {
-      CHECK_FATAL(x->meOp == kMeOpVar, "unexpected opcode");
-      VarMeExpr * var = static_cast<VarMeExpr*>(x);
-      var->defBy = kDefByMustdef;
-      var->def.defMustDef = this;
-    }
+    ScalarMeExpr *reg = static_cast<ScalarMeExpr*>(x);
+    reg->defBy = kDefByMustdef;
+    reg->def.defMustDef = this;
   }
   MustDefMeNode(const MustDefMeNode& mustDef) {
     lhs = mustDef.lhs;

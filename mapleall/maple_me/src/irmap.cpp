@@ -77,7 +77,7 @@ VarMeExpr *IRMap::CreateNewLocalrefvarTemp(GStrIdx strIdx, TyIdx tidx) {
 
 RegMeExpr *IRMap::CreateRegMeExprVersion(OriginalSt *ost) {
   RegMeExpr *regreadexpr =
-    New<RegMeExpr>(exprID++, ost, verst2MeExprTable.size(), ost->GetMIRPreg()->primType);
+    New<RegMeExpr>(exprID++, ost, verst2MeExprTable.size(), kMeOpReg, OP_regread, ost->GetMIRPreg()->primType);
   verst2MeExprTable.push_back(regreadexpr);
   return regreadexpr;
 }
@@ -207,7 +207,6 @@ MeExpr *IRMap::HashMeExpr(MeExpr *meexpr) {
     case kMeOpAddrof: {
       AddrofMeExpr *addrofmeexpr = static_cast<AddrofMeExpr *>(meexpr);
       AddrofMeExpr *newaddrofmeexpr = New<AddrofMeExpr>(exprID++, meexpr->primType, addrofmeexpr->ostIdx);
-      newaddrofmeexpr->fieldID = addrofmeexpr->fieldID;
       PutToBucket(hidx, newaddrofmeexpr);
       return newaddrofmeexpr;
     }
@@ -612,7 +611,6 @@ MeExpr *IRMap::CreateAddrofMeExprFromNewSymbol(MIRSymbol *st, PUIdx puIdx) {
   baseOst->versionsIndex.push_back(baseOst->zeroVersionIndex);
 
   AddrofMeExpr addrofme(-1, PTY_ptr, baseOst->index);
-  addrofme.fieldID = 0;
   return HashMeExpr(&addrofme);
 }
 

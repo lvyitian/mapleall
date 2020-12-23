@@ -58,7 +58,7 @@ RegMeExpr *SSARename2Preg::RenameVar(VarMeExpr *varmeexpr) {
   } else {
     const OriginalSt *origOst = ost;
     if (ost->indexRenamedFrom.idx != 0) {  // change to use the original ost
-      origOst = ssaTab->GetSymbolOriginalStFromid(ost->indexRenamedFrom);
+      origOst = ssaTab->GetOriginalStFromid(ost->indexRenamedFrom);
     }
     if (origOst->index.idx >= aliasclass->osym2Elem.size()) {
       return nullptr;
@@ -79,7 +79,7 @@ RegMeExpr *SSARename2Preg::RenameVar(VarMeExpr *varmeexpr) {
       return nullptr;
     }
     curtemp = meirmap->CreateRegMeExpr(ty);
-    OriginalSt *pregOst = ssaTab->originalStTable.CreatePregOriginalSt(curtemp->regIdx, func->mirFunc->puIdx);
+    OriginalSt *pregOst = ssaTab->originalStTable.CreatePregOriginalSt(curtemp->GetPregIdx(), func->mirFunc->puIdx);
     pregOst->isFormal = ost->isFormal;
     sym2reg_map[ost->index] = pregOst;
     vstidx2reg_map.insert(make_pair(varmeexpr->exprID, curtemp));
@@ -289,7 +289,7 @@ void SSARename2Preg::UpdateMirFunctionFormal() {
     } else {
       RegMeExpr *regformal = reg_formal_vec[i];
       if (regformal) {
-        PregIdx16 regIdx = regformal->regIdx;
+        PregIdx16 regIdx = regformal->GetPregIdx();
         MIRSymbol *oldformalst = mirFunc->formalDefVec[i].formalSym;
         MIRSymbol *newformalst = mirbuilder->CreatePregFormalSymbol(oldformalst->tyIdx, regIdx, mirFunc);
         mirFunc->formalDefVec[i].formalSym = newformalst;

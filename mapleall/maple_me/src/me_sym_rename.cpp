@@ -80,7 +80,7 @@ void SymRename::PerformSymRename() {
       }
       MapleMap<OStIdx, ChiMeNode *>::iterator chiit = chilist->begin();
       for (; chiit != chilist->end(); chiit++) {
-        OriginalSt *ost = ssaTab->GetSymbolOriginalStFromid(chiit->first);
+        OriginalSt *ost = ssaTab->GetOriginalStFromid(chiit->first);
         if (!ost->IsSymbol() || !IsSymRenameCand(ost)) {
           continue;
         }
@@ -146,7 +146,7 @@ void SymRename::PerformSymRename() {
     }
 
     // allocate a new OriginalSt for versions belonging to this live range
-    OriginalSt *origOst = ssaTab->GetSymbolOriginalStFromid(origOstIdx);
+    OriginalSt *origOst = ssaTab->GetOriginalStFromid(origOstIdx);
     origOst->symRenamed = true;
     OriginalSt *newOst = ssaTab->CreateSymbolOriginalSt(origOst->GetMIRSymbol(), origOst->puIdx, origOst->fieldID);
     newOst->ignoreRC = origOst->ignoreRC;

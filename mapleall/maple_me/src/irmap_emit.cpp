@@ -46,8 +46,8 @@ BaseNode *VarMeExpr::EmitExpr(SSATab *ssaTab) {
 BaseNode *RegMeExpr::EmitExpr(SSATab *ssaTab) {
   RegreadNode *regread = ssaTab->mirModule.CurFunction()->codeMemPool->New<RegreadNode>();
   regread->primType = primType;
-  regread->regIdx = regIdx;
-  ASSERT(regIdx < 0 || static_cast<uint32>(regIdx) < ssaTab->mirModule.CurFunction()->pregTab->Size(),
+  regread->regIdx = GetPregIdx();
+  ASSERT(regread->regIdx < 0 || static_cast<uint32>(regread->regIdx) < ssaTab->mirModule.CurFunction()->pregTab->Size(),
           "RegMeExpr::EmitExpr: pregidx exceeds preg table size");
   return regread;
 }
@@ -83,12 +83,13 @@ BaseNode *FieldsDistMeExpr::EmitExpr(SSATab *ssaTab) {
 }
 
 BaseNode *AddrofMeExpr::EmitExpr(SSATab *ssaTab) {
-  MIRSymbol *sym = ssaTab->GetMIRSymbolFromid(ostIdx);
+  OriginalSt *ost = ssaTab->GetOriginalStFromid(ostIdx);
+  MIRSymbol *sym = ost->GetMIRSymbol();
   if (sym->IsLocal()) {
     sym->ResetIsDeleted();
   }
   AddrofNode *addrofnode =
-    ssaTab->mirModule.CurFunction()->codeMemPool->New<AddrofNode>(OP_addrof, primType, sym->stIdx, fieldID);
+    ssaTab->mirModule.CurFunction()->codeMemPool->New<AddrofNode>(OP_addrof, primType, sym->stIdx, ost->fieldID);
   return addrofnode;
 }
 
@@ -283,7 +284,7 @@ StmtNode *AssignMeStmt::EmitStmt(SSATab *ssaTab) {
   }
   if (lhs->meOp == kMeOpReg) {
     RegassignNode *regassignstmt =
-    ssaTab->mirModule.mirBuilder->CreateStmtRegassign(lhs->primType, GetRegLhs()->regIdx, rhs->EmitExpr(ssaTab));
+    ssaTab->mirModule.mirBuilder->CreateStmtRegassign(lhs->primType, GetRegLhs()->GetPregIdx(), rhs->EmitExpr(ssaTab));
     regassignstmt->srcPosition = srcPos;
     return regassignstmt;
   } else {
@@ -351,7 +352,7 @@ void MeStmt::EmitCallReturnVector(SSATab *ssaTab, CallReturnVector *returnValues
     MIRSymbol *sym = ost->GetMIRSymbol();
     returnValues->push_back(CallReturnPair(sym->GetStIdx(), RegFieldPair(0, 0)));
   } else if (meexpr->meOp == kMeOpReg) {
-    returnValues->push_back(CallReturnPair(StIdx(), RegFieldPair(0, static_cast<RegMeExpr *>(meexpr)->regIdx)));
+    returnValues->push_back(CallReturnPair(StIdx(), RegFieldPair(0, static_cast<RegMeExpr *>(meexpr)->GetPregIdx())));
   }
 }
 

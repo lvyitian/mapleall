@@ -189,7 +189,7 @@ static MeExpr *FindLaterRepairedTemp(MeExpr *temp, MeStmt *injuringDef) {
     while (rass != nullptr) {
       CHECK_FATAL(rass->op == OP_regassign && rass->isIncDecStmt,
              "FindLaterRepairedTemp: failed to find repair statement");
-      if (rass->GetRegLhs()->regIdx == static_cast<RegMeExpr *>(temp)->regIdx) {
+      if (rass->GetRegLhs()->GetPregIdx() == static_cast<RegMeExpr *>(temp)->GetPregIdx()) {
         return rass->lhs;
       }
       rass = static_cast<AssignMeStmt *>(rass->next);

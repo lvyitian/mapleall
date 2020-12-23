@@ -102,8 +102,9 @@ LfoParentPart *LfoPreEmitter::EmitLfoExpr(MeExpr *meexpr, LfoParentPart *parent)
     }
     case OP_addrof: {
       AddrofMeExpr *addrMeexpr = static_cast<AddrofMeExpr *> (meexpr);
-      MIRSymbol *sym = meirmap->ssaTab->GetMIRSymbolFromid(addrMeexpr->ostIdx);
-      LfoAddrofNode *lnoaddrofNode = codeMP->New<LfoAddrofNode>(addrMeexpr->primType, sym->stIdx, addrMeexpr->fieldID, parent);
+      OriginalSt *ost = meirmap->ssaTab->GetOriginalStFromid(addrMeexpr->ostIdx);
+      MIRSymbol *sym = ost->GetMIRSymbol();
+      LfoAddrofNode *lnoaddrofNode = codeMP->New<LfoAddrofNode>(addrMeexpr->primType, sym->stIdx, ost->fieldID, parent);
       return lnoaddrofNode;
     }
     case OP_addroflabel: {
@@ -158,7 +159,7 @@ LfoParentPart *LfoPreEmitter::EmitLfoExpr(MeExpr *meexpr, LfoParentPart *parent)
       RegMeExpr *regMeexpr = static_cast<RegMeExpr *>(meexpr);
       LfoRegreadNode *regNode = codeMP->New<LfoRegreadNode>(parent, regMeexpr);
       regNode->primType = regMeexpr->primType;
-      regNode->regIdx = regMeexpr->regIdx;
+      regNode->regIdx = regMeexpr->GetPregIdx();
       return regNode;
     }
     case OP_sizeoftype: {
@@ -245,7 +246,7 @@ StmtNode* LfoPreEmitter::EmitLfoStmt(MeStmt *mestmt, LfoParentPart *parent) {
       AssignMeStmt *asMestmt = static_cast<AssignMeStmt *>(mestmt);
       LfoRegassignNode *lrssnode = codeMP->New<LfoRegassignNode>(parent, asMestmt);
       lrssnode->primType = asMestmt->lhs->primType;
-      lrssnode->regIdx = asMestmt->GetRegLhs()->regIdx;
+      lrssnode->regIdx = asMestmt->GetRegLhs()->GetPregIdx();
       lrssnode->uOpnd= EmitLfoExpr(asMestmt->rhs, lrssnode)->Cvt2BaseNode();
       lrssnode->srcPosition = asMestmt->srcPos;
       return lrssnode;

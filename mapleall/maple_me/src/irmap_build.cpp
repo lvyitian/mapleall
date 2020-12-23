@@ -47,7 +47,7 @@ RegMeExpr *IrMapBuild::GetOrCreateRegFromVerSt(const VersionSt *verst) {
 
   OriginalSt *ost = verst->ost;
   ASSERT(ost->ostType == OriginalSt::kPregOst, "GetOrCreateRegFromVerSt: PregOST expected");
-  RegMeExpr *regx = irMap->New<RegMeExpr>(irMap->exprID++, ost, vindex, ost->GetMIRPreg()->primType);
+  RegMeExpr *regx = irMap->New<RegMeExpr>(irMap->exprID++, ost, vindex, kMeOpReg, OP_regread, ost->GetMIRPreg()->primType);
   irMap->verst2MeExprTable[vindex] = regx;
   return regx;
 }
@@ -172,7 +172,6 @@ MeExpr *IrMapBuild::BuildExpr(BaseNode *mirnode, bool atParm, bool noProp) {
       VersionSt *verst = addrofnode->ssaVar;
       OriginalSt *ost = verst->ost;
       AddrofMeExpr addrofme(-1, mirnode->primType,  ost->index);
-      addrofme.fieldID = addrofnode->fieldID;
       retmeexpr = irMap->HashMeExpr(&addrofme);
       break;
     }

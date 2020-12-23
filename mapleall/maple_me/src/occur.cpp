@@ -187,7 +187,7 @@ uint32 PreWorkCand::ComputeWorkCandHashIndex(MeExpr *x) {
     }
     case kMeOpReg: {
       RegMeExpr *regmeexpr = static_cast<RegMeExpr *>(x);
-      hidx = (static_cast<uint32>(regmeexpr->regIdx)) << 6;
+      hidx = (static_cast<uint32>(regmeexpr->GetPregIdx())) << 6;
       break;
     }
     case kMeOpIvar: {
