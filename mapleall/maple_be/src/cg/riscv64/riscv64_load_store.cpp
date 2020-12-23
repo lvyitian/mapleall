@@ -2169,18 +2169,37 @@ Operand *Riscv64CGFunc::SelectIntconst(MIRIntConst *intconst, PrimType parentPty
 
 template <typename T>
 Operand *SelectLiteral(T *c, MIRFunction *func, uint32 labelIdx, Riscv64CGFunc *cgfunc, bool isZero) {
-  MIRSymbol *st = func->symTab->CreateSymbol(kScopeLocal);
-  std::string lblstr(".LB_");
-  MIRSymbol *funcSt = GlobalTables::GetGsymTable().GetSymbolFromStIdx(func->stIdx.Idx());
-  std::string funcname = funcSt->GetName();
-  lblstr.append(funcname).append(to_string(labelIdx));
-  st->SetNameStridx(GlobalTables::GetStrTable().GetOrCreateStrIdxFromName(lblstr));
-  st->storageClass = kScPstatic;
-  st->sKind = kStConst;
-  st->SetConst(c);
-  PrimType primty = c->type->GetPrimType();
-  st->SetTyIdx(c->type->tyIdx);
-  uint32 typeBitsize = GetPrimTypeBitSize(primty);
+  // SelectLiteral is only for MIRFloatConst and MIRDoubleConst
+  MIRSymbol* sym = nullptr;
+  for (uint32_t idx = 0; idx < func->symTab->GetSymbolTableSize(); idx++) {
+    auto tsym = func->symTab->GetSymbolFromStIdx(idx);
+    if (tsym &&
+        (tsym->storageClass == kScPstatic) &&
+        (tsym->sKind == kStConst) &&
+        (tsym->GetTyIdx() == c->type->tyIdx) &&
+        (static_cast<T *>(tsym->GetConst())->GetValue() == c->GetValue())) {
+       sym = tsym;
+       break;
+    }
+  }
+
+  MIRSymbol *st;
+  uint32 typeBitsize = GetPrimTypeBitSize(c->type->GetPrimType());
+
+  if (sym) {
+    st = sym; // Reuse the existing symbol
+  } else {    // Create a new symbol
+    st = func->symTab->CreateSymbol(kScopeLocal);
+    std::string lblstr(".LB_");
+    MIRSymbol *funcSt = GlobalTables::GetGsymTable().GetSymbolFromStIdx(func->stIdx.Idx());
+    std::string funcname = funcSt->GetName();
+    lblstr.append(funcname).append(to_string(labelIdx));
+    st->SetNameStridx(GlobalTables::GetStrTable().GetOrCreateStrIdxFromName(lblstr));
+    st->storageClass = kScPstatic;
+    st->sKind = kStConst;
+    st->SetConst(c);
+    st->SetTyIdx(c->type->tyIdx);
+  }
 
   switch (c->kind) {
     case kConstFloatConst:
@@ -2188,9 +2207,6 @@ Operand *SelectLiteral(T *c, MIRFunction *func, uint32 labelIdx, Riscv64CGFunc *
       // Handling of -0.0.  Use zero reg only for +0.0, not -0.0.
       return (isZero && !(c->IsNeg())) ? static_cast<Operand *>(cgfunc->GetOrCreateFpZeroOperand(typeBitsize))
                        : static_cast<Operand *>(cgfunc->GetOrCreateMemOpnd(st, 0, typeBitsize));
-    }
-    case kConstVecInt: {
-      return static_cast<Operand *>(cgfunc->GetOrCreateMemOpnd(st, 0, typeBitsize));
     }
     default: {
       ASSERT(0, "Unsupported const type");
@@ -2216,7 +2232,20 @@ Operand *Riscv64CGFunc::SelectDoubleconst(MIRDoubleConst *doubleconst) {
 }
 
 Operand *Riscv64CGFunc::SelectVectorIntconst(MIRVectorIntConst *vecIntconst) {
-  return SelectLiteral(vecIntconst, func, labelIdx++, this, false);
+  // Dup of MIRVectorIntConst is highly unlikely. May check dup in future
+  MIRSymbol *st = func->symTab->CreateSymbol(kScopeLocal);
+  std::string lblstr(".LB_");
+  MIRSymbol *funcSt = GlobalTables::GetGsymTable().GetSymbolFromStIdx(func->stIdx.Idx());
+  std::string funcname = funcSt->GetName();
+  lblstr.append(funcname).append(to_string(labelIdx));
+  st->SetNameStridx(GlobalTables::GetStrTable().GetOrCreateStrIdxFromName(lblstr));
+  st->storageClass = kScPstatic;
+  st->sKind = kStConst;
+  st->SetConst(vecIntconst);
+  PrimType primty = vecIntconst->type->GetPrimType();
+  st->SetTyIdx(vecIntconst->type->tyIdx);
+  uint32 typeBitsize = GetPrimTypeBitSize(primty);
+  return static_cast<Operand *>(GetOrCreateMemOpnd(st, 0, typeBitsize));
 }
 
 template <typename T>
