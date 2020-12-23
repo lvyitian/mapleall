@@ -57,10 +57,10 @@ config("mapleallcompilecfg"){
     if(HOST_ARCH == 32){
 
         libs = [
-            "-lz",
-            "-lpthread",
-            "-ldl",
-            "-lelf",
+            "z",
+            "pthread",
+            "dl",
+            "elf",
         ]
 
         ldflags = []
