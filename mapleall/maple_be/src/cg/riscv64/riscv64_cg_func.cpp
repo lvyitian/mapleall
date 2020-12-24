@@ -4946,9 +4946,27 @@ void Riscv64CGFunc::OffsetAdjustmentForFPLR() {
             if (imo || imo1) {
               if (imo->IsVary()) {
                 if (!UseFP() && !HasVLAOrAlloca() && argsToStkpassSize > 0) {
-                  imo->Add(static_cast<Riscv64MemLayout *>(memlayout)->RealStackFrameSize());
+                  if (imo) {
+                    ImmOperand *newImmOpnd = static_cast<ImmOperand *>(static_cast<ImmOperand *>(imo)->Clone(memPool));
+                    newImmOpnd->Add(static_cast<Riscv64MemLayout *>(memlayout)->RealStackFrameSize());
+                    insn->SetOperand(i, newImmOpnd);
+                  } else {
+                    OfstOperand *newOfstOpnd = static_cast<OfstOperand *>(static_cast<OfstOperand *>(imo)->Clone(memPool));
+                    newOfstOpnd->Add(static_cast<Riscv64MemLayout *>(memlayout)->RealStackFrameSize());
+                    insn->SetOperand(i, newOfstOpnd);
+                  }
                 } else {
-                  imo->Add(static_cast<Riscv64MemLayout *>(memlayout)->RealStackFrameSize() - argsToStkpassSize);
+                  if (imo) {
+                    ImmOperand *newImmOpnd = static_cast<ImmOperand *>(static_cast<ImmOperand *>(imo)->Clone(memPool));
+                    newImmOpnd->Add(static_cast<Riscv64MemLayout *>(memlayout)->RealStackFrameSize() - argsToStkpassSize);
+                    insn->SetOperand(i, newImmOpnd);
+                    imo = newImmOpnd;
+                  } else {
+                    OfstOperand *newOfstOpnd = static_cast<OfstOperand *>(static_cast<OfstOperand *>(imo)->Clone(memPool));
+                    newOfstOpnd->Add(static_cast<Riscv64MemLayout *>(memlayout)->RealStackFrameSize() - argsToStkpassSize);
+                    insn->SetOperand(i, newOfstOpnd);
+                    imo = static_cast<Riscv64ImmOperand*>(newOfstOpnd);
+                  }
                   if (insn->GetMachineOpcode() != MOP_xmovri64 &&
                       !static_cast<Riscv64ImmOperand*>(imo)->IsInBitSize(11)) {
                     if (ReplaceLargeStackOffsetImm(insn)) {
