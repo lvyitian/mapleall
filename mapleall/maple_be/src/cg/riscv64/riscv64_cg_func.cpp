@@ -4908,13 +4908,16 @@ void Riscv64CGFunc::OffsetAdjustmentForFPLR() {
             }
           } else if (oper->IsMemoryAccessOperand()) {
             Riscv64MemOperand *memoper = dynamic_cast<Riscv64MemOperand *>(oper);
+            MemOperand *newMemOpnd = nullptr;
             if (memoper &&
                 memoper->GetBaseRegister() && memoper->GetBaseRegister()->IsOfVary()) {
-              memoper->SetBaseRegister(static_cast<Riscv64RegOperand *>(GetOrCreateStackBaseRegOperand()));
+              newMemOpnd = static_cast<MemOperand *>(static_cast<MemOperand *>(memoper)->Clone(memPool));
+              newMemOpnd->SetBaseRegister(static_cast<Riscv64RegOperand *>(GetOrCreateStackBaseRegOperand()));
+              insn->SetOperand(i, newMemOpnd);
             }
 
-            if (memoper) {
-              Riscv64OfstOperand *oo = memoper->GetOffsetImmediate();
+            if (newMemOpnd) {
+              Riscv64OfstOperand *oo = static_cast<Riscv64MemOperand *>(newMemOpnd)->GetOffsetImmediate();
               if (oo->IsVary()) {
                 int32 offset;
                 Riscv64MemLayout *layout = static_cast<Riscv64MemLayout *>(memlayout);
@@ -4928,9 +4931,9 @@ void Riscv64CGFunc::OffsetAdjustmentForFPLR() {
                   Riscv64RegOperand *dst = GetOrCreatePhysicalRegisterOperand(Riscv64Abi::kIntSpareReg, 64, kRegTyInt);
                   Insn *li = cg->BuildInstruction<Riscv64Insn>(MOP_xmovri64, dst, CreateImmOperand(oo->GetOffsetValue(), 64, false));
                   insn->bb->InsertInsnBefore(insn, li);
-                  Insn *add = cg->BuildInstruction<Riscv64Insn>(MOP_xaddrrr, dst, memoper->GetBaseRegister(), dst);
+                  Insn *add = cg->BuildInstruction<Riscv64Insn>(MOP_xaddrrr, dst, newMemOpnd->GetBaseRegister(), dst);
                   insn->bb->InsertInsnBefore(insn, add);
-                  memoper->SetBaseRegister(dst);
+                  newMemOpnd->SetBaseRegister(dst);
                   oo->SetOffsetValue(0);
                 }
                 oo->SetVary(false);
