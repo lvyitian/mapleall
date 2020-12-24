@@ -4950,10 +4950,12 @@ void Riscv64CGFunc::OffsetAdjustmentForFPLR() {
                     ImmOperand *newImmOpnd = static_cast<ImmOperand *>(static_cast<ImmOperand *>(imo)->Clone(memPool));
                     newImmOpnd->Add(static_cast<Riscv64MemLayout *>(memlayout)->RealStackFrameSize());
                     insn->SetOperand(i, newImmOpnd);
+                    imo = newImmOpnd;
                   } else {
                     OfstOperand *newOfstOpnd = static_cast<OfstOperand *>(static_cast<OfstOperand *>(imo)->Clone(memPool));
                     newOfstOpnd->Add(static_cast<Riscv64MemLayout *>(memlayout)->RealStackFrameSize());
                     insn->SetOperand(i, newOfstOpnd);
+                    imo = static_cast<Riscv64ImmOperand*>(newOfstOpnd);
                   }
                 } else {
                   if (imo) {
