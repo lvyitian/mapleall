@@ -19,6 +19,7 @@
 #include "cg_assert.h"
 #include "be_common.h"  // SIZEOFPTR
 #include "global_tables.h"
+#include "mir_builder.h"
 #include "mir_symbol.h"
 
 #if TARGRISCV64
@@ -290,11 +291,24 @@ void Emitter::EmitDIAttrValue(DBGDie *die, DBGDieAttr *attr, dw_at attrName, dw_
           }
           CHECK_FATAL(name != nullptr, "name is null in Emitter::EmitDIAttrValue");
           const string &str = GlobalTables::GetStrTable().GetStringFromStrIdx(name->val_.id);
-          EmitLabelRef(str.c_str(), attr->val_.id);
+
+          MIRBuilder *mirbuilder = cg_->mirModule->mirBuilder;
+          MIRFunction *mfunc = mirbuilder->GetFunctionFromName(str);
+          MapleMap<MIRFunction*, pair<LabelIdx,LabelIdx> >::iterator it =
+            CG::funcWrapLabels.find(mfunc);
+          if (it != CG::funcWrapLabels.end()) {
+            EmitLabelForFunc(mfunc, (*it).second.second);  // end label
+          } else {
+            EmitLabelRef(str.c_str(), attr->val_.id);      // maybe deadbeef
+          }
           Emit("-");
-          DBGDieAttr *lowpc = LFindAttribute(attrvec, DW_AT_low_pc);
-          CHECK_FATAL(lowpc != nullptr, "lowpc is null in Emitter::EmitDIAttrValue");
-          EmitLabelRef(str.c_str(), lowpc->val_.id);
+          if (it != CG::funcWrapLabels.end()) {
+            EmitLabelForFunc(mfunc, (*it).second.first);  // start label
+          } else {
+            DBGDieAttr *lowpc = LFindAttribute(attrvec, DW_AT_low_pc);
+            CHECK_FATAL(lowpc != nullptr, "lowpc is null in Emitter::EmitDIAttrValue");
+            EmitLabelRef(str.c_str(), lowpc->val_.id);    // maybe deadbeef
+          }
         }
       } else {
         EmitHexUnsigned(attr->val_.i);
@@ -321,7 +335,15 @@ void Emitter::EmitDIAttrValue(DBGDie *die, DBGDieAttr *attr, dw_at attrName, dw_
           }
           CHECK_FATAL(name != nullptr, "name is null in Emitter::EmitDIAttrValue");
           const string &str = GlobalTables::GetStrTable().GetStringFromStrIdx(name->val_.id);
-          EmitLabelRef(str.c_str(), attr->val_.id);
+          MIRBuilder *mirbuilder = cg_->mirModule->mirBuilder;
+          MIRFunction *mfunc = mirbuilder->GetFunctionFromName(str);
+          MapleMap<MIRFunction*, pair<LabelIdx,LabelIdx> >::iterator
+          it = CG::funcWrapLabels.find(mfunc);
+          if (it != CG::funcWrapLabels.end()) {
+            EmitLabelForFunc(mfunc, (*it).second.first);  // it is a <pair>
+          } else {
+            EmitLabelRef(str.c_str(), attr->val_.id);     // maybe deadbeef
+          }
         } else if (tagName == DW_TAG_label) {
           LabelIdx labelIdx = GetLabelIdxForLabelDie(die);
           DBGDie *subpgm = die->parent;

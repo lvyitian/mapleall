@@ -73,6 +73,11 @@ void Emitter::EmitLabelPair(const char *name, const LabelPair &pairlabel) {
   out << "\n";
 }
 
+void Emitter::EmitLabelForFunc(MIRFunction *func, LabelIdx labidx) {
+  const char *idx = static_cast<const char*>(strdup(std::to_string(func->puIdx).c_str()));
+  out << ".label." << idx << "__" << labidx;
+}
+
 Asmlabel Emitter::GetTypeAsmInfoName(PrimType pty) {
   uint32 size = GetPrimTypeSize(pty);
   switch (size) {

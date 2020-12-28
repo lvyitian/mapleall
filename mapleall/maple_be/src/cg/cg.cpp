@@ -39,6 +39,7 @@ const char *BB::bbNames[BB::kBBLast] = { "BB_ft",  "BB_if",        "BB_goto",   
 
 CGFunc *CG::curCgFunc = nullptr;
 PUIdx CG::curPuIdx = 0;
+std::map<MIRFunction *, std::pair<LabelIdx,LabelIdx>> CG::funcWrapLabels;
 
 const char *CG::kCMacroDefSuffix = ".macros.def";
 const char *CG::kGctibSuffix = ".gctib.s";

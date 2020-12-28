@@ -195,6 +195,7 @@ class Emitter {
   void EmitStmtLabel(const char *, LabelIdx);
   void EmitBBHeaderLabel(const char *, const char *, LabelIdx, CGFunc &);
   void EmitLabelPair(const char *, const LabelPair &);
+  void EmitLabelForFunc(MIRFunction *, LabelIdx);
 
   // Emit alignment directive (".align")
   //

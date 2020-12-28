@@ -84,6 +84,7 @@ class CG {
   MIRSymbol *dbg_trace_enter_;
   MIRSymbol *dbg_trace_exit_;
   MIRSymbol *dbg_func_profile_;
+  static std::map<MIRFunction *, std::pair<LabelIdx,LabelIdx>> funcWrapLabels;
 
  public:
   explicit CG(MIRModule *mod, const CGOptions &cgopt, bool runCg, const char *output)

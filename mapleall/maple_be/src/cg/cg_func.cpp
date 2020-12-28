@@ -169,6 +169,10 @@ void CGFunc::CreateStartEndLabel() {
     fdie->SetAttr(DW_AT_low_pc, startLblidx);
     fdie->SetAttr(DW_AT_high_pc, endLblidx);
   }
+  // add start/end labels into the static map table in class cg
+  auto it = CG::funcWrapLabels.find(func);
+  CG_ASSERT(it == CG::funcWrapLabels.end(), "");
+  CG::funcWrapLabels[func] = make_pair(startLblidx, endLblidx);
 }
 
 void CGFunc::HandleLabel(LabelNode *stmt) {
