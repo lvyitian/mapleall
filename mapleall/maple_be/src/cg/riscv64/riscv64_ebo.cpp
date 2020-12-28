@@ -601,6 +601,10 @@ bool Riscv64Ebo::SpecialSequence(Insn *insn, Operand **opnds, OpndInfo **origInf
           if ((!is64bits && immVal < STR_LDR_IMM32_UPPER_BOUND && immVal % 4 == 0) ||
               (is64bits && immVal < STR_LDR_IMM64_UPPER_BOUND && immVal % 8 == 0)) {
             MemOperand *mo = aarchfunc->CreateMemOpnd(op1, immVal, size);
+            if (imm0->IsVary() || imm1->IsVary()) {
+              ImmOperand *ofst = static_cast<ImmOperand *>(mo->GetOffsetOperand());
+              ofst->SetVary(true);
+            }
             Insn *ldInsn = cgfunc->cg->BuildInstruction<Riscv64Insn>(opc, res, mo);
             insn->bb->ReplaceInsn(insn, ldInsn);
             return true;
