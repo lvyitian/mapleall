@@ -438,8 +438,9 @@ bool Riscv64Ebo::ConstantOperand(Insn *insn, Operand **opnds, OpndInfo **opndInf
     return true;
   }
   // For the imm is 0. Then replace the insn by a move insn.
-  if ((insn->GetMachineOpcode() >= MOP_xaddrrr && insn->GetMachineOpcode() <= MOP_sadd && imm->IsZero()) ||
-      (!first && insn->GetMachineOpcode() >= MOP_xsubrrr && insn->GetMachineOpcode() <= MOP_ssub && imm->IsZero())) {
+  if (imm->IsVary() == false &&
+      ((insn->GetMachineOpcode() >= MOP_xaddrrr && insn->GetMachineOpcode() <= MOP_sadd && imm->IsZero()) ||
+      (!first && insn->GetMachineOpcode() >= MOP_xsubrrr && insn->GetMachineOpcode() <= MOP_ssub && imm->IsZero()))) {
     bb->ReplaceInsn(insn, cgfunc->cg->BuildInstruction<Riscv64Insn>(dsize == 64 ? MOP_xmovrr : MOP_wmovrr, res, op));
     return true;
   }
