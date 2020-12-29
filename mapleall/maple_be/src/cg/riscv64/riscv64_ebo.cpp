@@ -472,7 +472,7 @@ bool Riscv64Ebo::ConstantOperand(Insn *insn, Operand **opnds, OpndInfo **opndInf
       int64_t val = imm0->GetValue() + imm->GetValue();
       Riscv64CGFunc *aarchfunc = static_cast<Riscv64CGFunc *>(cgfunc);
       Riscv64ImmOperand *imm1 = aarchfunc->CreateImmOperand(val, dsize, imm0->IsSignedValue());
-      if (imm0->IsVary()) {
+      if (imm->IsVary() || imm0->IsVary()) {
         imm1->SetVary(true);
       }
       if (imm1->IsInBitSize(11)) {
