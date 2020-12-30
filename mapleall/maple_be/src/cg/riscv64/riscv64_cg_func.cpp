@@ -4916,30 +4916,32 @@ void Riscv64CGFunc::OffsetAdjustmentForFPLR() {
               insn->SetOperand(i, newMemOpnd);
             }
 
+            Riscv64OfstOperand *oo = nullptr;
             if (newMemOpnd) {
-              Riscv64OfstOperand *oo = static_cast<Riscv64MemOperand *>(newMemOpnd)->GetOffsetImmediate();
-              if (oo->IsVary()) {
-                int32 offset;
-                Riscv64MemLayout *layout = static_cast<Riscv64MemLayout *>(memlayout);
-                if (!UseFP() && !HasVLAOrAlloca() && argsToStkpassSize > 0) {
-                  offset = layout->RealStackFrameSize();
-                } else {
-                  offset = layout->RealStackFrameSize() - argsToStkpassSize;
-                }
-                oo->AdjustOffset(offset);
-                if (oo->IsInBitSize(11) == false) {
-                  Riscv64RegOperand *dst = GetOrCreatePhysicalRegisterOperand(Riscv64Abi::kIntSpareReg, 64, kRegTyInt);
-                  Insn *li = cg->BuildInstruction<Riscv64Insn>(MOP_xmovri64, dst, CreateImmOperand(oo->GetOffsetValue(), 64, false));
-                  insn->bb->InsertInsnBefore(insn, li);
-                  Insn *add = cg->BuildInstruction<Riscv64Insn>(MOP_xaddrrr, dst, newMemOpnd->GetBaseRegister(), dst);
-                  insn->bb->InsertInsnBefore(insn, add);
-                  newMemOpnd->SetBaseRegister(dst);
-                  oo->SetOffsetValue(0);
-                }
-                oo->SetVary(false);
-              }
+              oo = static_cast<Riscv64MemOperand *>(newMemOpnd)->GetOffsetImmediate();
             }
-
+            if (oo && oo->IsVary()) {
+              int32 offset;
+              Riscv64MemLayout *layout = static_cast<Riscv64MemLayout *>(memlayout);
+              if (!UseFP() && !HasVLAOrAlloca() && argsToStkpassSize > 0) {
+                offset = layout->RealStackFrameSize();
+              } else {
+                offset = layout->RealStackFrameSize() - argsToStkpassSize;
+              }
+              oo = static_cast<Riscv64OfstOperand *>(static_cast<Riscv64OfstOperand *>(oo)->Clone(memPool));
+              newMemOpnd->SetOffsetOperand(oo);
+              oo->AdjustOffset(offset);
+              if (oo->IsInBitSize(11) == false) {
+                Riscv64RegOperand *dst = GetOrCreatePhysicalRegisterOperand(Riscv64Abi::kIntSpareReg, 64, kRegTyInt);
+                Insn *li = cg->BuildInstruction<Riscv64Insn>(MOP_xmovri64, dst, CreateImmOperand(oo->GetOffsetValue(), 64, false));
+                insn->bb->InsertInsnBefore(insn, li);
+                Insn *add = cg->BuildInstruction<Riscv64Insn>(MOP_xaddrrr, dst, newMemOpnd->GetBaseRegister(), dst);
+                insn->bb->InsertInsnBefore(insn, add);
+                newMemOpnd->SetBaseRegister(dst);
+                oo->SetOffsetValue(0);
+              }
+              oo->SetVary(false);
+            }
           } else if (oper->IsIntImmediate()) {
             ImmOperand *imo = dynamic_cast<ImmOperand *>(oper);
             OfstOperand *imo1 = dynamic_cast<OfstOperand *>(oper);

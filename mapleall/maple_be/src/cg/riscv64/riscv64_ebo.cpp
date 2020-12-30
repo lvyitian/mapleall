@@ -446,17 +446,16 @@ bool Riscv64Ebo::ConstantOperand(Insn *insn, Operand **opnds, OpndInfo **opndInf
   }
 
   if (insn->GetMachineOpcode() == MOP_xaddrrr || insn->GetMachineOpcode() == MOP_waddrrr) {
-//    if (imm->IsInBitSize(24)) {
-      // ADD Wd|WSP, Wn|WSP, #imm{, shift} ; 32-bit general registers
-      // ADD Xd|SP,  Xn|SP,  #imm{, shift} ; 64-bit general registers
-      // imm : 0 ~ 4095, shift: none, LSL #0, or LSL #12
-      // riscv64 assembly takes up to 24-bits, if the lower 12 bits is all 0
-      if (imm->IsInBitSize(11)) {
-        bb->ReplaceInsn(
-          insn, cgfunc->cg->BuildInstruction<Riscv64Insn>(dsize == 64 ? MOP_xaddrri12 : MOP_waddrri12, res, op, imm));
-        retval = true;
+    if (imm->IsInBitSize(11)) {
+      if (imm->IsVary()) {
+        Riscv64CGFunc *aarchfunc = static_cast<Riscv64CGFunc *>(cgfunc);
+        imm = aarchfunc->CreateImmOperand(imm->GetValue(), 64, false);
+        imm->SetVary(true);
       }
-//    }
+      bb->ReplaceInsn(
+        insn, cgfunc->cg->BuildInstruction<Riscv64Insn>(dsize == 64 ? MOP_xaddrri12 : MOP_waddrri12, res, op, imm));
+      retval = true;
+    }
   }
   // Look for the sequence which can be simpified.
   if (retval == true || insn->GetMachineOpcode() == MOP_xaddrri12 || insn->GetMachineOpcode() == MOP_waddrri12) {
