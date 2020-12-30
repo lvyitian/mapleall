@@ -133,6 +133,9 @@ void Emitter::EmitFileInfo(const std::string &fileName) {
   Emit(irFile.c_str());
   Emit("\n");
 
+  // save directory path in index 0
+  fileMap[0] = path;
+
   // .file #num src_file_name
   if (cg_->cgopt_.WithLoc()) {
     if (cg_->cgopt_.WithAsm()) {
@@ -143,8 +146,10 @@ void Emitter::EmitFileInfo(const std::string &fileName) {
     Emit("1 ");
     Emit(irFile.c_str());
     Emit("\n");
+    fileMap[1] = irFile;
     if (cg_->cgopt_.WithSrc()) {
       // insert a list of src files
+      int i = 2;
       for (auto it : cg_->mirModule->srcFileInfo) {
         if (cg_->cgopt_.WithAsm()) {
           Emit("\t// ");
@@ -154,6 +159,7 @@ void Emitter::EmitFileInfo(const std::string &fileName) {
         const std::string kStr = GlobalTables::GetStrTable().GetStringFromStrIdx(it.first);
         Emit(kStr.c_str());
         Emit("\"\n");
+        fileMap[i++] = kStr;
       }
     }
   }

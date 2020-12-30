@@ -490,10 +490,27 @@ void Emitter::EmitDIDebugInfoSection(DebugInfo *mirdi) {
     CHECK_FATAL(diae != nullptr, "diae is null in Emitter::EmitDIDebugInfoSection");
     MapleVector<uint32> &apl = diae->attrpairs_;  // attribute pair list
 
+    string sfile, spath;
+    if (diae->tag_ == DW_TAG_compile_unit && sfile.empty()) {
+      // get full source path from fileMap[2]
+      string srcPath = emitter->fileMap[2];
+      size_t t = srcPath.rfind("/");
+      CG_ASSERT(t != string::npos, "");
+      sfile = srcPath.substr(t+1);
+      spath = srcPath.substr(0, t-1);
+    }
+
     for (int i = 0; i < diae->attrpairs_.size(); i += 2) {
       DBGDieAttr *attr = LFindAttribute(die->attrvec_, dw_at(apl[i]));
       if (!LShouldEmit(unsigned(apl[i + 1]))) {
         continue;
+      }
+      // update DW_AT_name and DW_AT_comp_dir attrs under DW_TAG_compile_unit
+      // to be C/C++
+      if (attr->dwattr_ == DW_AT_name) {
+        attr->val_.id = GlobalTables::GetStrTable().GetOrCreateStrIdxFromName(sfile).GetIdx();
+      } else if (attr->dwattr_ == DW_AT_comp_dir) {
+        attr->val_.id = GlobalTables::GetStrTable().GetOrCreateStrIdxFromName(spath).GetIdx();
       }
       emitter->Emit("\t");
       emitter->EmitDIFormSpecification(unsigned(apl[i + 1]));

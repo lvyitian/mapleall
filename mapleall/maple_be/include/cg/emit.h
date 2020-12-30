@@ -86,6 +86,7 @@ class Emitter {
  private:
   MOperator curr_mop;
   MapleMap<DBGDie *, LabelIdx> labdie2labidx_table;
+  MapleMap<uint32_t, std::string> fileMap;
 
   vector<UStrIdx> stringPtr;
 
@@ -95,7 +96,8 @@ class Emitter {
         arraySize(0),
         isFlexibleArray(false),
         curr_mop(UINT_MAX),
-        labdie2labidx_table(std::less<DBGDie *>(), cg->mirModule->memPoolAllocator.Adapter()) {
+        labdie2labidx_table(std::less<DBGDie *>(), cg->mirModule->memPoolAllocator.Adapter()),
+        fileMap(std::less<uint32_t>(), cg->mirModule->memPoolAllocator.Adapter()) {
     out.open(asmFileName.c_str(), std::ios::trunc);
     MIRModule &mirModule = *cg_->mirModule;
     asminfo_ = mirModule.memPool->New<Asminfo>(0, mirModule.memPool);
