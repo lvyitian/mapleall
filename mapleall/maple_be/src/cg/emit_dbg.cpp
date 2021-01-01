@@ -507,10 +507,12 @@ void Emitter::EmitDIDebugInfoSection(DebugInfo *mirdi) {
       }
       // update DW_AT_name and DW_AT_comp_dir attrs under DW_TAG_compile_unit
       // to be C/C++
-      if (attr->dwattr_ == DW_AT_name) {
-        attr->val_.id = GlobalTables::GetStrTable().GetOrCreateStrIdxFromName(sfile).GetIdx();
-      } else if (attr->dwattr_ == DW_AT_comp_dir) {
-        attr->val_.id = GlobalTables::GetStrTable().GetOrCreateStrIdxFromName(spath).GetIdx();
+      if (!sfile.empty()) {
+        if (attr->dwattr_ == DW_AT_name) {
+          attr->val_.id = GlobalTables::GetStrTable().GetOrCreateStrIdxFromName(sfile).GetIdx();
+        } else if (attr->dwattr_ == DW_AT_comp_dir) {
+          attr->val_.id = GlobalTables::GetStrTable().GetOrCreateStrIdxFromName(spath).GetIdx();
+        }
       }
       emitter->Emit("\t");
       emitter->EmitDIFormSpecification(unsigned(apl[i + 1]));
