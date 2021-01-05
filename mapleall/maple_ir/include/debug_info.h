@@ -392,7 +392,7 @@ class DebugInfo {
   DBGDieAttr *CreateAttr(dw_at attr, dw_form form, uint64 val);
 
   DBGDie *CreateVarDie(MIRSymbol *sym, uint32 lnum);
-  DBGDie *CreateFormalParaDie(MIRType *type, GStrIdx nameidx, uint32 lnum);
+  DBGDie *CreateFormalParaDie(MIRFunction *func, MIRType *type, GStrIdx nameidx, uint32 lnum);
   DBGDie *CreateFieldDie(maple::FieldPair pair, uint32 lnum);
   DBGDie *CreateStructTypeDie(GStrIdx strIdx, const MIRStructType *type, bool update = false);
   DBGDie *CreateClassTypeDie(GStrIdx strIdx, const MIRClassType *type);

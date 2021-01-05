@@ -391,7 +391,7 @@ LabelIdx DebugInfo::GetLabelIdx(GStrIdx strIdx) {
   return labidx;
 }
 
-DBGDie *DebugInfo::CreateFormalParaDie(MIRType *type, GStrIdx nameidx, uint32 lnum) {
+DBGDie *DebugInfo::CreateFormalParaDie(MIRFunction *func, MIRType *type, GStrIdx nameidx, uint32 lnum) {
   DBGDie *die = mod_->memPool->New<DBGDie>(mod_, DW_TAG_formal_parameter);
 
   (void)GetOrCreateTypeDie(type);
@@ -403,7 +403,7 @@ DBGDie *DebugInfo::CreateFormalParaDie(MIRType *type, GStrIdx nameidx, uint32 ln
     die->AddAttr(DW_AT_decl_file, DW_FORM_data4, mplsrcidx_.GetIdx());
     die->AddAttr(DW_AT_decl_line, DW_FORM_data4, lnum);
     die->AddSimpLocAttr(DW_AT_location, DW_FORM_exprloc, kDbgDefaultVal);
-    SetLocalDie(nameidx, die);
+    SetLocalDie(func, nameidx, die);
   }
   return die;
 }
@@ -527,7 +527,7 @@ DBGDie *DebugInfo::GetOrCreateFuncDeclDie(MIRFunction *func, uint32 lnum) {
   GStrIdx strIdx(0);
   for (uint32 i = 0; i < func->formalDefVec.size(); i++) {
     MIRType *type = GlobalTables::GetTypeTable().GetTypeFromTyIdx(func->formalDefVec[i].formalTyIdx);
-    DBGDie *param = CreateFormalParaDie(type, strIdx, lnum);
+    DBGDie *param = CreateFormalParaDie(func, type, strIdx, lnum);
     die->AddSubVec(param);
   }
 
@@ -567,7 +567,7 @@ DBGDie *DebugInfo::GetOrCreateFuncDefDie(MIRFunction *func, uint32 lnum) {
   // formal parameter
   for (uint32 i = 0; i < func->formalDefVec.size(); i++) {
     MIRType *type = GlobalTables::GetTypeTable().GetTypeFromTyIdx(func->formalDefVec[i].formalTyIdx);
-    DBGDie *pdie = CreateFormalParaDie(type, func->formalDefVec[i].formalStrIdx, lnum);
+    DBGDie *pdie = CreateFormalParaDie(func, type, func->formalDefVec[i].formalStrIdx, lnum);
     die->AddSubVec(pdie);
   }
 

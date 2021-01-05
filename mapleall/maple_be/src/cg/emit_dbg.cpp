@@ -510,8 +510,10 @@ void Emitter::EmitDIDebugInfoSection(DebugInfo *mirdi) {
       if (!sfile.empty()) {
         if (attr->dwattr_ == DW_AT_name) {
           attr->val_.id = GlobalTables::GetStrTable().GetOrCreateStrIdxFromName(sfile).GetIdx();
+          emitter->cg_->mirModule->dbgInfo->strps_.insert(attr->val_.id);
         } else if (attr->dwattr_ == DW_AT_comp_dir) {
           attr->val_.id = GlobalTables::GetStrTable().GetOrCreateStrIdxFromName(spath).GetIdx();
+          emitter->cg_->mirModule->dbgInfo->strps_.insert(attr->val_.id);
         }
       }
       emitter->Emit("\t");
