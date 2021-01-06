@@ -102,6 +102,7 @@ class ParmLocator {
   virtual ~ParmLocator() {}
 
   // Return size of aggregate structure copy on stack.
+  void LocateCallNodeParm(MIRType *ty, PLocInfo &ploc, uint32 retSize, bool isFirst, bool isvararg);
   int32 LocateNextParm(MIRType *ty, PLocInfo &ploc, bool isFirst = false, bool isvararg = false);
   int32 LocateRetValue(MIRType *ty, PLocInfo &ploc);
   void InitPlocInfo(PLocInfo &ploc);

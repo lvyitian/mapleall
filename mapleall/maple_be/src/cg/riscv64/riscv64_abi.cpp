@@ -491,6 +491,17 @@ int32 ParmLocator::LocateNextParm(MIRType *ty, PLocInfo &ploc, bool isFirst, boo
   return aggCopySize;
 }
 
+void ParmLocator::LocateCallNodeParm(MIRType *ty, PLocInfo &ploc, uint32 retSize, bool isFirst, bool isVararg) {
+  if (isFirst && retSize > 16) {
+    InitPlocInfo(ploc);
+    ploc.reg0 = AllocateGPRegister();
+    return;
+  } else {
+    LocateNextParm(ty, ploc, isFirst && retSize > 16, isVararg);
+    return;
+  }
+}
+
 // instantiated with the type of the function return value, it describes how
 // the return value is to be passed back to the caller
 ReturnMechanism::ReturnMechanism(MIRType *retty, BECommon &be)

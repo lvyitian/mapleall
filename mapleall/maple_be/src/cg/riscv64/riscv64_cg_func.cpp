@@ -3714,7 +3714,7 @@ void Riscv64CGFunc::SelectParmList(StmtNode * narynode, Riscv64ListOperand * src
         expregopnd = static_cast<RegOperand *>(opnd);
       }
 
-      parmlocator.LocateNextParm(ty, ploc, pnum == 0 && retSize > 16, variadArg);
+      parmlocator.LocateCallNodeParm(ty, ploc, retSize, pnum == 0, variadArg);
       if (ploc.reg0 != 0) {  // load to the register
         Riscv64RegOperand *parmregopnd = nullptr;
         if (islockcall && i == 1) {
