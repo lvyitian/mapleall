@@ -520,6 +520,10 @@ class MIRFunction : public mir_func_t {
     return classTyIdx.GetIdx();
   }
 
+  bool IsC() const {
+    return module->srcLang == kSrcLangC;
+  }
+
   MIRType *GetNodeType(base_node_t *node);
 #ifdef DEBUGME
   void SetUpGDBEnv();

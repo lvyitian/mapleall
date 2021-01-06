@@ -530,7 +530,9 @@ void AArch64CGFunc::Emit() {
     // nothing
   } else {
     emitter.Emit("\t.globl\t").Emit(funcSt->GetName()).Emit("\n");
-    emitter.Emit("\t.hidden\t").Emit(funcSt->GetName()).Emit("\n");
+    if (!func->IsC()) {
+      emitter.Emit("\t.hidden\t").Emit(funcSt->GetName()).Emit("\n");
+    }
   }
 
   emitter.Emit("\t.type\t").Emit(funcSt->GetName()).Emit(", %function\n");

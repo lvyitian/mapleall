@@ -1958,7 +1958,9 @@ void Emitter::EmitGlobalVariable() {
         } else {
           EmitAsmLabel(st, kAsmGlbl);
         }
-        EmitAsmLabel(st, kAsmHidden);
+        if (!cg_->mirModule->IsCModule() ) {
+          EmitAsmLabel(st, kAsmHidden);
+        }
       } else if (st->storageClass == kScFstatic) {
         EmitAsmLabel(st, kAsmLocal);
       }
