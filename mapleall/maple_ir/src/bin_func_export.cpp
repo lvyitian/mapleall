@@ -61,11 +61,14 @@ void BinaryMplExport::OutputLocalSymbol(const MIRSymbol *sym) {
   WriteNum(kBinSymbol);
   WriteNum(sym->GetStIndex());  // preserve original st index
   OutputStr(sym->nameStrIdx);
-  OutputTypeViaTypeName(sym->tyIdx);
   WriteNum(sym->sKind);
   WriteNum(sym->storageClass);
   OutputTypeAttrs(sym->typeAttrs);
   WriteNum(sym->isTmp);
+  if (sym->sKind == kStVar || sym->sKind == kStFunc) {
+    OutputSrcPos(sym->srcPosition);
+  }
+  OutputTypeViaTypeName(sym->tyIdx);
   if (sym->sKind == kStPreg) {
     WriteNum(sym->value.preg->pregNo);
   } else if (sym->sKind == kStConst || sym->sKind == kStVar) {

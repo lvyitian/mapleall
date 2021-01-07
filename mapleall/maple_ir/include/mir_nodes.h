@@ -25,6 +25,7 @@
 #include "mir_module.h"
 #include "mir_const.h"
 #include "maple_string.h"
+#include "src_position.h"
 #include "ptr_list_ref.h"
 
 namespace maple {
@@ -1330,78 +1331,6 @@ class AddroflabelNode : public BaseNode {
 
   AddroflabelNode *CloneTree(MIRModule *mod) {
     return AddroflabelNode::CloneTree(mod->CurFuncCodeMemPoolAllocator());
-  }
-};
-
-// to store source position information
-class SrcPosition {
- private:
-  union {
-    struct {
-      uint16 fileNum;
-      uint16 column : 12;
-      uint16 stmtBegin : 1;
-      uint16 bbBegin : 1;
-      uint16 unused : 2;
-    } fileColumn;
-    uint32 word0;
-  } u;
-  uint32 lineNum;     // line number of original src file, like foo.java
-  uint32 mplLineNum;  // line number of mpl file
- public:
-  SrcPosition() : lineNum(0), mplLineNum(0) {
-    u.word0 = 0;
-  }
-
-  virtual ~SrcPosition() = default;
-
-  uint32 RawData() const {
-    return u.word0;
-  }
-
-  uint32 Filenum() const {
-    return u.fileColumn.fileNum;
-  }
-
-  uint32 Column() const {
-    return u.fileColumn.column;
-  }
-
-  uint32 Linenum() const {
-    return lineNum;
-  }
-
-  uint32 MplLinenum() const {
-    return mplLineNum;
-  }
-
-  void SetFilenum(int n) {
-    u.fileColumn.fileNum = n;
-  }
-
-  void SetColumn(int n) {
-    u.fileColumn.column = n;
-  }
-
-  void SetLinenum(int n) {
-    lineNum = n;
-  }
-
-  void SetRawData(uint32 n) {
-    u.word0 = n;
-  }
-
-  void SetMplLinenum(int n) {
-    mplLineNum = n;
-  }
-
-  void CondSetLinenum(int n) {
-    lineNum = lineNum ? lineNum : n;
-  }
-
-  void CondSetFilenum(int n) {
-    uint32 i = u.fileColumn.fileNum;
-    u.fileColumn.fileNum = i ? i : n;
   }
 };
 

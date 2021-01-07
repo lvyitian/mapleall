@@ -43,6 +43,12 @@ void MIRFunction::Dump(bool withoutBody) {
   module->SetCurFunction(this);
 
   MIRSymbol *fnSt = GlobalTables::GetGsymTable().GetSymbolFromStIdx(stIdx.Idx());
+  if (!withoutBody) {
+    if (fnSt->srcPosition.Filenum() != 0 && fnSt->srcPosition.Linenum() != 0 && fnSt->srcPosition.Linenum() != MIRSymbol::lastPrintedLinenum) {
+      LogInfo::MapleLogger() << "LOC " << fnSt->srcPosition.Filenum() << " " << fnSt->srcPosition.Linenum() << std::endl;
+      MIRSymbol::lastPrintedLinenum = fnSt->srcPosition.Linenum();
+    }
+  }
   LogInfo::MapleLogger() << "func "
                << "&" << fnSt->GetName();
   funcAttrs.DumpAttributes();

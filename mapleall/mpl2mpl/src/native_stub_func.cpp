@@ -65,7 +65,7 @@ MIRFunction *GenNativeStubFunc::GetOrCreateDefaultNativeFunc(MIRFunction *stubFu
   std::string nativeName = NameMangler::NativeJavaName(stubFunc->GetName().c_str());
   // No need to create a default function with exact arguments here
   MIRFunction *nativeFunc = builder->GetOrCreateFunction(nativeName, stubFunc->GetReturnTyIdx());
-  nativeFunc->srcPosition.SetMplLinenum(stubFunc->srcPosition.MplLinenum());
+  nativeFunc->GetFuncSymbol()->srcPosition.SetMplLinenum(stubFunc->GetFuncSymbol()->srcPosition.MplLinenum());
 
   if (!nativeFunc->body) {
     if (nativeFunc->symTab == nullptr) {

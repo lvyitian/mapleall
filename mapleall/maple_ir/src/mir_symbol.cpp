@@ -25,6 +25,7 @@
 #include "literal_str_name.h"
 
 namespace maple {
+uint32 MIRSymbol::lastPrintedLinenum = 0;
 
 MIRType *MIRSymbol::GetType() const {
   return GlobalTables::GetTypeTable().GetTypeFromTyIdx(tyIdx);
@@ -275,6 +276,12 @@ bool MIRSymbol::IgnoreRC() { // is RC needed
 }
 
 void MIRSymbol::Dump(bool isLocal, int32 indent, bool suppressinit, const MIRSymbolTable *localsymtab) const {
+  if (sKind == kStVar || sKind == kStFunc) {
+    if (srcPosition.Filenum() != 0 && srcPosition.Linenum() != 0 && srcPosition.Linenum() != lastPrintedLinenum) {
+      LogInfo::MapleLogger() << "LOC " << srcPosition.Filenum() << " " << srcPosition.Linenum() << std::endl;
+      lastPrintedLinenum = srcPosition.Linenum();
+    }
+  }
   if (storageClass == kScUnused) {
     return;
   }

@@ -72,11 +72,14 @@ void BinaryMplImport::ImportLocalSymbol(MIRFunction *func) {
   MIRSymbol *sym = func->symTab->CreateSymbol(kScopeLocal);
   sym->nameStrIdx = ImportStr();
   func->symTab->AddToStringSymbolMap(sym);
-  sym->tyIdx = ImportType();
   sym->sKind = (MIRSymKind)ReadNum();
   sym->storageClass = (MIRStorageClass)ReadNum();
   sym->typeAttrs = ImportTypeAttrs();
   sym->isTmp = ReadNum();
+  if (sym->sKind == kStVar || sym->sKind == kStFunc) {
+    ImportSrcPos(sym->srcPosition);
+  }
+  sym->tyIdx = ImportType();
   if (sym->sKind == kStPreg) {
     uint32 thepregno = ReadNum();
     MIRType *mirType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(sym->tyIdx);

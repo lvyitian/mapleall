@@ -28,8 +28,6 @@
 #define DEBUGME true
 
 namespace maple {
-class BlockNode;
-class SrcPosition;
 
 enum MIRFuncProp {
   kFuncPropNone = 0,
@@ -93,7 +91,6 @@ class MIRFunction : public mir_func_t {
   MapleAllocator codeMemPoolTmpAllocator;
   bool useTmpMp;
   BlockNode *body;
-  SrcPosition srcPosition;
   FuncAttrs funcAttrs;
   uint32 flag;
   uint16 hashCode;     // for methodmetadata order

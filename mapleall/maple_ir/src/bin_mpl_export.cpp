@@ -625,6 +625,9 @@ void BinaryMplExport::OutputSymbol(MIRSymbol *sym) {
   } else {
     CHECK_FATAL(false, "should not used");
   }
+  if (sym->sKind == kStVar || sym->sKind == kStFunc) {
+    OutputSrcPos(sym->srcPosition);
+  }
   OutputTypeViaTypeName(sym->tyIdx);
 }
 

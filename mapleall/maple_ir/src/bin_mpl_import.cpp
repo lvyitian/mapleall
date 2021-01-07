@@ -784,6 +784,9 @@ MIRSymbol *BinaryMplImport::InSymbol(MIRFunction *func) {
         sym->value.mirFunc = GlobalTables::GetFunctionTable().GetFunctionFromPuidx(puIdx);
       }
     }
+    if (sKind == kStVar || sKind == kStFunc) {
+      ImportSrcPos(sym->srcPosition);
+    }
     TyIdx tyIdx = ImportType();
     sym->tyIdx = tyIdx;
     if (sKind == kStPreg) {

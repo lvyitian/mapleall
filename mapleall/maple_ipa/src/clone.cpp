@@ -117,7 +117,7 @@ MIRFunction *Clone::CloneFunction(MIRFunction *const originalFunction, const std
   classType->methods.push_back(
     MethodPair(newFunc->stIdx, TyidxFuncAttrPair(newFunc->GetFuncSymbol()->GetTyIdx(), originalFunction->funcAttrs)));
   newFunc->flag = originalFunction->flag;
-  newFunc->srcPosition = originalFunction->srcPosition;
+  newFunc->GetFuncSymbol()->srcPosition = originalFunction->GetFuncSymbol()->srcPosition;
   newFunc->SetAttrs(originalFunction->GetAttrs());
   newFunc->SetBaseClassFuncNames(GlobalTables::GetStrTable().GetOrCreateStrIdxFromName(fullName));
   newFunc->easummary = originalFunction->easummary;

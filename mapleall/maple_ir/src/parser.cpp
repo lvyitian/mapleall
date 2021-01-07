@@ -735,6 +735,7 @@ bool MIRParser::ParseFields(MIRStructType &type) {
     GlobalTables::GetGsymTable().AddToStringSymbolMap(funcSt);
     funcSt->storageClass = kScText;
     funcSt->sKind = kStFunc;
+    SetSrcPos(funcSt->srcPosition, lexer.GetLineNum());
 
     MIRFunction *fn = mod.memPool->New<MIRFunction>(&mod, funcSt->GetStIdx());
     fn->puIdx = GlobalTables::GetFunctionTable().funcTable.size();
@@ -1999,6 +2000,7 @@ bool MIRParser::ParseFunction(uint32 fileidx) {
     GlobalTables::GetGsymTable().AddToStringSymbolMap(funcSt);
     funcSt->storageClass = kScText;
     funcSt->sKind = kStFunc;
+    SetSrcPos(funcSt->srcPosition, lexer.GetLineNum());
 
     fn = mod.memPool->New<MIRFunction>(&mod, funcSt->GetStIdx());
     fn->puIdx = GlobalTables::GetFunctionTable().funcTable.size();
@@ -2026,7 +2028,7 @@ bool MIRParser::ParseFunction(uint32 fileidx) {
     mod.AddFunction(fn);
 
     // set maple line number for function
-    fn->srcPosition.SetMplLinenum(lexer.GetLineNum());
+    fn->GetFuncSymbol()->srcPosition.SetMplLinenum(lexer.GetLineNum());
 
     // initialize source line number to be 0
     // to avoid carrying over info from previous function
@@ -2043,8 +2045,8 @@ bool MIRParser::ParseFunction(uint32 fileidx) {
     fn->body = block;
 
     // set source file number for function
-    fn->srcPosition.SetLinenum(firstLineNum);
-    fn->srcPosition.SetFilenum(lastFileNum);
+    fn->GetFuncSymbol()->srcPosition.SetLinenum(firstLineNum);
+    fn->GetFuncSymbol()->srcPosition.SetFilenum(lastFileNum);
 
     // check if any local type name is undefined
     for (auto it : fn->typeNameTab->gStrIdxToTyIdxMap) {
@@ -2579,6 +2581,7 @@ std::map<TokenKind, MIRParser::FuncPtrParseMIRForElem> MIRParser::InitFuncPtrMap
   funcPtrMap[TK_srcfileinfo] = &MIRParser::ParseMIRForSrcFileInfo;
   funcPtrMap[TK_import] = &MIRParser::ParseMIRForImport;
   funcPtrMap[TK_importpath] = &MIRParser::ParseMIRForImportPath;
+  funcPtrMap[TK_LOC] = &MIRParser::ParseLoc;
   return funcPtrMap;
 }
 
@@ -2627,6 +2630,7 @@ bool MIRParser::ParseMIRForVar() {
     newst->SetAttrs(st.GetAttrs());
     newst->SetNameStridx(st.GetNameStridx());
     newst->value = st.value;
+    SetSrcPos(newst->srcPosition, lexer.GetLineNum());
   }
   return true;
 }

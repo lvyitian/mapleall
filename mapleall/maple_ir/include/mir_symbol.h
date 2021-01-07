@@ -17,6 +17,7 @@
 #define MAPLE_IR_INCLUDE_MIR_SYMBOL_H
 #include "mir_const.h"
 #include "mir_preg.h"
+#include "src_position.h"
 #include <sstream>
 
 constexpr int kScopeLocal = 2;   // the default scope level for function variables
@@ -53,6 +54,7 @@ enum MIRStorageClass : uint8 {
 // to represent a single symbol
 class MIRSymbol {
  public:
+  static uint32 lastPrintedLinenum;     // used during printing ascii output
   union SymbolType {  // a symbol can either be a const or a function or a preg which currently used for formal
     MIRConst *konst;
     MIRFunction *mirFunc;
@@ -77,6 +79,7 @@ class MIRSymbol {
   TypeAttrs typeAttrs;
   GStrIdx nameStrIdx;
   SymbolType value;
+  SrcPosition srcPosition;  // where the symbol is defined
 
   static GStrIdx reflectClassNameIdx;
   static GStrIdx reflectMethodNameIdx;

@@ -2207,9 +2207,9 @@ void AArch64CGFunc::GenerateProlog(BB * bb) {
     if (cg->cgopt_.WithSrc()) {
       uint32 tempmaxsize = mirModule.srcFileInfo.size();
       uint32 endfilenum = mirModule.srcFileInfo[tempmaxsize - 1].second;
-      if (func->srcPosition.Filenum() != 0 && func->srcPosition.Filenum() <= endfilenum) {
-        Operand *o0 = CreateDbgImmOperand(func->srcPosition.Filenum());
-        int64_t lineNum = func->srcPosition.Linenum();
+      if (func->GetFuncSymbol()->srcPosition.Filenum() != 0 && func->GetFuncSymbol()->srcPosition.Filenum() <= endfilenum) {
+        Operand *o0 = CreateDbgImmOperand(func->GetFuncSymbol()->srcPosition.Filenum());
+        int64_t lineNum = func->GetFuncSymbol()->srcPosition.Linenum();
         if (lineNum == 0) {
           if (func->funcAttrs.GetAttr(FUNCATTR_native)) {
             lineNum = 0xffffe;
@@ -2225,7 +2225,7 @@ void AArch64CGFunc::GenerateProlog(BB * bb) {
       Operand *o0 = CreateDbgImmOperand(1);
       // line number might not be available.
       //CG_ASSERT(func->srcPosition.MplLinenum(), "return check");
-      Operand *o1 = CreateDbgImmOperand(func->srcPosition.MplLinenum());
+      Operand *o1 = CreateDbgImmOperand(func->GetFuncSymbol()->srcPosition.MplLinenum());
       Insn *loc = cg->BuildInstruction<mpldbg::DbgInsn>(mpldbg::OP_DBG_loc, o0, o1);
       curbb->AppendInsn(loc);
     }

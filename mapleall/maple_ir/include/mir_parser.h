@@ -155,7 +155,8 @@ class MIRParser {
     mod.SetCurFunction((mir_func_t *)dummyFunction);
   }
 
-  bool ParseLoc(StmtNode *&stmt);
+  bool ParseLoc();
+  bool ParseLocStmt(StmtNode *&stmt);
   bool ParseAlias(StmtNode *&stmt);
   uint8 *ParseWordsInfo(uint32 size);
   bool ParseSwitchCase(int32 &constVal, LabelIdx &lblidx);
@@ -306,7 +307,7 @@ class MIRParser {
   void FixupForwardReferencedTypeByMap();
 
   // common func
-  void SetSrcPos(StmtNode *stmt, uint32 mplNum);
+  void SetSrcPos(SrcPosition &srcPosition, uint32 mplNum);
 
   void CollectIncompleteTypes();
   bool IsIncomplete() {

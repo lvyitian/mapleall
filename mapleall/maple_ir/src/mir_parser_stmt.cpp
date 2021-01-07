@@ -1631,7 +1631,7 @@ bool MIRParser::ParseNaryStmtSyncExit(StmtNode* &stmt) {
   return ParseNaryStmt(stmt, OP_syncexit);
 }
 
-bool MIRParser::ParseLoc(StmtNode *&stmt) {
+bool MIRParser::ParseLoc() {
   if (lexer.NextToken() != TK_intconst) {
     Error("expect intconst in LOC but get ");
     return false;
@@ -1647,6 +1647,10 @@ bool MIRParser::ParseLoc(StmtNode *&stmt) {
   }
   lexer.NextToken();
   return true;
+}
+
+bool MIRParser::ParseLocStmt(StmtNode *&stmt) {
+  return ParseLoc();
 }
 
 bool MIRParser::ParseStatement(StmtNode *&stmt) {
@@ -1701,7 +1705,6 @@ bool MIRParser::ParseStmtBlock(BlockNode* &blk) {
         return false;
       }
       if (stmt != nullptr) {  // stmt is nullptr if it is a LOC
-        // SetSrcPos(stmt, mplNum);
         blk->AddStatement(stmt);
       }
     } else {
@@ -1730,7 +1733,7 @@ void MIRParser::ParseStmtBlockForSeenComment(BlockNode* blk, uint32 mplNum) {
     for (size_t i = 0; i < lexer.seenComments.size(); i++) {
       CommentNode *cmnt = mod.CurFuncCodeMemPool()->New<CommentNode>(&mod);
       cmnt->comment = lexer.seenComments[i];
-      SetSrcPos(cmnt, mplNum);
+      SetSrcPos(cmnt->srcPosition, mplNum);
       blk->AddStatement(cmnt);
     }
     lexer.GetSeenComments().clear();
@@ -1742,6 +1745,7 @@ bool MIRParser::ParseStmtBlockForVar(TokenKind stmtTK) {
   MIRSymbol *st = fn->symTab->CreateSymbol(kScopeLocal);
   st->SetStorageClass(kScAuto);
   st->sKind = kStVar;
+  SetSrcPos(st->srcPosition, lexer.GetLineNum());
   if (stmtTK == TK_tempvar) {
     st->isTmp = true;
   }
@@ -2000,7 +2004,7 @@ std::map<TokenKind, MIRParser::FuncPtrParseStmt> MIRParser::InitFuncPtrMapForPar
   funcPtrMap[TK_assertge] = &MIRParser::ParseBinaryStmtAssertGE;
   funcPtrMap[TK_assertlt] = &MIRParser::ParseBinaryStmtAssertLT;
   funcPtrMap[TK_label] = &MIRParser::ParseStmtLabel;
-  funcPtrMap[TK_LOC] = &MIRParser::ParseLoc;
+  funcPtrMap[TK_LOC] = &MIRParser::ParseLocStmt;
   funcPtrMap[TK_ALIAS] = &MIRParser::ParseAlias;
   return funcPtrMap;
 }
@@ -2024,10 +2028,10 @@ std::map<TokenKind, MIRParser::FuncPtrParseStmtBlock> MIRParser::InitFuncPtrMapF
   return funcPtrMap;
 }
 
-void MIRParser::SetSrcPos(StmtNode *stmt, uint32 mplNum) {
-  stmt->srcPosition.SetFilenum(lastFileNum);
-  stmt->srcPosition.SetLinenum(lastLineNum);
-  stmt->srcPosition.SetMplLinenum(mplNum);
+void MIRParser::SetSrcPos(SrcPosition &srcPosition, uint32 mplNum) {
+  srcPosition.SetFilenum(lastFileNum);
+  srcPosition.SetLinenum(lastLineNum);
+  srcPosition.SetMplLinenum(mplNum);
 }
 
 }  // namespace maple
