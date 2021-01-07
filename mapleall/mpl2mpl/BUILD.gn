@@ -53,7 +53,7 @@ static_library("libmpl2mpl"){
 
     include_dirs = include_directories
 
-    output_name = "liblibmpl2mpl"
+    output_name = "libmpl2mpl"
 
     output_dir = "${root_out_dir}/lib/${HOST_ARCH}"
 }

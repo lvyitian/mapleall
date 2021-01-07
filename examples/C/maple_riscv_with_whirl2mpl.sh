@@ -38,7 +38,7 @@ $MAPLE_ROOT/tools/open64_prebuilt/x86/riscv64/bin/clangfe $FLAGS $name.c > doit.
 echo $MAPLE_ROOT/tools/open64_prebuilt/x86/riscv64/bin/whirl2mpl $name.B
 $MAPLE_ROOT/tools/open64_prebuilt/x86/riscv64/bin/whirl2mpl $name.B >> doit.log 2>&1
 
-echo $MAPLE_ROOT/bin/riscv64-clang-release/maple -exe=me,mplcg -option="-O2 --quiet:-O2 -quiet" $name.bpl
+echo $MAPLE_ROOT/bin/riscv64-clang-release/maple -exe=me,mplcg -option=\"-O2 --quiet:-O2 -quiet\" $name.bpl
 $MAPLE_ROOT/bin/riscv64-clang-release/maple -exe=me,mplcg -option="-O2 --quiet:-O2 -quiet" $name.bpl >> doit.log 2>&1
 
 echo /usr/riscv64-linux-gnu/bin/riscv64-unknown-linux-gnu-gcc -o $name.out $name.s
